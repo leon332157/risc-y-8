@@ -69,7 +69,7 @@ func createRAM(size, blockSize, wordSize, latency int) *RAM {
 		size: size,
 		blockSize: blockSize,
 		wordSize: wordSize,
-		access: &access,
+		access: *access,
 		contents: contents,
 	}	
 }
