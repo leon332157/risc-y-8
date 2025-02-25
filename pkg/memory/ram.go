@@ -125,11 +125,10 @@ func (mem *RAM) write(addr int, val *RAMValue) bool {
 	offset1, offset2 := mem.addrToOffset(addr)
 
 	// if val is a line, it writes to the entire line
+	// else val is just a word, it writes a word
 	if len(val.line) > 0 {
 		mem.contents[offset1] = append([]int{}, val.line...)
-	} 
-	// if val is just a word, it writes a word
-	else {
+	} else {
 		mem.contents[offset1][offset2] = val.value
 	}
 
