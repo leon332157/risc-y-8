@@ -1,4 +1,4 @@
-package main
+package memory
 
 // import "fmt" - checkout https://pkg.go.dev/fmt for more info
 import ("fmt")
@@ -149,7 +149,11 @@ func (mem *RAM) flash(instructions []int) {
 	}
 }
 
-// TEST
+/*  TEST: simple test read and write
+*   change package memory to package main
+*   cd to risc-y-8\pkg\memory
+*   go run .
+*/
 func main() {
 	mem := createRAM(256, 4, 32, 5)
 	mem.write(10, &RAMValue{value: 123})
