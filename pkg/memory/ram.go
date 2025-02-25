@@ -1,8 +1,7 @@
 package main
-package memory
 
 // import "fmt" - checkout https://pkg.go.dev/fmt for more info
-import "fmt"
+import ("fmt")
 
 // type to keep track of memory access
 type AccessState struct {
