@@ -46,8 +46,8 @@ type RAM struct {
 	size int
 	blockSize int
 	wordSize int
-	access MemoryAccess
-	Contents [][]int
+	access AccessState
+	contents [][]int
 }
 
 // RAM constructor, creates a new RAM instance
@@ -152,6 +152,6 @@ func (mem *RAM) flash(instructions []int) {
 // TEST
 func main() {
 	mem := createRAM(256, 4, 32, 5)
-	mem.write(10, &RAMValue{123})
+	mem.write(10, &RAMValue{value: 123})
 	fmt.Println("Read: ", mem.read(10, false).value) // should print "Read: 123"
 }
