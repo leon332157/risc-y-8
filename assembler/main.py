@@ -210,9 +210,22 @@ def node_props(node, children):
         "children": children,
     }
 
+def parse_node(node):
+    return {
+        "name": node.element.name if hasattr(node.element, "name") else None,
+        "element": node.element.__class__.__name__,
+        "string": node.string,
+    }
+LINES = []
 
 # Recursive method to get the children of a node object:
 def get_children(children):
+    for c in children:
+      if c:
+        parsed = parse_node(c)
+        if parsed['element'] not in ['Choice','Token']:
+            if parsed['name'] != "LINE_COMMENT":
+               LINES.append(parsed)
     return [node_props(c, get_children(c.children)) for c in children]
 
 
@@ -229,6 +242,8 @@ add r1, 1
 xor r2, r2
 add r2, 2
 add r1, r2
+ldr r2, [r1+10]
+ldr r2, [r1-0x20]
 cmp r2, 0x10
 nop
 xor r3,r3
@@ -258,10 +273,15 @@ print(asm_grammar.export_go())
 pp = pprint.PrettyPrinter(indent=1, sort_dicts=True, compact=True)
 pp.pprint(view_parse_tree(gmr))
 
-
-def instruction_matcher():
-    pass
-
-
+for each in LINES:
+    match each['name']:
+        case 'INSTRUCTION':
+            print("Instruction: ", each['string'])
+        case 'LABEL':
+            print("Label: ", each['string'])
+        case 'DIRECTIVES':
+            print("Directive: ", each['string'])
+        case _:
+            print("Unknown: ", each['string'])
 if not gmr.is_valid:
     auto_correction(TEST, asm_grammar)
