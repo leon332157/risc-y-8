@@ -71,22 +71,21 @@ const (
 
 // Control | OpType 11 | DataType 01
 type ControlOp struct {
-	Mode uint8	// 2 bits
-	Flag uint8	// 5 bits
-	Name string
+	Mode uint8	// 3 bits
+	Flag uint8	// 4 bits
 }
 
-var ControlOps = []ControlOp{
-    {0b000, 0b0000, "BEQ"},
-    {0b000, 0b0001, "BNE"},
-    {0b000, 0b0101, "BLT"},
-    {0b011, 0b0110, "BGE"},
-    {0b100, 0b1000, "BLU"},
-    {0b000, 0b1000, "BAE"},
-    {0b010, 0b1011, "BA"},
-    {0b001, 0b0100, "BOF"},
-    {0b000, 0b0100, "BNF"},
-	{0b111, 0b1111, "BUNC"},
+var ControlOps = map[string]ControlOp{
+    "BEQ":  {Mode: 0b000, Flag: 0b0000},
+    "BNE":  {Mode: 0b000, Flag: 0b0001},
+    "BLT":  {Mode: 0b000, Flag: 0b0101},
+    "BGE":  {Mode: 0b011, Flag: 0b0110},
+    "BLU":  {Mode: 0b100, Flag: 0b1000},
+    "BAE":  {Mode: 0b000, Flag: 0b1000},
+    "BA":   {Mode: 0b010, Flag: 0b1011},
+    "BOF":  {Mode: 0b001, Flag: 0b0100},
+    "BNF":  {Mode: 0b000, Flag: 0b0100},
+    "BUNC": {Mode: 0b111, Flag: 0b1111},
 }
 
 type Instruction struct {
@@ -98,7 +97,6 @@ type Instruction struct {
 	Imm 		uint32			// Immediate or Displacement Value (if applicable)
 }
 
-// Encode function encodes an Instruction struct into a uint32 instruction
 func (inst Instruction) Encode() uint32 {
 
 	var encoded uint32
@@ -119,7 +117,7 @@ func (inst Instruction) Encode() uint32 {
 		}
 
 		encoded |= (uint32(inst.Imm) & 0x7FFFF) << 13	// 19 bit Immediate (Bits 31-13)
-		encoded |= (uint32(opcode) & 0xF) << 9			// 4 bit ALU Op (Bits 12-9)
+		encoded |= (uint32(opcode) & 0xF) << 9		// 4 bit ALU Op (Bits 12-9)
 		encoded |= (uint32(inst.Rd) & 0x1F) << 4		// 5 bit Rd (Bits 8-4)
 
 	case RegReg:
@@ -168,7 +166,6 @@ func (inst Instruction) Encode() uint32 {
 	return encoded
 }
 
-// decode function decodes a 32-bit instruction into an Instruction struct
 func Decode(encoded uint32) Instruction {
 
 	var inst Instruction
@@ -206,13 +203,6 @@ func Decode(encoded uint32) Instruction {
 		opcode.Mode = uint8((encoded >>9 )&0x7)				// Mode (Bits11 - Bits9)
 		opcode.Flag = uint8((encoded >>12 )&0xF)			// Opcode (Bits15 - Bits12)
 		inst.Imm = (encoded >> 16) & 0xFFFF					// Displacement (Bits 31-16)
-
-		for _, op := range ControlOps {
-			if op.Flag == opcode.Flag && op.Mode == opcode.Mode {
-				opcode.Name = op.Name
-				break
-			}
-		}
 		
 		inst.Opcode = opcode
 	}
