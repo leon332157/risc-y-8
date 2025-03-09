@@ -189,7 +189,7 @@ func Decode(encoded uint32) Instruction {
 
 		inst.Rs = uint8((encoded >> 4) & 0x1F)				// 5 bit Rs (Bits 18-14)
 		inst.Opcode = RegRegOp((encoded >> 8) & 0xF)		// 4 bit Opcode (Bits 13-9)
-		inst.Rd = uint8((encoded >> 4) & 0x1F)				// 5-bit Rd (Bits 8-4)
+		inst.Rd = uint8((encoded >> 13) & 0x1F)				// 5-bit Rd (Bits 8-4)
 
 	case LoadStore:
 
@@ -200,12 +200,21 @@ func Decode(encoded uint32) Instruction {
 
 	case Control:
 
-		inst.Rs = uint8((encoded >> 4) & 0x1F)				// Rs (Bits 8-4)
 		opcode := ControlOp{}
-		opcode.Flag = uint8((encoded >>12 )&0xF)			// Opcode (Bits15 - Bits12)
+
+		inst.Rs = uint8((encoded >> 4) & 0x1F)				// Rs (Bits 8-4)
 		opcode.Mode = uint8((encoded >>9 )&0x7)				// Mode (Bits11 - Bits9)
-		inst.Opcode = opcode
+		opcode.Flag = uint8((encoded >>12 )&0xF)			// Opcode (Bits15 - Bits12)
 		inst.Imm = (encoded >> 16) & 0xFFFF					// Displacement (Bits 31-16)
+
+		for _, op := range ControlOps {
+			if op.Flag == opcode.Flag && op.Mode == opcode.Mode {
+				opcode.Name = op.Name
+				break
+			}
+		}
+		
+		inst.Opcode = opcode
 	}
 
 	return inst

@@ -28,6 +28,13 @@ VecType: 01, 4 packed float, notation: f
 VecType: 10, 2 packed double. notation: d
 VecType: 11, 16 packed bytes: notation: b */
 
+const (
+	CF 	uint32 = 1 << 0	// Carry Flag
+	OF	uint32 = 1 << 1	// Overflow Flag
+	SF	uint32 = 1 << 2	// Sign Flag
+	ZF	uint32 = 1 << 3	// Zero Flag
+) 
+
 var SpecialRegisters = map[uint8]string{
 	0x00: "r0", 	0x11: "rflag", 	0x1D: "vflag", 	0x1E: "vtype",
 	0x1F: "pc",
@@ -49,23 +56,4 @@ var FPRegisterNames = map[uint8]string{
 var VectorRegisterNames = map[uint8]string{
 	0x00: "v1", 	0x01: "v2", 	0x02: "v3", 	0x03: "v4",
 	0x04: "v5", 	0x05: "v6", 	0x06: "v7", 	0x07: "v8",
-}
-
-type CPU struct {
-
-	// Special Registers
-	ZeroRegister 	uint32
-	RFlag 			uint32
-	VFlag			uint32
-	VType			uint32
-	PC 				uint32
-
-	// General Purpose Registers
-	IntRegisters 	[16]uint32
-
-	// Floating Point Registers
-	FPRegisters 	[8]float32
-
-	// Vector Registers
-	VecRegisters	[8]uint32
 }
