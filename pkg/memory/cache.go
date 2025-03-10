@@ -98,6 +98,8 @@ func (c *CacheType) evictAndReplace(set *Set, tag int) {
 	set.lines[victimIdx].tag = tag
 	set.lines[victimIdx].valid = true
 	c.updateLRU(set, victimIdx)
+
+	// Should I return the victim so that it can be written back to memory?
 }
 
 func (c *CacheType) getLRUVictim(set *Set) int {
