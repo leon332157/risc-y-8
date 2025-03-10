@@ -14,7 +14,7 @@ negative, OF is calculated as SF ^ MSB of imm ^ MSB of rd */
 func (cpu *CPU) ADD(rd uint8, imm int32) {
 
 	// If rd is 0, do nothing
-	if rd == types.SpecialRegisters["r0"] {
+	if rd == 0x00 {
 		return
 	}
 
@@ -51,7 +51,7 @@ func (cpu *CPU) ADD(rd uint8, imm int32) {
 func (cpu *CPU) SUB(rd uint8, imm int32) {
 
 	// If rd is 0, do nothing
-	if rd == types.SpecialRegisters["r0"] {
+	if rd == 0x00 {
 		return
 	}
 
@@ -82,7 +82,7 @@ func (cpu *CPU) SUB(rd uint8, imm int32) {
 func (cpu *CPU) MUL(rd uint8, imm int32) {
 
 	// If rd is 0, do nothing
-	if rd == types.SpecialRegisters["r0"] {
+	if rd == 0x00 {
 		return
 	}
 

@@ -73,19 +73,20 @@ const (
 type ControlOp struct {
 	Mode uint8	// 3 bits
 	Flag uint8	// 4 bits
+	Name string	// Name of the instruction
 }
 
 var ControlOps = map[string]ControlOp{
-    "BEQ":  {Mode: 0b000, Flag: 0b0000},
-    "BNE":  {Mode: 0b000, Flag: 0b0001},
-    "BLT":  {Mode: 0b000, Flag: 0b0101},
-    "BGE":  {Mode: 0b011, Flag: 0b0110},
-    "BLU":  {Mode: 0b100, Flag: 0b1000},
-    "BAE":  {Mode: 0b000, Flag: 0b1000},
-    "BA":   {Mode: 0b010, Flag: 0b1011},
-    "BOF":  {Mode: 0b001, Flag: 0b0100},
-    "BNF":  {Mode: 0b000, Flag: 0b0100},
-    "BUNC": {Mode: 0b111, Flag: 0b1111},
+    "BEQ":  {Mode: 0b000, Flag: 0b0000, Name: "BEQ"},
+    "BNE":  {Mode: 0b000, Flag: 0b0001, Name: "BNE"},
+    "BLT":  {Mode: 0b000, Flag: 0b0101, Name: "BLT"},
+    "BGE":  {Mode: 0b011, Flag: 0b0110, Name: "BGE"},
+    "BLU":  {Mode: 0b100, Flag: 0b1000, Name: "BLU"},
+    "BAE":  {Mode: 0b000, Flag: 0b1000, Name: "BAE"},
+    "BA":   {Mode: 0b010, Flag: 0b1011, Name: "BA"},
+    "BOF":  {Mode: 0b001, Flag: 0b0100, Name: "BOF"},
+    "BNF":  {Mode: 0b000, Flag: 0b0100, Name: "BNF"},
+    "BUNC": {Mode: 0b111, Flag: 0b1111, Name: "BUNC"},
 }
 
 type Instruction struct {
@@ -203,7 +204,20 @@ func Decode(encoded uint32) Instruction {
 		opcode.Mode = uint8((encoded >>9 )&0x7)				// Mode (Bits11 - Bits9)
 		opcode.Flag = uint8((encoded >>12 )&0xF)			// Opcode (Bits15 - Bits12)
 		inst.Imm = (encoded >> 16) & 0xFFFF					// Displacement (Bits 31-16)
-		
+
+		// Reverse lookup: iterate over ControlOps map to find matching ControlOp.
+		found := false
+		for _, op := range ControlOps {
+			if op.Flag == opcode.Flag && op.Mode == opcode.Mode {
+				opcode.Name = op.Name
+				found = true
+				break
+			}
+		}
+		if !found {
+			fmt.Println("Warning: Unrecognized ControlOp with Flag:", opcode.Flag, "Mode:", opcode.Mode)
+		}
+
 		inst.Opcode = opcode
 	}
 
