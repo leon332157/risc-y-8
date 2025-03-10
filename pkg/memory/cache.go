@@ -5,7 +5,7 @@ import (
 )
 
 type Cache interface {
-	createCache()
+	createDefault()
 	configureCache()
 	search()
 }
