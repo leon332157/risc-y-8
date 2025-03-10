@@ -6,28 +6,38 @@ import (
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
-	"strings"
+
 )
 
 // Define the lexer for extended assembly
 var asmLexerDyn = lexer.MustStateful(lexer.Rules{
 	"Root": {
-		{`Line`, `(?i).*`, lexer.Push("Line")},
-	},
-	"Line": {
-		{`whitespace`, `\s*`, nil},
-		{`Instruction`, `(?i).`, lexer.Push("Instruction")},
-		{"Directive", `^\.[a-z]+$`, nil},
-		{"Label", `^\.[a-z]+:$`, nil},
-		{"Comment", `(?im)^#.*$`, nil},
-		{"lineEnd", `(?i)(\n|\r|\r\n)`, lexer.Pop()},
-		//lexer.Return(),
-	},
+		{"Comment", `#.*`, nil},
+		{"Label", `\.\w{1,}:`, nil},
+		{"Directive", `\.\w{2,}`, nil},
+		//{"String", `"(\\"|[^"])*"`, nil},
 
-	"Instruction": {
-		{"Mnemonic", `(?i)[a-z]{2,}`, nil},
-		{"Operands", `.+`, lexer.Pop()},
-		//{"Operands",`.`,lexer.Push("Operands")}
+		//{"Punct", `[!@#$%^&*()_={}\|:;"'<,>.?/]`, nil},
+
+		{"Hex", `(?i)0x[0-9a-f]+`, nil},
+		{"Decimal", `[-\+]?\d+`, nil},
+		//{"Number", `[-+]?(\d*\.)?\d+`, nil},
+		{"MemoryStart",`\[`,lexer.Push("Memory")},
+		{"Comma",`,`,nil},
+		{"Mnemonic",`(?i)[a-z]{2,}(\.[a-z]{1,})?`,nil},
+		{"Ident", `(?i)[a-z0-9]\w*`, nil},
+		{"EOL", `[\n\r]+`, nil},
+		{"whitespace", `[ \t]+`, nil},
+	}, "Memory" : {
+		{"Operation",`\+|-`,nil},
+		{"Hex", `(?i)0x[0-9a-f]+`, nil},
+		{"Decimal", `[-\+]?\d+`, nil},
+		{"Ident", `(?i)[a-z0-9]\w*`,nil},
+		{"MemoryEnd",`]`,lexer.Pop()},
+		//{"Displacement",`0x[0-9a-f]+|[-+]?\d+`,nil},
+		//{"Hex", `0x[0-9a-f]+`, nil},
+		//{"Decimal", `[-\+]?\d+`, nil},
+
 	},
 })
 
@@ -44,8 +54,11 @@ var basicLexer = lexer.MustSimple([]lexer.SimpleRule{
 	{"Directive", `\.[a-z]{1,}`},
 	{"Label", `\.[a-z]{1,}[0-9]{1,}:`},
 	{"String", `"(\\"|[^"])*"`},
-	{"Punct", `[-[!@#$%^&*()+_={}\|:;"'<,>.?/]|]`},
-	{"Immediate", `0x?[0-9a-f]+|-?\d+`},
+	{"Punct", `[!@#$%^&*()_={}\|:;"'<,>.?/]|]`},
+	//{"Operation",`\+`},
+	//{"Hex",`0x[0-9a-f]+`},
+	{"HexWithSign", `[-+]?0x[0-9a-f]+`},
+	{"Decimal", `[-+]?\d+`},
 	{"Number", `[-+]?(\d*\.)?\d+`},
 	{"Ident", `(?i)[a-z0-9]\w*`},
 	{"EOL", `[\n\r]+`},
@@ -58,18 +71,6 @@ type Directive struct {
 }
 */
 
-/*
-	 type Instruction struct {
-		Mnemonic  string   `@Mnemonic`
-		Operands string `@Operands`
-	}
-*/
-type comment struct {
-	Pos lexer.Position
-
-	Comment string `@Comment`
-}
-
 type Program struct {
 	Pos lexer.Position
 
@@ -81,149 +82,72 @@ type Line struct {
 
 	Index int
 
-	Comment     string       `(   @Comment`
-	Directive   string       `| @Directive`
-	Label       string       `| @Label`
-	Input       *Input       `  | @@`
-	Let         *Let         `  | @@`
-	Goto        *Goto        `  | @@`
-	If          *If          `  | @@`
-	Print       *Print       `  | @@`
-	Instruction *Instruction `|@@) EOL`
+	Comment   string `( @Comment`
+	Directive *Directive `| @@`
+	Label     *Label `| @@`
+	Instruction *Instruction `| @@) EOL`
 }
 
-type Memory struct {
-	BaseReg      string `"[" @Ident `
-	Operation    string `@("+" | "-")? `
-	Displacement string `@Immediate? "]"?`
+type Directive struct {
+	//Pos lexer.Position
+
+	Type string `@Directive`
+	Operand Immediate `@@?`
 }
 
-type Operand struct {
-	Register  string `( @Ident","?`
-	Immediate uint32 `| @Immediate	","?`
-	Memory    Memory `| @@ )`
+type Label struct {
+	//Pos lexer.Position
+
+	Text string `@Label`
+	Offset uint32
 }
 
 type Instruction struct {
-	Pos lexer.Position
+	//Pos lexer.Position
 
-	Mnemonic string    `@Ident`
+	Mnemonic string    `@Mnemonic`
 	Operads  []Operand `@@*` //`(@Ident","?)+`
-	//Args []*Expression `"(" ( @@ ( "," @@ )* )? ")"`
 }
 
-type Print struct {
+
+type Immediate struct {
 	Pos lexer.Position
 
-	Expression *Expression `"PRINT" @@`
+	Value string ` @Decimal|@Hex`
 }
 
-type Input struct {
+type Memory struct {
+	Pos lexer.Position
+	Base string `"[" @Ident `
+	Operation    string `@Operation? `
+	Displacement Immediate `@@? "]"`
+}
+
+type Operand struct {
 	Pos lexer.Position
 
-	Variable string `"INPUT" @Ident`
-}
-
-type Let struct {
-	Pos lexer.Position
-
-	Variable string      `"LET" @Ident`
-	Value    *Expression `"=" @@`
-}
-
-type Goto struct {
-	Pos lexer.Position
-
-	Line int `"GOTO" @Number`
-}
-
-type If struct {
-	Pos lexer.Position
-
-	Condition *Expression `"IF" @@`
-	Line      int         `"THEN" @Number`
-}
-
-type Operator string
-
-func (o *Operator) Capture(s []string) error {
-	*o = Operator(strings.Join(s, ""))
-	return nil
-}
-
-type Value struct {
-	Pos lexer.Position
-
-	Number        *float64    `  @Number`
-	Variable      *string     `| @Ident`
-	String        *string     `| @String`
-	Subexpression *Expression `| "(" @@ ")"`
-}
-
-type Factor struct {
-	Pos lexer.Position
-
-	Base     *Value `@@`
-	Exponent *Value `( "^" @@ )?`
-}
-
-type OpFactor struct {
-	Pos lexer.Position
-
-	Operator Operator `@("*" | "/")`
-	Factor   *Factor  `@@`
-}
-
-type Term struct {
-	Pos lexer.Position
-
-	Left  *Factor     `@@`
-	Right []*OpFactor `@@*`
-}
-
-type OpTerm struct {
-	Pos lexer.Position
-
-	Operator Operator `@("+" | "-")`
-	Term     *Term    `@@`
-}
-
-type Cmp struct {
-	Pos lexer.Position
-
-	Left  *Term     `@@`
-	Right []*OpTerm `@@*`
-}
-
-type OpCmp struct {
-	Pos lexer.Position
-
-	Operator Operator `@("=" | "<" "=" | ">" "=" | "<" | ">" | "!" "=")`
-	Cmp      *Cmp     `@@`
-}
-
-type Expression struct {
-	Pos lexer.Position
-
-	Left  *Cmp     `@@`
-	Right []*OpCmp `@@*`
+	Register  string    `( @Ident ","?`
+	Immediate *Immediate `| @@	","?`
+	Memory    *Memory    `| @@ )`
 }
 
 func Gmain() {
 	participle.Trace(log.Default().Writer())
 	parser := participle.MustBuild[Program](
-		participle.Lexer(basicLexer),
+		participle.Lexer(asmLexerDyn),
 		participle.Elide("Comment"),
 		participle.UseLookahead(2),
 	)
 
 	example :=
-		`#xor r1, r1
+		`.org 0x1
+		#xor r1, r1
 		hlt
+		.L1:
 		nop
 		add r1, 1
 		xor r2, r2
-		add r2, 2
+		add r2, -2
 		add r1, r2
 		ldr r2, [r1+10]
 		ldr r2, [r1-0x20]
@@ -247,7 +171,8 @@ func Gmain() {
 		hlt
 		VZEROALL v0
 		VZEROUPPER v1
-		VBEQ v2, v3, -10
+		VBEQ v2, v3, [pc-10]
+		VLDALL.d v8,[r1+0xFFFF]
 	`
 
 	prog, err := parser.ParseString("example.asm", example)
@@ -257,7 +182,13 @@ func Gmain() {
 	}
 	fmt.Println(parser.Lexer().Symbols())
 	for _, each := range prog.Lines {
-		//fmt.Printf("line: %+v\n", each)
+		fmt.Printf("line: %+v\n", each)
+		if each.Label != nil {
+			fmt.Printf("label: %+v\n",each.Label)
+		}
+		if each.Directive != nil {
+			fmt.Printf("directive: %+v\n",each.Directive)
+		}
 		if each.Instruction != nil {
 			fmt.Printf("instr: %+v\n", each.Instruction)
 		}
