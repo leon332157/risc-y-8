@@ -4,5 +4,5 @@ go 1.24.0
 
 require (
 	github.com/alecthomas/participle/v2 v2.1.1
-	github.com/cesbit/goleri v0.1.2-0.20220127200601-186fc0b4a942
+	github.com/google/go-cmp v0.7.0
 )
