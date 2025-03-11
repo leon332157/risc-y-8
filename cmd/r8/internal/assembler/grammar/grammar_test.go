@@ -1,4 +1,4 @@
-package assembler
+package grammar
 
 import (
 	"github.com/google/go-cmp/cmp"
@@ -7,7 +7,8 @@ import (
 
 func TestBasic(t *testing.T) {
 	example :=
-		`.org 0x1
+		`
+		.org 0x1
 		#xor r1, r1
 		hlt
 		.L1:
@@ -70,10 +71,7 @@ func TestRI(t *testing.T) {
 	t.Logf("[TestRI] prog.Lines: %+v\n", prog)
 	var expected = Instruction{
 		Mnemonic: "add",
-		Operands: []Operand{
-			{Register: "r1"},
-			{Immediate: &Immediate{Value: "1"}},
-		},
+		Operands: []Operand{OperandRegister{"r1"}, OperandImmediate{"1"}},
 	}
 	t.Logf("[TestRI] log: %+v\n",cmp.Equal(*(prog.Lines[0].Instruction), expected))
 	//if !cmp.Equal(*(prog.Lines[0].Instruction), expected) {

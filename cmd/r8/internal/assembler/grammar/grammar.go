@@ -1,8 +1,9 @@
-package assembler
+package grammar
 
 import (
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
+	//"github.com/google/go-cmp/cmp/internal/value"
 )
 
 // Define the lexer for extended assembly
@@ -16,7 +17,7 @@ var asmLexerDyn = lexer.MustStateful(lexer.Rules{
 		//{"Punct", `[!@#$%^&*()_={}\|:;"'<,>.?/]`, nil},
 
 		{"Hex", `(?i)0x[0-9a-f]+`, nil},
-		{"Decimal", `[-\+]?\d+`, nil},
+		{"Number", `[-]?\d+`, nil},
 		//{"Number", `[-+]?(\d*\.)?\d+`, nil},
 		{"MemoryStart", `\[`, lexer.Push("Memory")},
 		{"Comma", `,`, nil},
@@ -27,7 +28,7 @@ var asmLexerDyn = lexer.MustStateful(lexer.Rules{
 	}, "Memory": {
 		{"Operation", `\+|-`, nil},
 		{"Hex", `(?i)0x[0-9a-f]+`, nil},
-		{"Decimal", `[-\+]?\d+`, nil},
+		{"Decimal", `\d+`, nil},
 		{"Ident", `(?i)[a-z0-9]\w*`, nil},
 		{"MemoryEnd", `]`, lexer.Pop()},
 		//{"Displacement",`0x[0-9a-f]+|[-+]?\d+`,nil},
@@ -48,7 +49,7 @@ type Line struct {
 
 	Index int
 
-	Comment     string       `( @Comment`
+	Comment     string       `EOL? ( @Comment`
 	Directive   *Directive   `| @@`
 	Label       *Label       `| @@`
 	Instruction *Instruction `| @@) (EOL|EOF)`
@@ -72,35 +73,62 @@ type Instruction struct {
 	//Pos lexer.Position
 
 	Mnemonic string    `@Mnemonic`
-	Operands  []Operand `@@*` //`(@Ident","?)+`
+	Operands []Operand `@@*`
 }
 
-var parser = participle.MustBuild[Program](
-	participle.Lexer(asmLexerDyn),
-	participle.Elide("Comment"),
-	participle.UseLookahead(2),
-)
-
-type Immediate struct {
+type Immediate struct { 
+	// Allows signed numbers and hex numbers
 	Pos lexer.Position
 
-	Value string ` @Decimal|@Hex`
+	Value string ` @Number|@Hex`
+}
+
+type Displacement struct {
+	// Allows only positive numbers (as decimal representation) and hex numbers
+	Pos lexer.Position
+
+	Value string `@Decimal|@Hex`
 }
 
 type Memory struct {
 	Pos          lexer.Position
 	Base         string    `"[" @Ident `
 	Operation    string    `@Operation? `
-	Displacement Immediate `@@? "]"`
+	Displacement Displacement `@@? "]"`
 }
 
-type Operand struct {
-	Pos lexer.Position
+type Operand interface {
 
-	Register  string     `( @Ident ","?`
+}
+
+type OperandGmrOld struct {
+	Pos *lexer.Position
+
+	Register  *string     `( @Ident ","?`
 	Immediate *Immediate `| @@	","?`
 	Memory    *Memory    `| @@ )`
+
 }
+
+type OperandRegister struct {
+	//Pos *lexer.Position
+	Value string `@Ident ","?`
+}
+type OperandImmediate struct {
+	//Pos *lexer.Position
+	Value string ` (@Number|@Hex) ","? `
+}
+type OperandMemory struct {
+	//Pos *lexer.Position
+	Value Memory `@@`
+}
+
+var parser = participle.MustBuild[Program](
+	participle.Lexer(asmLexerDyn),
+	participle.Elide("Comment"),
+	participle.UseLookahead(2),
+	participle.Union[Operand](OperandRegister{}, OperandImmediate{},OperandMemory{},),
+)
 
 func ParseString(name, input string) (*Program, error) {
 	if name == "" {
