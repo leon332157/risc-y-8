@@ -1,4 +1,4 @@
-package main
+package memory
 
 import (
 	"container/list" // for LRU queue
@@ -11,12 +11,6 @@ type Memory interface {
 	read(addr int, lin bool) *RAMValue
 	write(addr int, val *RAMValue) bool
 	//flash(instructions []int)  // Might need later
-}
-
-type Cache interface {
-	createDefault(mem RAM) CacheType
-	configureCache(lineSize, numSets, ways, latency int, mem RAM) CacheType
-	search(addr int) bool
 }
 
 // A line of memory or value in memory
@@ -32,27 +26,6 @@ type RAM struct {
 	wordSize int         // number of bits per word
 	access   AccessState // keep track of memory access
 	contents [][]uint32  // data structure to hold memory contents
-}
-
-type CacheLine struct {
-	tag   int
-	data  []uint32
-	valid bool
-	dirty bool
-}
-
-type Set struct {
-	lines    []CacheLine
-	LRUQueue *list.List // Tracks LRU order with a queue
-}
-
-type CacheType struct {
-	lineSize int
-	numSets  int
-	ways     int
-	access   AccessState
-	sets     []Set
-	memory   RAM
 }
 
 // type to keep track of memory access
