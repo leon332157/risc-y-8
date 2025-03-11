@@ -2,6 +2,7 @@ package cache
 
 import (
 	"container/list" // for LRU queue
+	"fmt"
 )
 
 type Cache interface {
@@ -14,6 +15,7 @@ type CacheLine struct {
 	tag   int
 	data  []uint32
 	valid bool
+	dirty bool
 }
 
 type Set struct {
@@ -25,17 +27,56 @@ type CacheType struct {
 	lineSize int
 	numSets  int
 	ways     int
+	access   AccessState
 	sets     []Set
 }
 
+// type to keep track of memory access
+type AccessState struct {
+	latency    int
+	cyclesLeft int
+	accessed   bool
+}
+
+// AccessControl constructor, creates a new AccessControl instance
+func createAccessState(latency int) *AccessState {
+
+	return &AccessState{
+		latency:    latency,
+		cyclesLeft: latency,
+		accessed:   false,
+	}
+}
+
+// Returns a bool to check if the mem has been accessed during the cycle
+func (c *AccessState) accessAttempt() bool {
+
+	// If mem has been accessed, decrement cycles left and return false (must wait!)
+	if c.accessed && c.cyclesLeft != 0 {
+		c.cyclesLeft = c.cyclesLeft - 1
+		return false
+	}
+	// If mem has not been accessed, access it, update the cycles left until next access and return true
+	c.accessed = true
+	c.cyclesLeft = c.latency
+	return true
+}
+
+// Resets cache access state so it can be accessed again
+// func (c *AccessState) resetAccessState() {
+// 	c.accessed = false
+// 	c.cyclesLeft = c.latency
+// }
+
 // Creates the default cache
-func createCache() CacheType {
-	return configureCache(4, 4, 2)
+func createDefault() CacheType {
+	return configureCache(4, 4, 2, 0)
 }
 
 // Creates a cache with configurable params
-func configureCache(lineSize, numSets, ways int) CacheType {
+func configureCache(lineSize, numSets, ways, latency int) CacheType {
 
+	access := createAccessState(latency)
 	// initialize the sets
 	sets := make([]Set, numSets)
 
@@ -47,7 +88,7 @@ func configureCache(lineSize, numSets, ways int) CacheType {
 		}
 		// Initialize sets with empty lines
 		for j := range sets[i].lines {
-			sets[i].lines[j] = CacheLine{data: make([]uint32, lineSize)}
+			sets[i].lines[j] = CacheLine{data: make([]uint32, lineSize), valid: false, dirty: false}
 		}
 	}
 
@@ -56,12 +97,19 @@ func configureCache(lineSize, numSets, ways int) CacheType {
 		lineSize: lineSize,
 		numSets:  numSets,
 		ways:     ways,
+		access:   *access,
 		sets:     sets,
 	}
 }
 
-// Checks if hit or miss, updates cache based on results
+// Checks cache access and depending on hit or miss, updates cache based on results
 func (c *CacheType) search(addr int) bool {
+
+	// If c can't be accessed, return falses
+	if !c.access.accessAttempt() {
+		return false
+	}
+
 	// Get the index, tag, from the address
 	index := (addr / c.lineSize) % c.numSets
 	tag := addr / (c.lineSize * c.numSets)
@@ -77,7 +125,7 @@ func (c *CacheType) search(addr int) bool {
 	}
 	// Cache miss
 	c.evictAndReplace(set, tag)
-	return false
+	return true
 }
 
 // Update the LRU queue to see which line must be evicted next
@@ -99,6 +147,7 @@ func (c *CacheType) evictAndReplace(set *Set, tag int) {
 	set.lines[victimIdx].valid = true
 	c.updateLRU(set, victimIdx)
 
+	// must call writeback ---> cache and memory should be connected
 	// Should I return the victim so that it can be written back to memory?
 }
 
@@ -109,4 +158,23 @@ func (c *CacheType) getLRUVictim(set *Set) int {
 		return elem.Value.(int)
 	}
 	return 0
+}
+
+func main() {
+	// TODO:
+	cache := createDefault()
+	print(cache)
+
+	cache.search(10)
+	print(cache)
+}
+
+func print(cache CacheType) {
+
+	for i := 0; i < len(cache.sets); i++ {
+		for j := 0; j < len(cache.sets[i].lines); j++ {
+			fmt.Println(cache.sets[i].lines[j].data)
+		}
+	}
+	fmt.Println("DONE")
 }

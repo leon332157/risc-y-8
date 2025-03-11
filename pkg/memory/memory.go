@@ -1,7 +1,9 @@
 package memory
 
 // import "fmt" for testing - checkout https://pkg.go.dev/fmt for more info
-// import ("fmt")
+import (
+	"fmt"
+)
 
 // Create a memory interface
 type Memory interface {
@@ -13,28 +15,32 @@ type Memory interface {
 
 // type to keep track of memory access
 type AccessState struct {
-	latency  int
-	accessed bool
+	latency    int
+	cyclesLeft int
+	accessed   bool
 }
 
 // AccessControl constructor, creates a new AccessControl instance
 func createAccessState(latency int) *AccessState {
 
 	return &AccessState{
-		latency:  latency,
-		accessed: false,
+		latency:    latency,
+		cyclesLeft: latency,
+		accessed:   false,
 	}
 }
 
 // Returns a bool to check if the mem has been accessed during the cycle
 func (mem *AccessState) accessAttempt() bool {
 
-	// If mem has been accessed, return false
-	if mem.accessed {
+	// If mem has been accessed, decrement cycles left and return false (must wait!)
+	if mem.accessed && mem.cyclesLeft != 0 {
+		mem.cyclesLeft = mem.cyclesLeft - 1
 		return false
 	}
-	// If mem has not been accessed, access it and return true
+	// If mem has not been accessed, access it, update the cycles left until next access and return true
 	mem.accessed = true
+	mem.cyclesLeft = mem.latency
 	return true
 }
 
@@ -105,7 +111,7 @@ func (mem *RAM) read(addr int, lin bool) *RAMValue {
 	}
 
 	// Reset access state for next cycle
-	mem.access.resetAccessState()
+	//mem.access.resetAccessState()
 
 	// gets block and offset addresses
 	index, offset2 := mem.addrToOffset(addr)
@@ -125,9 +131,6 @@ func (mem *RAM) write(addr int, val *RAMValue) bool {
 	if !mem.access.accessAttempt() {
 		return false
 	}
-
-	// reset access state for next cycle
-	mem.access.resetAccessState()
 
 	// gets block and offset addresses
 	offset1, offset2 := mem.addrToOffset(addr)
@@ -162,8 +165,18 @@ func (mem *RAM) flash(instructions []uint32) {
 *   cd to risc-y-8\pkg\memory
 *   go run .
  */
-// func main() {
-// 	mem := createRAM(256, 4, 32, 5)
-// 	mem.write(10, &RAMValue{value: 123})
-// 	fmt.Println("Read: ", mem.read(10, false).value) // should print "Read: 123"
-// }
+func main() {
+	mem := createRAM(256, 4, 32, 3)
+	mem.write(10, &RAMValue{value: 123})
+	for i := 0; i < 10; i += 1 {
+
+		val := mem.read(10, false)
+
+		if val == nil {
+			fmt.Println("Read: ", "WAIT")
+		} else {
+			fmt.Println("Read: ", val.value) // should print "Read: 123"
+		}
+	}
+
+}
