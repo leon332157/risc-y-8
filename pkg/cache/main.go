@@ -1,14 +1,37 @@
-package cache
+package main
 
 import (
 	"container/list" // for LRU queue
 	"fmt"
 )
 
+// Create a memory interface
+type Memory interface {
+	createRAM(size, lineSize, wordSize, latency int) RAM
+	read(addr int, lin bool) *RAMValue
+	write(addr int, val *RAMValue) bool
+	//flash(instructions []int)  // Might need later
+}
+
 type Cache interface {
-	createDefault()
-	configureCache()
-	search()
+	createDefault(mem RAM) CacheType
+	configureCache(lineSize, numSets, ways, latency int, mem RAM) CacheType
+	search(addr int) bool
+}
+
+// A line of memory or value in memory
+type RAMValue struct {
+	line  []uint32
+	value uint32
+}
+
+// RAM type with size and memory attributes
+type RAM struct {
+	size     int         // number of lines in memory
+	lineSize int         // number of words per line
+	wordSize int         // number of bits per word
+	access   AccessState // keep track of memory access
+	contents [][]uint32  // data structure to hold memory contents
 }
 
 type CacheLine struct {
@@ -29,6 +52,7 @@ type CacheType struct {
 	ways     int
 	access   AccessState
 	sets     []Set
+	memory   RAM
 }
 
 // type to keep track of memory access
@@ -62,19 +86,113 @@ func (c *AccessState) accessAttempt() bool {
 	return true
 }
 
-// Resets cache access state so it can be accessed again
-// func (c *AccessState) resetAccessState() {
-// 	c.accessed = false
-// 	c.cyclesLeft = c.latency
-// }
+// MEMORY FUNCTIONS:
+
+// RAM constructor, creates a new RAM instance
+func createRAM(size, lineSize, wordSize, latency int) RAM {
+
+	// Initialize contents: creates a slice of slice (https://go.dev/tour/moretypes/7) to hold the RAM contents
+	contents := make([][]uint32, size)
+
+	// For each row of the RAM, make the necessary cells
+	for i := 0; i < size; i++ {
+		contents[i] = make([]uint32, lineSize)
+	}
+
+	// Create new access state for the RAM
+	access := createAccessState(latency)
+
+	// returns address of the new RAM object
+	return RAM{
+		size:     size,
+		lineSize: lineSize,
+		wordSize: wordSize,
+		access:   *access,
+		contents: contents,
+	}
+}
+
+// given an address, function that returns the aligned address (if needed)
+func (mem *RAM) alignRAM(addr int) int {
+	return ((addr % mem.size) / mem.wordSize) * mem.wordSize
+}
+
+// Calculates which memory block and offset within that block a given address corresponds to
+// returns the (block the word belongs to, where the word is inside the block)
+func (mem *RAM) addrToOffset(addr int) (int, int) {
+	alignedAddr := mem.alignRAM(addr)
+	return (alignedAddr / mem.wordSize) % mem.size / mem.lineSize, (alignedAddr / mem.wordSize) % mem.lineSize
+}
+
+// MEMORY ACCESS READ AND WRITE
+
+// Reads the value of the given address, can return entire line if lin is true
+func (mem *RAM) read(addr int, lin bool) *RAMValue {
+
+	// if memory cannot be accessed, it returns nothing (read more here about nil https://go101.org/article/nil.html)
+	if !mem.access.accessAttempt() {
+		return nil
+	}
+
+	// Reset access state for next cycle
+	//mem.access.resetAccessState()
+
+	// gets block and offset addresses
+	index, offset2 := mem.addrToOffset(addr)
+
+	// If line is true, return the entire line
+	if lin {
+		return &RAMValue{line: append([]uint32{}, mem.contents[index]...)}
+	}
+	// else return the value at the address
+	return &RAMValue{value: mem.contents[index][offset2]}
+}
+
+// Writes to RAM, returns a boolean depending on success of write
+func (mem *RAM) write(addr int, val *RAMValue) bool {
+
+	// memory cannot be accessed, return false
+	if !mem.access.accessAttempt() {
+		return false
+	}
+
+	// gets block and offset addresses
+	offset1, offset2 := mem.addrToOffset(addr)
+
+	// if val is a line, it writes to the entire line
+	// else val is just a word, it writes a word
+	if len(val.line) > 0 {
+		mem.contents[offset1] = append([]uint32{}, val.line...)
+	} else {
+		mem.contents[offset1][offset2] = val.value
+	}
+
+	// successful write, return true
+	return true
+}
+
+// Loads sequence of instructions into memory
+func (mem *RAM) flash(instructions []uint32) {
+
+	// For every instruction in the sequence
+	for i := 0; i < len(instructions)*4; i += 4 {
+
+		// get the block and offset address
+		offset1, offset2 := mem.addrToOffset(i)
+		// write to the address
+		mem.contents[offset1][offset2] = instructions[i/4]
+	}
+}
+
+// CACHE FUNCTIONS:
 
 // Creates the default cache
-func createDefault() CacheType {
-	return configureCache(4, 4, 2, 0)
+func createDefault(mem RAM) CacheType {
+	return configureCache(4, 4, 2, 0, mem)
 }
 
 // Creates a cache with configurable params
-func configureCache(lineSize, numSets, ways, latency int) CacheType {
+func configureCache(lineSize, numSets, ways, latency int, mem RAM) CacheType {
 
 	access := createAccessState(latency)
 	// initialize the sets
@@ -99,6 +217,7 @@ func configureCache(lineSize, numSets, ways, latency int) CacheType {
 		ways:     ways,
 		access:   *access,
 		sets:     sets,
+		memory:   mem,
 	}
 }
 
@@ -122,9 +241,16 @@ func (c *CacheType) search(addr int) bool {
 			c.updateLRU(set, i)
 			return true // Cache hit
 		}
+		if !line.valid {
+			// TODO
+		}
 	}
 	// Cache miss
-	c.evictAndReplace(set, tag)
+	// TODO:
+	// add data to first invalid line from memory
+	//c.sets[index].lines[mn] =
+	// OR if full, evict and replace (writeback)
+	c.evictAndReplace(set, tag, addr)
 	return true
 }
 
@@ -140,15 +266,27 @@ func (c *CacheType) updateLRU(set *Set, idx int) {
 	set.LRUQueue.PushFront(idx)
 }
 
-func (c *CacheType) evictAndReplace(set *Set, tag int) {
+func (c *CacheType) evictAndReplace(set *Set, tag int, addr int) {
 
 	victimIdx := c.getLRUVictim(set)
 	set.lines[victimIdx].tag = tag
 	set.lines[victimIdx].valid = true
 	c.updateLRU(set, victimIdx)
 
-	// must call writeback ---> cache and memory should be connected
-	// Should I return the victim so that it can be written back to memory?
+	// TODO:
+	// Read desired data from memory
+	//toLoad := c.memory.read(addr, true)
+
+	// delay?
+	for range c.memory.access.latency {
+		c.memory.read(addr, false)
+	}
+	// write evicted data to memory
+	//c.memory.write(addr, )
+
+	//delay
+
+	// write new data in cache
 }
 
 func (c *CacheType) getLRUVictim(set *Set) int {
@@ -162,10 +300,26 @@ func (c *CacheType) getLRUVictim(set *Set) int {
 
 func main() {
 	// TODO:
-	cache := createDefault()
+	mem := createRAM(256, 4, 32, 3)
+	mem.write(10, &RAMValue{value: 123})
+	for i := 0; i < 10; i += 1 {
+
+		val := mem.read(10, false)
+
+		if val == nil {
+			fmt.Println("Read: ", "WAIT")
+		} else {
+			fmt.Println("Read: ", val.value) // should print "Read: 123"
+		}
+	}
+
+	cache := createDefault(mem)
 	print(cache)
 
 	cache.search(10)
+	print(cache)
+
+	cache.search(32)
 	print(cache)
 }
 

@@ -52,7 +52,7 @@ func (mem *AccessState) resetAccessState() {
 // A line of memory or value in memory
 type RAMValue struct {
 	line  []uint32
-	value uint32 // TODO: uint32 -- make sure calculations still work
+	value uint32
 }
 
 // RAM type with size and memory attributes
