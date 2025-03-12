@@ -1,5 +1,4 @@
 package memory
-
 import "fmt"
 
 // Create a memory interface
@@ -7,6 +6,7 @@ type Memory interface {
 	CreateRAM(size, lineSize, wordSize, latency int) RAM
 	Read(addr int, lin bool) *RAMValue
 	Write(addr int, val *RAMValue) bool
+
 	//flash(instructions []int)  // Might need later
 }
 
@@ -60,7 +60,6 @@ func (c *AccessState) AccessAttempt() bool {
 
 // RAM constructor, creates a new RAM instance
 func CreateRAM(size, lineSize, wordSize, latency int) RAM {
-
 	// Initialize contents: creates a slice of slice (https://go.dev/tour/moretypes/7) to hold the RAM contents
 	contents := make([][]uint32, size)
 
@@ -122,9 +121,6 @@ func (mem *RAM) Write(line int, val *RAMValue) bool {
 	// memory cannot be accessed, return false
 	if !mem.access.AccessAttempt() {
 		fmt.Println("WAIT, memory cannot be accessed this cycle, try again.")
-		return false
-	}
-
 	// gets block and offset addresses
 	// offset1, offset2 := mem.addrToOffset(addr)
 
