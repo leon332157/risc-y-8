@@ -6,9 +6,9 @@ import (
 
 // Create a memory interface
 type Memory interface {
-	createRAM(size, lineSize, wordSize, latency int) RAM
-	read(addr int, lin bool) *RAMValue
-	write(addr int, val *RAMValue) bool
+	CreateRAM(size, lineSize, wordSize, latency int) RAM
+	Read(addr int, lin bool) *RAMValue
+	Write(addr int, val *RAMValue) bool
 	//flash(instructions []int)  // Might need later
 }
 
@@ -99,15 +99,12 @@ func (mem *RAM) addrToOffset(addr int) (int, int) {
 // MEMORY ACCESS READ AND WRITE
 
 // Reads the value of the given address, can return entire line if lin is true
-func (mem *RAM) read(addr int, lin bool) *RAMValue {
+func (mem *RAM) Read(addr int, lin bool) *RAMValue {
 
 	// if memory cannot be accessed, it returns nothing (read more here about nil https://go101.org/article/nil.html)
 	if !mem.access.AccessAttempt() {
 		return nil
 	}
-
-	// Reset access state for next cycle
-	//mem.access.resetAccessState()
 
 	// gets block and offset addresses
 	index, offset2 := mem.addrToOffset(addr)
@@ -121,7 +118,7 @@ func (mem *RAM) read(addr int, lin bool) *RAMValue {
 }
 
 // Writes to RAM, returns a boolean depending on success of write
-func (mem *RAM) write(addr int, val *RAMValue) bool {
+func (mem *RAM) Write(addr int, val *RAMValue) bool {
 
 	// memory cannot be accessed, return false
 	if !mem.access.AccessAttempt() {
@@ -158,10 +155,10 @@ func (mem *RAM) flash(instructions []uint32) {
 
 func main() {
 	mem := createRAM(256, 4, 32, 3)
-	mem.write(10, &RAMValue{value: 123})
+	mem.Write(10, &RAMValue{value: 123})
 	for i := 0; i < 10; i += 1 {
 
-		val := mem.read(10, false)
+		val := mem.Read(10, false)
 
 		if val == nil {
 			fmt.Println("Read: ", "WAIT")

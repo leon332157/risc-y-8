@@ -20,7 +20,7 @@ type CacheLine struct {
 
 type Set struct {
 	lines    []CacheLine
-	LRUQueue *list.List // Tracks LRU order with a queue
+	LRUQueue *list.List // Tracks LRU order for the sets lines with a queue
 }
 
 type CacheType struct {
@@ -58,7 +58,6 @@ func configureCache(lineSize, numSets, ways, latency int, mem RAM) CacheType {
 		}
 	}
 
-	// Return the new cache (return pointer instead??)
 	return CacheType{
 		lineSize: lineSize,
 		numSets:  numSets,
@@ -69,11 +68,12 @@ func configureCache(lineSize, numSets, ways, latency int, mem RAM) CacheType {
 	}
 }
 
-// Checks cache access and depending on hit or miss, updates cache based on results
+// Checks cache access and depending on hit or miss, updates cache based on results (hit => true, miss => false)
 func (c *CacheType) search(addr int) bool {
 
 	// If c can't be accessed, return false
 	if !c.access.AccessAttempt() {
+		//fmt.Println("WAIT, cache can't be accessed")
 		return false
 	}
 
@@ -89,20 +89,48 @@ func (c *CacheType) search(addr int) bool {
 			c.updateLRU(set, i)
 			return true // Cache hit
 		}
+	}
+
+	// Cache miss
+	// for each line in set, find the first invalid line
+	for i, line := range set.lines {
 		if !line.valid {
-			// TODO
+			// Add the new data to the invalid line
+			set.lines[i] = CacheLine{
+				tag:   tag,
+				data:  c.memory.Read(addr, true).line,
+				valid: true,
+				dirty: false,
+			}
+
+			// update LRU queue
+			c.updateLRU(set, i)
+			return false
 		}
 	}
-	// Cache miss
-	// TODO:
-	// add data to first invalid line from memory
-	//c.sets[index].lines[mn] =
-	// OR if full, evict and replace (write back)
-	c.evictAndReplace(set, tag, addr)
-	return true
+
+	// if no invalid line exists, must evict and replace
+	// read replacement from mem
+	replacement := c.memory.Read(addr, true).line
+
+	// find least recently used line in the set and write victim back to memory
+	victim := RAMValue{
+		line: set.lines[c.getLRUVictim(set)].data,
+	}
+	c.memory.Write(addr, &victim)
+
+	//store replacement to cache and flip the dirty bit
+	set.lines[c.getLRUVictim(set)] = CacheLine{
+		tag:   tag,
+		data:  replacement,
+		valid: true,
+		dirty: true, // flip the dirty bit
+	}
+
+	return false
 }
 
-// Update the LRU queue to see which line must be evicted next
+// Update the LRU queue to see which line must be evicted next, pass most recently used as parameter
 func (c *CacheType) updateLRU(set *Set, idx int) {
 
 	for e := set.LRUQueue.Front(); e != nil; e = e.Next() {
@@ -112,29 +140,6 @@ func (c *CacheType) updateLRU(set *Set, idx int) {
 		}
 	}
 	set.LRUQueue.PushFront(idx)
-}
-
-func (c *CacheType) evictAndReplace(set *Set, tag int, addr int) {
-
-	victimIdx := c.getLRUVictim(set)
-	set.lines[victimIdx].tag = tag
-	set.lines[victimIdx].valid = true
-	c.updateLRU(set, victimIdx)
-
-	// TODO:
-	// Read desired data from memory
-	//toLoad := c.memory.read(addr, true)
-
-	// delay?
-	for range c.memory.access.latency {
-		c.memory.read(addr, false)
-	}
-	// write evicted data to memory
-	//c.memory.write(addr, )
-
-	//delay
-
-	// write new data in cache
 }
 
 func (c *CacheType) getLRUVictim(set *Set) int {
