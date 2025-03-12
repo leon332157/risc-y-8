@@ -1,8 +1,6 @@
 package memory
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // Create a memory interface
 type Memory interface {
@@ -61,7 +59,7 @@ func (c *AccessState) AccessAttempt() bool {
 // MEMORY FUNCTIONS:
 
 // RAM constructor, creates a new RAM instance
-func createRAM(size, lineSize, wordSize, latency int) RAM {
+func CreateRAM(size, lineSize, wordSize, latency int) RAM {
 
 	// Initialize contents: creates a slice of slice (https://go.dev/tour/moretypes/7) to hold the RAM contents
 	contents := make([][]uint32, size)
@@ -103,6 +101,7 @@ func (mem *RAM) Read(addr int, lin bool) *RAMValue {
 
 	// if memory cannot be accessed, it returns nothing (read more here about nil https://go101.org/article/nil.html)
 	if !mem.access.AccessAttempt() {
+		fmt.Println("WAIT, memory cannot be accessed this cycle, try again.")
 		return nil
 	}
 
@@ -122,6 +121,7 @@ func (mem *RAM) Write(addr int, val *RAMValue) bool {
 
 	// memory cannot be accessed, return false
 	if !mem.access.AccessAttempt() {
+		fmt.Println("WAIT, memory cannot be accessed this cycle, try again.")
 		return false
 	}
 
@@ -151,28 +151,4 @@ func (mem *RAM) flash(instructions []uint32) {
 		// write to the address
 		mem.contents[offset1][offset2] = instructions[i/4]
 	}
-}
-
-func main() {
-	mem := createRAM(256, 4, 32, 3)
-	mem.Write(10, &RAMValue{value: 123})
-	for i := 0; i < 10; i += 1 {
-
-		val := mem.Read(10, false)
-
-		if val == nil {
-			fmt.Println("Read: ", "WAIT")
-		} else {
-			fmt.Println("Read: ", val.value) // should print "Read: 123"
-		}
-	}
-
-	cache := createDefault(mem)
-	PrintCache(cache)
-
-	cache.search(10)
-	PrintCache(cache)
-
-	cache.search(32)
-	PrintCache(cache)
 }

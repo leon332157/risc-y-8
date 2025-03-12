@@ -6,9 +6,9 @@ import (
 )
 
 type Cache interface {
-	createDefault(mem RAM) CacheType
-	configureCache(lineSize, numSets, ways, latency int, mem RAM) CacheType
-	search(addr int) bool
+	CreateDefault(mem RAM) CacheType
+	ConfigureCache(lineSize, numSets, ways, latency int, mem RAM) CacheType
+	Search(addr int) bool
 }
 
 type CacheLine struct {
@@ -35,12 +35,12 @@ type CacheType struct {
 // CACHE FUNCTIONS:
 
 // Creates the default cache
-func createDefault(mem RAM) CacheType {
-	return configureCache(4, 4, 2, 0, mem)
+func CreateDefault(mem RAM) CacheType {
+	return ConfigureCache(4, 4, 2, 0, mem)
 }
 
 // Creates a cache with configurable params
-func configureCache(lineSize, numSets, ways, latency int, mem RAM) CacheType {
+func ConfigureCache(lineSize, numSets, ways, latency int, mem RAM) CacheType {
 
 	access := createAccessState(latency)
 	// initialize the sets
@@ -69,13 +69,13 @@ func configureCache(lineSize, numSets, ways, latency int, mem RAM) CacheType {
 }
 
 // Checks cache access and depending on hit or miss, updates cache based on results (hit => true, miss => false)
-func (c *CacheType) search(addr int) bool {
+func (c *CacheType) Search(addr int) []uint32 {
 
 	// If c can't be accessed, return false
-	if !c.access.AccessAttempt() {
-		//fmt.Println("WAIT, cache can't be accessed")
-		return false
-	}
+	// if !c.access.AccessAttempt() {
+	// 	//fmt.Println("WAIT, cache can't be accessed")
+	// 	return
+	// }
 
 	// Get the index, tag, from the address
 	index := (addr / c.lineSize) % c.numSets
@@ -87,7 +87,7 @@ func (c *CacheType) search(addr int) bool {
 		// if its valid and the tag matches
 		if line.valid && line.tag == tag {
 			c.updateLRU(set, i)
-			return true // Cache hit
+			return set.lines[i].data // Cache hit
 		}
 	}
 
@@ -105,7 +105,7 @@ func (c *CacheType) search(addr int) bool {
 
 			// update LRU queue
 			c.updateLRU(set, i)
-			return false
+			return set.lines[i].data
 		}
 	}
 
@@ -114,20 +114,21 @@ func (c *CacheType) search(addr int) bool {
 	replacement := c.memory.Read(addr, true).line
 
 	// find least recently used line in the set and write victim back to memory
+	lineIdx := c.getLRUVictim(set)
 	victim := RAMValue{
-		line: set.lines[c.getLRUVictim(set)].data,
+		line: set.lines[lineIdx].data,
 	}
 	c.memory.Write(addr, &victim)
 
 	//store replacement to cache and flip the dirty bit
-	set.lines[c.getLRUVictim(set)] = CacheLine{
+	set.lines[lineIdx] = CacheLine{
 		tag:   tag,
 		data:  replacement,
 		valid: true,
 		dirty: true, // flip the dirty bit
 	}
 
-	return false
+	return set.lines[lineIdx].data
 }
 
 // Update the LRU queue to see which line must be evicted next, pass most recently used as parameter
