@@ -4,152 +4,169 @@ import "fmt"
 
 // Create a memory interface
 type Memory interface {
-	CreateRAM(size, lineSize, wordSize, latency int) RAM
-	Read(addr int, lin bool) *RAMValue
-	Write(addr int, val *RAMValue) bool
-
-	//flash(instructions []int)  // Might need later
+    CreateRAM(size, lineSize, wordSize, latency int) RAM
+    Read(addr int, lin bool) *RAMValue
+    Write(addr int, val *RAMValue) bool
 }
 
 // A line of memory or value in memory
 type RAMValue struct {
-	Line  []uint32
-	Value uint32
+    Line  []uint32
+    value uint32
 }
 
 // RAM type with size and memory attributes
 type RAM struct {
-	size     int         // number of lines in memory
-	lineSize int         // number of words per line
-	wordSize int         // number of bits per word
-	access   AccessState // keep track of memory access
-	contents [][]uint32  // data structure to hold memory contents
+    size            int
+    lineSize        int
+    wordSize        int
+    Access          AccessState
+    Contents        [][]uint32
+    WriteCyclesLeft int
+    WriteInProgress bool
+    WriteAddr       int
+    WriteData       []uint32
+    LastReadAddr    int // Stores the last read address
+    ReadInProgress  bool // Indicates if a read is ongoing
 }
 
-// type to keep track of memory access
+// AccessState tracks memory access
 type AccessState struct {
-	latency    int
-	cyclesLeft int
-	accessed   bool
+    latency    int
+    CyclesLeft int
+    accessed   bool
 }
 
-// AccessControl constructor, creates a new AccessControl instance
+// AccessControl constructor
 func createAccessState(latency int) *AccessState {
-
-	return &AccessState{
-		latency:    latency,
-		cyclesLeft: latency,
-		accessed:   false,
-	}
+    return &AccessState{
+        latency:    latency,
+        CyclesLeft: latency,
+        accessed:   false,
+    }
 }
 
-// Returns a bool to check if the mem has been accessed during the cycle
+// Returns whether memory can be accessed
 func (c *AccessState) AccessAttempt() bool {
-
-	// If mem has been accessed, decrement cycles left and return false (must wait!)
-	if c.accessed && c.cyclesLeft != 0 {
-		c.cyclesLeft = c.cyclesLeft - 1
-		return false
-	}
-	// If mem has not been accessed, access it, update the cycles left until next access and return true
-	c.accessed = true
-	c.cyclesLeft = c.latency
-	return true
+    if c.accessed && c.CyclesLeft != 0 {
+        c.CyclesLeft--
+        return false
+    }
+    c.accessed = true
+    c.CyclesLeft = c.latency + 1
+    return true
 }
 
-// MEMORY FUNCTIONS:
-
-// RAM constructor, creates a new RAM instance
+// RAM constructor
 func CreateRAM(size, lineSize, wordSize, latency int) RAM {
-	// Initialize contents: creates a slice of slice (https://go.dev/tour/moretypes/7) to hold the RAM contents
-	contents := make([][]uint32, size)
+    contents := make([][]uint32, size)
+    for i := 0; i < size; i++ {
+        contents[i] = make([]uint32, lineSize)
+    }
+    access := createAccessState(latency)
 
-	// For each row of the RAM, make the necessary cells
-	for i := 0; i < size; i++ {
-		contents[i] = make([]uint32, lineSize)
-	}
-
-	// Create new access state for the RAM
-	access := createAccessState(latency)
-
-	// returns address of the new RAM object
-	return RAM{
-		size:     size,
-		lineSize: lineSize,
-		wordSize: wordSize,
-		access:   *access,
-		contents: contents,
-	}
+    return RAM{
+        size:     size,
+        lineSize: lineSize,
+        wordSize: wordSize,
+        Access:   *access,
+        Contents: contents,
+    }
 }
 
-// given an address, function that returns the aligned address (if needed)
+// Aligns address to memory constraints
 func (mem *RAM) alignRAM(addr int) int {
-	return ((addr % mem.size) / mem.wordSize) * mem.wordSize
+    return ((addr % mem.size) / mem.wordSize) * mem.wordSize
 }
 
-// Calculates which memory block and offset within that block a given address corresponds to
-// returns the (block the word belongs to, where the word is inside the block)
+// Calculates block and offset from address
 func (mem *RAM) addrToOffset(addr int) (int, int) {
-	alignedAddr := mem.alignRAM(addr)
-	return (alignedAddr / mem.wordSize) % mem.size / mem.lineSize, (alignedAddr / mem.wordSize) % mem.lineSize
+    alignedAddr := mem.alignRAM(addr)
+    return (alignedAddr / mem.wordSize) % mem.size / mem.lineSize, (alignedAddr / mem.wordSize) % mem.lineSize
 }
 
-// MEMORY ACCESS READ AND WRITE
-
-// Reads the value of the given address, can return entire line if lin is true
+// Reads a value from memory
 func (mem *RAM) Read(addr int, lin bool) *RAMValue {
 
-	// if memory cannot be accessed, it returns nothing (read more here about nil https://go101.org/article/nil.html)
-	if !mem.access.AccessAttempt() {
-		fmt.Println("WAIT, memory cannot be accessed this cycle, try again.")
-		return nil
-	}
+    if mem.WriteInProgress {
+        mem.WriteCyclesLeft--
+        fmt.Println("WAIT, memory write in progress. Cycles left:", mem.WriteCyclesLeft)
+        return nil
+    } else if !mem.Access.AccessAttempt() {
+        fmt.Println("WAIT, memory cannot be accessed this cycle. Cycles left:", mem.Access.CyclesLeft)
+        mem.ReadInProgress = true
+        mem.LastReadAddr = addr
+        return nil
+    }
 
-	// gets block and offset addresses
-	index, offset2 := mem.addrToOffset(addr)
+    mem.Access.accessed = false
+    mem.ReadInProgress = false
 
-	// If line is true, return the entire line
-	if lin {
-		return &RAMValue{Line: append([]uint32{}, mem.contents[index]...)}
-	}
-	// else return the value at the address
-	return &RAMValue{Value: mem.contents[index][offset2]}
+    index, offset := mem.addrToOffset(addr)
+
+    if lin {
+        return &RAMValue{Line: append([]uint32{}, mem.Contents[index]...)}
+    }
+
+    return &RAMValue{value: mem.Contents[index][offset]}
 }
 
-// Writes to RAM, returns a boolean depending on success of write
-func (mem *RAM) Write(line int, val *RAMValue) bool {
+// Writes a value to memory
+func (mem *RAM) Write(addr int, val *RAMValue) bool {
+    
+    if mem.ReadInProgress {
+        mem.Access.CyclesLeft--
+        fmt.Println("WAIT, memory read in progress. Cycles left:", mem.Access.CyclesLeft)
+        return false
+    }
 
-	// memory cannot be accessed, return false
-	if !mem.access.AccessAttempt() {
-		fmt.Println("WAIT, memory cannot be accessed this cycle, try again.")
-		// gets block and offset addresses
-		// offset1, offset2 := mem.addrToOffset(addr)
+    if mem.WriteInProgress {
+        if mem.WriteCyclesLeft > 0 {
+            mem.WriteCyclesLeft--
+            fmt.Println("WAIT, memory write in progress. Cycles left:", mem.WriteCyclesLeft)
+            return false
+        }
+        mem.WriteInProgress = false
+    }
 
-		// if val is a line, it writes to the entire line
-		if len(val.Line) > 0 {
-			mem.contents[line] = val.Line
-		}
+    if !mem.WriteInProgress {
+        mem.Access.AccessAttempt()
+        mem.WriteInProgress = true
+        mem.WriteCyclesLeft = mem.Access.latency
+        mem.WriteAddr = addr
+        mem.WriteData = append([]uint32{}, val.Line...)
+        fmt.Println("Memory write initiated, will complete in", mem.WriteCyclesLeft, "cycles.")
+        return false
+    }
 
-		// successful write, return true
-		return true
-	}
-	return false
+    if len(val.Line) > 0 {
+        mem.Contents[mem.WriteAddr] = val.Line
+    }
+
+    // mem.writeInProgress = false
+    fmt.Printf("Memory write completed, wrote %08X to address %d\n", val.Line, mem.WriteAddr)
+    return true
 }
 
-// Return the contents of the memory
-func (mem *RAM) Peek() [][]uint32 {
-	return mem.contents
+func (m *RAM) StartRead(addr int) {
+    if m.ReadInProgress {
+        fmt.Println("Memory read already in progress. Wait.")
+        return
+    }
+
+    m.ReadInProgress = true
+    m.Access.CyclesLeft = m.Access.latency
+    m.LastReadAddr = addr
+    fmt.Println("Memory read started. Will take", m.Access.latency, "cycles.")
 }
 
-// Loads sequence of instructions into memory
-func (mem *RAM) flash(instructions []uint32) {
 
-	// For every instruction in the sequence
-	for i := 0; i < len(instructions)*4; i += 4 {
-
-		// get the block and offset address
-		offset1, offset2 := mem.addrToOffset(i)
-		// write to the address
-		mem.contents[offset1][offset2] = instructions[i/4]
-	}
+// Prints memory in hex
+func Print2DSlice(slice [][]uint32) {
+    for _, row := range slice {
+        for _, val := range row {
+            fmt.Printf("0x%08X ", val)
+        }
+        fmt.Println()
+    }
 }
