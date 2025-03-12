@@ -98,7 +98,7 @@ func (c *CacheType) Search(addr int) []uint32 {
 			// Add the new data to the invalid line
 			set.lines[i] = CacheLine{
 				tag:   tag,
-				data:  c.memory.Read(addr, true).line,
+				data:  c.memory.Read(addr, true).Line,
 				valid: true,
 				dirty: false,
 			}
@@ -111,12 +111,12 @@ func (c *CacheType) Search(addr int) []uint32 {
 
 	// if no invalid line exists, must evict and replace
 	// read replacement from mem
-	replacement := c.memory.Read(addr, true).line
+	replacement := c.memory.Read(addr, true).Line
 
 	// find least recently used line in the set and write victim back to memory
 	lineIdx := c.getLRUVictim(set)
 	victim := RAMValue{
-		line: set.lines[lineIdx].data,
+		Line: set.lines[lineIdx].data,
 	}
 	c.memory.Write(addr, &victim)
 

@@ -1,4 +1,5 @@
 package memory
+
 import "fmt"
 
 // Create a memory interface
@@ -12,8 +13,8 @@ type Memory interface {
 
 // A line of memory or value in memory
 type RAMValue struct {
-	line  []uint32
-	value uint32
+	Line  []uint32
+	Value uint32
 }
 
 // RAM type with size and memory attributes
@@ -109,10 +110,10 @@ func (mem *RAM) Read(addr int, lin bool) *RAMValue {
 
 	// If line is true, return the entire line
 	if lin {
-		return &RAMValue{line: append([]uint32{}, mem.contents[index]...)}
+		return &RAMValue{Line: append([]uint32{}, mem.contents[index]...)}
 	}
 	// else return the value at the address
-	return &RAMValue{value: mem.contents[index][offset2]}
+	return &RAMValue{Value: mem.contents[index][offset2]}
 }
 
 // Writes to RAM, returns a boolean depending on success of write
@@ -121,16 +122,23 @@ func (mem *RAM) Write(line int, val *RAMValue) bool {
 	// memory cannot be accessed, return false
 	if !mem.access.AccessAttempt() {
 		fmt.Println("WAIT, memory cannot be accessed this cycle, try again.")
-	// gets block and offset addresses
-	// offset1, offset2 := mem.addrToOffset(addr)
+		// gets block and offset addresses
+		// offset1, offset2 := mem.addrToOffset(addr)
 
-	// if val is a line, it writes to the entire line
-	if len(val.line) > 0 {
-		mem.contents[line] = val.line
+		// if val is a line, it writes to the entire line
+		if len(val.Line) > 0 {
+			mem.contents[line] = val.Line
+		}
+
+		// successful write, return true
+		return true
 	}
+	return false
+}
 
-	// successful write, return true
-	return true
+// Return the contents of the memory
+func (mem *RAM) Peek() [][]uint32 {
+	return mem.contents
 }
 
 // Loads sequence of instructions into memory
