@@ -117,7 +117,7 @@ func (mem *RAM) Read(addr int, lin bool) *RAMValue {
 }
 
 // Writes to RAM, returns a boolean depending on success of write
-func (mem *RAM) Write(addr int, val *RAMValue) bool {
+func (mem *RAM) Write(line int, val *RAMValue) bool {
 
 	// memory cannot be accessed, return false
 	if !mem.access.AccessAttempt() {
@@ -126,14 +126,11 @@ func (mem *RAM) Write(addr int, val *RAMValue) bool {
 	}
 
 	// gets block and offset addresses
-	offset1, offset2 := mem.addrToOffset(addr)
+	// offset1, offset2 := mem.addrToOffset(addr)
 
 	// if val is a line, it writes to the entire line
-	// else val is just a word, it writes a word
 	if len(val.line) > 0 {
-		mem.contents[offset1] = append([]uint32{}, val.line...)
-	} else {
-		mem.contents[offset1][offset2] = val.value
+		mem.contents[line] = val.line
 	}
 
 	// successful write, return true
