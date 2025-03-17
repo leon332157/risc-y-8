@@ -1,6 +1,8 @@
 package assembler
 
 import (
+	_ "errors"
+	"fmt"
 	"github.com/leon332157/risc-y-8/cmd/r8/internal/assembler/grammar"
 	_ "strings"
 )
@@ -77,7 +79,7 @@ var RegALU = map[string]uint8{
 	"orr": 0b0101,
 	"xor": 0b0110,
 	"and": 0b0111,
-	"npt": 0b1000,
+	"not": 0b1000,
 	"shl": 0b1001,
 	"shr": 0b1010,
 	"sar": 0b1011,
@@ -124,42 +126,129 @@ type BaseInstruction struct {
 	Imm    uint16 // 16 bit immediate value
 }
 
+func parseInstNoOp(inst *grammar.Instruction) (BaseInstruction, error) {
+	var ret BaseInstruction
+	var err error
+
+	switch inst.Mnemonic {
+	case "nop":
+		// encoded as "cpy r0, r0"
+		ret = BaseInstruction{
+			OpType: RegReg,
+			Rd:     0x00, // r0
+			ALU:    RegALU["cpy"],
+			Rs:     0x00, // r0
+		}
+	case "hlt":
+		// encoded as "bunc [r0+0xFFFF]"
+		ret = BaseInstruction{
+			OpType: Control,
+			RMem:   0x00,
+			Flag:   Conditions["unc"].Flag,
+			Mode:   Conditions["unc"].Mode,
+			Imm:    0xffff,
+		}
+	case "ret":
+		// encoded as "bunc [lr]"
+		ret = BaseInstruction{
+			OpType: Control,
+			RMem:   IntegerRegisters["lr"],
+			Flag:   Conditions["unc"].Flag,
+			Mode:   Conditions["unc"].Mode,
+		}
+
+	}
+	return ret, err
+}
+
+func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
+	var ret BaseInstruction
+	var err error
+
+	switch inst.Mnemonic {
+	case "push":
+		rd, ok := IntegerRegisters[inst.Operands[0].Value()]
+		if !ok {
+			err = fmt.Errorf("[parseInstOneOp] invalid register: %s", inst.Operands[0].Value())
+			return ret, err
+		}
+		ret = BaseInstruction{
+			OpType: LoadStore,
+			Rd:     rd,
+			Mode:   PUSH,
+		}
+	case "pop":
+		rd, ok := IntegerRegisters[inst.Operands[0].Value()]
+		if !ok {
+			err = fmt.Errorf("[parseInstOneOp] invalid register: %s", inst.Operands[0].Value())
+		}
+		goto parseInstOneOpError
+		ret = BaseInstruction{
+			OpType: LoadStore,
+			Rd:     rd,
+			Mode:   POP,
+		}
+	case "call":
+		rmem, ok := IntegerRegisters[inst.Operands[0].Value()]
+		if !ok {
+			err = fmt.Errorf("[parseInstOneOp] invalid register: %s", inst.Operands[0].Value())
+			return ret, err
+		}
+		ret = BaseInstruction{
+			OpType: Control,
+			RMem:   IntegerRegisters[inst.Operands[0].Value],
+			Flag:   Conditions["call"].Flag,
+			Mode:   Conditions["call"].Mode,
+		}
+	case "bunc":
+		ret = BaseInstruction{
+			OpType: Control,
+			RMem:   IntegerRegisters[inst.Operands[0].Value],
+			Flag:   Conditions["unc"].Flag,
+			Mode:   Conditions["unc"].Mode,
+		}
+	case "beq":
+		ret = BaseInstruction{
+			OpType: Control,
+			RMem:   IntegerRegisters[inst.Operands[0].Value],
+			Flag:   Conditions["eq"].Flag,
+			Mode:   Conditions["eq"].Mode,
+		}
+	case "bne":
+		ret = BaseInstruction{
+			OpType: Control,
+			RMem:   IntegerRegisters[inst.Operands[0].Value()],
+			Flag:   Conditions["ne"].Flag,
+			Mode:   Conditions["ne"].Mode,
+		}
+	case "blt":
+		ret = BaseInstruction{
+			OpType: Control,
+			RMem:   IntegerRegisters[inst.Operands[0].Value()],
+			Flag:   Conditions["lt"].Flag,
+			Mode:   Conditions["lt"].Mode,
+		}
+	}
+parseOneOpError:
+	if err != nil {
+		return ret, err
+	}
+return ret, nil
+}
+
 func parseOneInst(inst *grammar.Instruction) (BaseInstruction, error) {
 	// Parse the instruction based on the grammar rules, and return a slice of BaseInstruction if pseudo instructions are found.
 	//var instSlice = make([]BaseInstruction, 0, 2)
 	var ret BaseInstruction
 	var err error
 
-	if len(inst.Operands) == 0 {
+	switch len(inst.Operands) {
+	case 0:
 		// no operands
-		switch inst.Mnemonic {
-		case "nop":
-			// encoded as "cpy r0, r0"
-			ret = BaseInstruction{
-				OpType: RegReg,
-				Rd:     0x00, // r0
-				ALU:    RegALU["cpy"],
-				Rs:     0x00, // r0
-			}
-		case "hlt":
-			// encoded as "bunc [r0+0xFFFF]"
-			ret = BaseInstruction{
-				OpType: Control,
-				RMem:   0x00,
-				Flag:   Conditions["unc"].Flag,
-				Mode:   Conditions["unc"].Mode,
-				Imm:    0xffff,
-			}
-		case "ret":
-			// encoded as "bunc [lr]"
-			ret = BaseInstruction{
-				OpType: Control,
-				RMem:   IntegerRegisters["lr"],
-				Flag:   Conditions["unc"].Flag,
-				Mode:   Conditions["unc"].Mode,
-			}
-
-		}
+		return parseInstNoOp(inst)
+	case 1:
+		// one operand
+		return parseInstOneOp(inst)
 	}
 	return ret, err
 }

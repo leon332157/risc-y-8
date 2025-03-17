@@ -98,7 +98,7 @@ type Memory struct {
 }
 
 type Operand interface {
-
+	Value() string
 }
 
 type OperandGmrOld struct {
@@ -112,15 +112,25 @@ type OperandGmrOld struct {
 
 type OperandRegister struct {
 	//Pos *lexer.Position
-	Value string `@Ident ","?`
+	value string `@Ident ","?`
 }
 type OperandImmediate struct {
 	//Pos *lexer.Position
-	Value string ` (@Number|@Hex) ","? `
+	value string ` (@Number|@Hex) ","? `
 }
 type OperandMemory struct {
 	//Pos *lexer.Position
-	Value Memory `@@`
+	value Memory `@@`
+}
+
+func (o *OperandRegister) Value() string {
+	return o.value
+}
+func (o *OperandImmediate) Value() string {
+	return o.value
+}
+func (o *OperandMemory) Value() string {
+	return o.value.Base
 }
 
 var parser = participle.MustBuild[Program](
