@@ -6,11 +6,14 @@ import (
 	"github.com/leon332157/risc-y-8/cmd/r8/internal/assembler/grammar"
 )
 
-func TestOneOperand(t *testing.T) {
-	var test = []struct {
-		instr    grammar.Instruction
-		expected uint32
-	}{
+type testCase struct {
+	instr         grammar.Instruction
+	expected      uint32
+	errorExpected bool
+}
+
+func TestParseNoOperand(t *testing.T) {
+	var test = []testCase{
 		{
 			instr: grammar.Instruction{
 				Mnemonic: "nop",
@@ -33,9 +36,37 @@ func TestOneOperand(t *testing.T) {
 		},
 	}
 	for num, testCase := range test {
-		inst, err := parseOneInst(&testCase.instr)
+		inst, err := parseInst(&testCase.instr)
 		if err != nil {
 			t.Fatalf("Failed to parse instruction %v: %v", num, err)
+		}
+		if inst.Encode() != testCase.expected {
+			t.Errorf("Num: %v Expected %x, got %x", num, testCase.expected, inst.Encode())
+		}
+	}
+}
+
+func TestParseOneOperand(t *testing.T) {
+	var tests = []testCase{
+		{
+			instr: grammar.Instruction{
+				Mnemonic: "push",
+				Operands: []grammar.Operand{
+					grammar.OperandRegister{
+						Value: "r1",
+					},
+				},
+			},
+		},
+	}
+	for num, testCase := range tests {
+		inst, err := parseInst(&testCase.instr)
+		if err != nil {
+			if testCase.errorExpected {
+				t.Logf("Expected error for instruction %v: %v", num, err)
+			} else {
+				t.Fatalf("Failed to parse instruction %v: %v", num, err)
+			}
 		}
 		if inst.Encode() != testCase.expected {
 			t.Errorf("Num: %v Expected %x, got %x", num, testCase.expected, inst.Encode())

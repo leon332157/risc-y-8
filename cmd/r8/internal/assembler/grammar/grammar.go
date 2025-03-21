@@ -76,7 +76,7 @@ type Instruction struct {
 	Operands []Operand `@@*`
 }
 
-type Immediate struct { 
+type Immediate struct {
 	// Allows signed numbers and hex numbers
 	Pos lexer.Position
 
@@ -92,52 +92,40 @@ type Displacement struct {
 
 type Memory struct {
 	Pos          lexer.Position
-	Base         string    `"[" @Ident `
-	Operation    string    `@Operation? `
+	Base         string       `"[" @Ident `
+	Operation    string       `@Operation? `
 	Displacement Displacement `@@? "]"`
 }
 
 type Operand interface {
-	Value() string
 }
 
 type OperandGmrOld struct {
 	Pos *lexer.Position
 
-	Register  *string     `( @Ident ","?`
+	Register  *string    `( @Ident ","?`
 	Immediate *Immediate `| @@	","?`
 	Memory    *Memory    `| @@ )`
-
 }
 
 type OperandRegister struct {
 	//Pos *lexer.Position
-	value string `@Ident ","?`
+	Value string `@Ident ","?`
 }
 type OperandImmediate struct {
 	//Pos *lexer.Position
-	value string ` (@Number|@Hex) ","? `
+	Value string ` (@Number|@Hex) ","? `
 }
 type OperandMemory struct {
 	//Pos *lexer.Position
-	value Memory `@@`
-}
-
-func (o *OperandRegister) Value() string {
-	return o.value
-}
-func (o *OperandImmediate) Value() string {
-	return o.value
-}
-func (o *OperandMemory) Value() string {
-	return o.value.Base
+	Value Memory `@@`
 }
 
 var parser = participle.MustBuild[Program](
 	participle.Lexer(asmLexerDyn),
 	participle.Elide("Comment"),
 	participle.UseLookahead(2),
-	participle.Union[Operand](OperandRegister{}, OperandImmediate{},OperandMemory{},),
+	participle.Union[Operand](OperandRegister{}, OperandImmediate{}, OperandMemory{}),
 )
 
 func ParseString(name, input string) (*Program, error) {
