@@ -3,7 +3,6 @@ package grammar
 import (
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
-	//"github.com/google/go-cmp/cmp/internal/value"
 )
 
 // Define the lexer for extended assembly
@@ -21,7 +20,7 @@ var asmLexerDyn = lexer.MustStateful(lexer.Rules{
 		//{"Number", `[-+]?(\d*\.)?\d+`, nil},
 		{"MemoryStart", `\[`, lexer.Push("Memory")},
 		{"Comma", `,`, nil},
-		{"Mnemonic", `(?i)(b{1}|[a-z]{2,})(\.[a-z]{1,})?`, nil},
+		{"Mnemonic", `(?i)[a-z]{2,}`, nil},
 		{"Ident", `(?i)[a-z0-9]\w*`, nil},
 		{"EOL", `[\n\r]+`, nil},
 		{"whitespace", `[ \t]+`, nil},
@@ -34,7 +33,6 @@ var asmLexerDyn = lexer.MustStateful(lexer.Rules{
 		//{"Displacement",`0x[0-9a-f]+|[-+]?\d+`,nil},
 		//{"Hex", `0x[0-9a-f]+`, nil},
 		//{"Decimal", `[-\+]?\d+`, nil},
-
 	},
 })
 
@@ -70,7 +68,7 @@ type Label struct {
 }
 
 type Instruction struct {
-	//Pos lexer.Position
+	Pos *lexer.Position
 
 	Mnemonic string    `@Mnemonic`
 	Operands []Operand `@@*`
@@ -78,20 +76,21 @@ type Instruction struct {
 
 type Immediate struct {
 	// Allows signed numbers and hex numbers
-	Pos lexer.Position
+	Pos *lexer.Position
 
 	Value string ` @Number|@Hex`
 }
 
 type Displacement struct {
 	// Allows only positive numbers (as decimal representation) and hex numbers
-	Pos lexer.Position
+	Pos *lexer.Position
 
 	Value string `@Decimal|@Hex`
 }
 
 type Memory struct {
-	Pos          lexer.Position
+	Pos          *lexer.Position
+
 	Base         string       `"[" @Ident `
 	Operation    string       `@Operation? `
 	Displacement Displacement `@@? "]"`
@@ -100,24 +99,19 @@ type Memory struct {
 type Operand interface {
 }
 
-type OperandGmrOld struct {
-	Pos *lexer.Position
-
-	Register  *string    `( @Ident ","?`
-	Immediate *Immediate `| @@	","?`
-	Memory    *Memory    `| @@ )`
-}
-
 type OperandRegister struct {
-	//Pos *lexer.Position
+	Pos *lexer.Position
+	
 	Value string `@Ident ","?`
 }
 type OperandImmediate struct {
-	//Pos *lexer.Position
+	Pos *lexer.Position
+	
 	Value string ` (@Number|@Hex) ","? `
 }
 type OperandMemory struct {
-	//Pos *lexer.Position
+	Pos *lexer.Position
+	
 	Value Memory `@@`
 }
 

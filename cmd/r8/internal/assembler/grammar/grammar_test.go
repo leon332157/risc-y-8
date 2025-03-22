@@ -19,6 +19,7 @@ func TestBasic(t *testing.T) {
 		add r1, r2
 		ldr r2, [r1+10]
 		ldr r2, [r1-0x20]
+		bunc [r13]
 		cmp r2, 0x10
 		nop
 		xor r3,r3
@@ -35,12 +36,12 @@ func TestBasic(t *testing.T) {
 		fadd f3, f1, f2
 		fmul f4, f3, f2
 		fsqrt f5, f4
-		b.unc 0x1000
+		bunc 0x1000
 		hlt
 		VZEROALL v0
 		VZEROUPPER v1
 		VBEQ v2, v3, [pc-10]
-		VLDALL.d v8,[r1+0xFFFF]
+		VLD v8,[r1+0xFFFF]
 	`
 
 	prog, err := ParseString("example.asm", example)
@@ -71,10 +72,26 @@ func TestRI(t *testing.T) {
 	t.Logf("[TestRI] prog.Lines: %+v\n", prog)
 	var expected = Instruction{
 		Mnemonic: "add",
-		Operands: []Operand{OperandRegister{"r1"}, OperandImmediate{"1"}},
+		Operands: []Operand{OperandRegister{Value:"r1"}, OperandImmediate{Value:"1"}},
 	}
 	t.Logf("[TestRI] log: %+v\n",cmp.Equal(*(prog.Lines[0].Instruction), expected))
 	//if !cmp.Equal(*(prog.Lines[0].Instruction), expected) {
 	//	t.Errorf("[TestRI] prog.Lines[0] = %+v\n !=\n %+v\n",prog.Lines[0].Instruction, expected)
 	//}
+}
+
+func testRR(t *testing.T) {
+	var example = "add r1,r2"
+	prog, err := ParseString("testRR", example)
+	if err != nil {
+		t.Errorf("[TestRR] error %v\n", err)
+	}
+	t.Logf("[TestRR] prog.Lines: %+v\n", prog)
+	var expected = Instruction{
+		Mnemonic: "add",
+		Operands: []Operand{OperandRegister{Value:"r1"}, OperandRegister{Value:"r2"}},
+	}
+	if !cmp.Equal(*(prog.Lines[0].Instruction), expected) {
+		t.Errorf("[TestRR] prog.Lines[0] = %+v\n !=\n %+v\n", prog.Lines[0].Instruction, expected)
+	}
 }
