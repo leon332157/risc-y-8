@@ -41,8 +41,8 @@ type ControlOp struct {
 }
 
 var Conditions = map[string]ControlOp{
-	"eq":   {Mode: 0b000, Flag: 0b0000},
-	"ne":   {Mode: 0b000, Flag: 0b0001},
+	"ne":   {Mode: 0b000, Flag: 0b0000},
+	"eq":   {Mode: 0b000, Flag: 0b0001},
 	"lt":   {Mode: 0b001, Flag: 0b0110},
 	"ge":   {Mode: 0b011, Flag: 0b0110},
 	"lu":   {Mode: 0b100, Flag: 0b1000},
@@ -51,7 +51,7 @@ var Conditions = map[string]ControlOp{
 	"of":   {Mode: 0b100, Flag: 0b0100},
 	"nf":   {Mode: 0b000, Flag: 0b0100},
 	"unc":  {Mode: 0b111, Flag: 0b0000},
-	"call": {Mode: 0b000, Flag: 0b1111},
+	"call": {Mode: 0b111, Flag: 0b1111},
 }
 
 var ImmALU = map[string]uint8{
@@ -114,14 +114,92 @@ const (
 )
 
 type BaseInstruction struct {
-	OpType uint8  // 00 for reg-imm, 01 for reg-reg, 10 for load/store, 11 for control
-	Rd     uint8  // Destination register
-	ALU    uint8  // ALU operation
-	Rs     uint8  // Source register
-	RMem   uint8  // Memory register
-	Flag   uint8  // Flag for control instructions
-	Mode   uint8  // Mode for load/store instructions (0 for load, 10 pop, 10 for store, 11 push)
-	Imm    uint16 // 16 bit immediate value
+	OpType uint8 // 00 for reg-imm, 01 for reg-reg, 10 for load/store, 11 for control
+	Rd     uint8 // Destination register
+	ALU    uint8 // ALU operation
+	Rs     uint8 // Source register
+	RMem   uint8 // Memory register
+	Flag   uint8 // Flag for control instructions
+	Mode   uint8 // Mode for load/store instructions (0 for load, 10 pop, 10 for store, 11 push)
+	Imm    int16 // 16 bit twos complement immediate value
+}
+
+// parse 16 bit unsigned immediate value
+func parseImm(imm string) (uint16, error) {
+	var ret uint16 = 0
+	if strings.HasPrefix(imm, "0x") {
+		// hex number
+		temp, err := strconv.ParseUint(imm[2:], 16, 16)
+		if err != nil {
+			return ret, err
+		}
+		ret = uint16(temp)
+	} else if strings.HasPrefix(imm, "0b") {
+		// binary number
+		temp, err := strconv.ParseUint(imm[2:], 2, 16)
+		if err != nil {
+			return ret, err
+		}
+		ret = uint16(temp)
+	} else {
+		// decimal number
+		temp, err := strconv.ParseUint(imm, 10, 16)
+		if err != nil {
+			return ret, err
+		}
+		ret = uint16(temp)
+	}
+	return ret, nil
+}
+
+// Parse a 16 bit twos complement displacement value
+func parseDisp(disp string) (int16, error) {
+	var ret int16 = 0
+	// decimal number
+	temp, err := strconv.ParseInt(disp, 0, 16)
+	if err != nil {
+		return ret, err
+	}
+	ret = int16(temp)
+	return ret, nil
+}
+
+// Parse a memory operand and return the base register and displacement as signed 16 bit integer
+func parseMemory(mem grammar.OperandMemory) (uint8, int16, error) {
+	var rmem uint8 = 0
+	var disp int16 = 0
+
+	var err error
+	var ok bool
+	rmem, ok = IntegerRegisters[mem.Value.Base] // register operand
+	if !ok {
+		err = fmt.Errorf("[parseMemory] invalid base register: %#v", mem.Value.Base)
+		return 0, 0, err
+	}
+	// Handle empty operation
+	if mem.Value.Operation == "" {
+		mem.Value.Operation = "+"
+	}
+	// handle empty displacement, set to 0
+	if mem.Value.Displacement.Value == "" {
+		mem.Value.Displacement.Value = "0"
+	}
+	// check to make sure that not both operation and displacement are negative
+	if mem.Value.Displacement.Value[0] == '-' && mem.Value.Operation == "-" {
+		err = fmt.Errorf("[parseMemory] invalid displacement, both operation and displacement are negative: %+v", mem.Value)
+		return 0, 0, err
+	}
+	// add the sign to the displacement
+	if mem.Value.Operation == "-" {
+		mem.Value.Displacement.Value = "-" + mem.Value.Displacement.Value
+	}
+	// parse the displacement
+	disp, err = parseDisp(mem.Value.Displacement.Value)
+	if err != nil {
+		err = fmt.Errorf("[parseMemory] invalid displacement: parseDisp: %s %v", mem.Value.Displacement.Value, err)
+		return 0, 0, err
+	}
+	return rmem, disp, err
 }
 
 func parseInstNoOp(inst *grammar.Instruction) (BaseInstruction, error) {
@@ -144,7 +222,7 @@ func parseInstNoOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			RMem:   0x00,
 			Flag:   Conditions["unc"].Flag,
 			Mode:   Conditions["unc"].Mode,
-			Imm:    0xffff,
+			Imm:    -1,
 		}
 	case "ret":
 		// encoded as "bunc [lr]"
@@ -157,27 +235,6 @@ func parseInstNoOp(inst *grammar.Instruction) (BaseInstruction, error) {
 
 	}
 	return ret, err
-}
-
-// Parse a 16 bit unsigned displacement value
-func parseDisp(imm string) (uint16, error) {
-	var ret uint16 = 0
-	var err error
-	if strings.HasPrefix(imm, "0x") {
-		// hex number
-		temp, err := strconv.ParseUint(imm[2:], 16, 16)
-		if err != nil {
-			return ret, err
-		}
-		ret = uint16(temp)
-	}
-	// decimal number
-	temp, err := strconv.ParseUint(imm, 10, 16)
-	if err != nil {
-		return ret, err
-	}
-	ret = uint16(temp)
-	return ret, nil
 }
 
 func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
@@ -193,7 +250,7 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 		}
 		rd, ok := IntegerRegisters[rdval.Value] // register operand
 		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid register: %s", rdval.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid register: %#v", rdval.Value)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -209,7 +266,7 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 		}
 		rd, ok := IntegerRegisters[rdval.Value] // register operand
 		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid register: %s", rdval.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid register: %#v", rdval.Value)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -223,14 +280,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
 			return ret, err
 		}
-		rmem, ok := IntegerRegisters[mem.Value.Base] // register operand
-		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid base register: %s", mem.Value.Base)
-			return ret, err
-		}
-		disp, err := parseDisp(mem.Value.Displacement.Value)
+		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid displacement: %s", mem.Value.Displacement.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -246,14 +298,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
 			return ret, err
 		}
-		rmem, ok := IntegerRegisters[mem.Value.Base] // register operand
-		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid base register: %s", mem.Value.Base)
-			return ret, err
-		}
-		disp, err := parseDisp(mem.Value.Displacement.Value)
+		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid displacement: %s", mem.Value.Displacement.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -263,20 +310,15 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			Mode:   Conditions["unc"].Mode,
 			Imm:    disp,
 		}
-	case "beq":
+	case "beq", "bz":
 		mem, ok := inst.Operands[0].(grammar.OperandMemory)
 		if !ok {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
 			return ret, err
 		}
-		rmem, ok := IntegerRegisters[mem.Value.Base] // register operand
-		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid base register: %s", mem.Value.Base)
-			return ret, err
-		}
-		disp, err := parseDisp(mem.Value.Displacement.Value)
+		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid displacement: %s", mem.Value.Displacement.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -286,20 +328,15 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			Mode:   Conditions["eq"].Mode,
 			Imm:    disp,
 		}
-	case "bne":
+	case "bne", "bnz":
 		mem, ok := inst.Operands[0].(grammar.OperandMemory)
 		if !ok {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
 			return ret, err
 		}
-		rmem, ok := IntegerRegisters[mem.Value.Base] // register operand
-		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid base register: %s", mem.Value.Base)
-			return ret, err
-		}
-		disp, err := parseDisp(mem.Value.Displacement.Value)
+		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid displacement: %s", mem.Value.Displacement.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -315,14 +352,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
 			return ret, err
 		}
-		rmem, ok := IntegerRegisters[mem.Value.Base] // register operand
-		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid base register: %s", mem.Value.Base)
-			return ret, err
-		}
-		disp, err := parseDisp(mem.Value.Displacement.Value)
+		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid displacement: %s", mem.Value.Displacement.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -338,14 +370,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
 			return ret, err
 		}
-		rmem, ok := IntegerRegisters[mem.Value.Base] // register operand
-		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid base register: %s", mem.Value.Base)
-			return ret, err
-		}
-		disp, err := parseDisp(mem.Value.Displacement.Value)
+		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid displacement: %s", mem.Value.Displacement.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -361,14 +388,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
 			return ret, err
 		}
-		rmem, ok := IntegerRegisters[mem.Value.Base] // register operand
-		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid base register: %s", mem.Value.Base)
-			return ret, err
-		}
-		disp, err := parseDisp(mem.Value.Displacement.Value)
+		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid displacement: %s", mem.Value.Displacement.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -384,14 +406,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
 			return ret, err
 		}
-		rmem, ok := IntegerRegisters[mem.Value.Base] // register operand
-		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid base register: %s", mem.Value.Base)
-			return ret, err
-		}
-		disp, err := parseDisp(mem.Value.Displacement.Value)
+		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid displacement: %s", mem.Value.Displacement.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -407,14 +424,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
 			return ret, err
 		}
-		rmem, ok := IntegerRegisters[mem.Value.Base] // register operand
-		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid base register: %s", mem.Value.Base)
-			return ret, err
-		}
-		disp, err := parseDisp(mem.Value.Displacement.Value)
+		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid displacement: %s", mem.Value.Displacement.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -430,14 +442,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
 			return ret, err
 		}
-		rmem, ok := IntegerRegisters[mem.Value.Base] // register operand
-		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid base register: %s", mem.Value.Base)
-			return ret, err
-		}
-		disp, err := parseDisp(mem.Value.Displacement.Value)
+		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid displacement: %s", mem.Value.Displacement.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -453,14 +460,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
 			return ret, err
 		}
-		rmem, ok := IntegerRegisters[mem.Value.Base] // register operand
-		if !ok {
-			err = fmt.Errorf("[parseInstOneOp] invalid base register: %s", mem.Value.Base)
-			return ret, err
-		}
-		disp, err := parseDisp(mem.Value.Displacement.Value)
+		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid displacement: %s", mem.Value.Displacement.Value)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -471,7 +473,7 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			Imm:    disp,
 		}
 	default:
-		err = fmt.Errorf("[parseInstOneOp] invalid instruction: %s", inst.Mnemonic)
+		err = fmt.Errorf("[parseInstOneOp] invalid instruction: %s at %v", inst.Mnemonic, inst.Pos)
 		return ret, err
 	}
 	return ret, nil
@@ -480,9 +482,6 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 func parseInst(inst *grammar.Instruction) (BaseInstruction, error) {
 	// Parse the instruction based on the grammar rules, and return a slice of BaseInstruction if pseudo instructions are found.
 	//var instSlice = make([]BaseInstruction, 0, 2)
-	var ret BaseInstruction
-	var err error
-
 	switch len(inst.Operands) {
 	case 0:
 		// no operands
@@ -491,5 +490,5 @@ func parseInst(inst *grammar.Instruction) (BaseInstruction, error) {
 		// one operand
 		return parseInstOneOp(inst)
 	}
-	return ret, err
+	return BaseInstruction{}, nil
 }
