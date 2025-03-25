@@ -32,7 +32,7 @@ func (inst *BaseInstruction) Encode() uint32 {
 	case Control:
 
 		encoded |= uint32(inst.RMem) << 4  // 5 bit Rd (Bits 9-4)
-		encoded |= uint32(inst.Flag) << 9  // 4 bit ALU Op (Bits 12-9)
+		encoded |= uint32(inst.Flag) << 9  // 4 bit flag (Bits 12-9)
 		encoded |= uint32(inst.Mode) << 13 // 3 bit Mode (Bits 16-13)
 		encoded |= uint32(inst.Imm) << 16  // 16 bit Immediate (Bits 32-16)
 

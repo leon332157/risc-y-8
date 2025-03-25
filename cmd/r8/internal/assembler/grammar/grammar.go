@@ -12,15 +12,13 @@ var asmLexerDyn = lexer.MustStateful(lexer.Rules{
 		{"Label", `\.\w{1,}:`, nil},
 		{"Directive", `\.\w{2,}`, nil},
 		//{"String", `"(\\"|[^"])*"`, nil},
-
 		//{"Punct", `[!@#$%^&*()_={}\|:;"'<,>.?/]`, nil},
-
 		{"Hex", `(?i)0x[0-9a-f]+`, nil},
 		{"Number", `[-]?\d+`, nil},
 		//{"Number", `[-+]?(\d*\.)?\d+`, nil},
 		{"MemoryStart", `\[`, lexer.Push("Memory")},
 		{"Comma", `,`, nil},
-		{"Mnemonic", `(?i)[a-z]{2,}`, nil},
+		{"Mnemonic", `(?i)[a-z]{1,}\.?[a-z]+`, nil},
 		{"Ident", `(?i)[a-z0-9]\w*`, nil},
 		{"EOL", `[\n\r]+`, nil},
 		{"whitespace", `[ \t]+`, nil},

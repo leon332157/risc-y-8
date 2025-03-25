@@ -301,3 +301,117 @@ func TestBranch(t *testing.T) {
 
 	runTests(t, &tests)
 }
+
+func TestRegImm(t *testing.T) {
+	var tests = []testCase{
+		{
+			instr: grammar.Instruction{
+				Mnemonic: "add",
+				Operands: makeOperands(
+					makeRegister("r1"),
+					makeImmediate("0x100"))},
+			expected: BaseInstruction{
+				OpType: RegImm,
+				Rd:     1,
+				ALU:    0b0000,
+				Imm:    0x100,
+			}},
+		{
+			instr: grammar.Instruction{
+				Mnemonic: "ror",
+				Operands: makeOperands(
+					makeRegister("r1"),
+					makeImmediate("64"),
+				)},
+			expected:      BaseInstruction{},
+			errorExpected: true,
+		},
+		{
+			instr: grammar.Instruction{
+				Mnemonic: "ror",
+				Operands: makeOperands(
+					makeRegister("r1"),
+					makeImmediate("11"))},
+			expected: BaseInstruction{
+				OpType: RegImm,
+				Rd:     1,
+				ALU:    0b1011,
+				Imm:    21,
+			},
+		},
+		{
+			instr: grammar.Instruction{
+				Mnemonic: "rol",
+				Operands: makeOperands(
+					makeRegister("r1"),
+					makeImmediate("21"))},
+			expected: BaseInstruction{
+				OpType: RegImm,
+				Rd:     1,
+				ALU:    0b1011,
+				Imm:    21,
+			},
+		},
+		{
+			instr: grammar.Instruction{
+				Mnemonic: "rol",
+				Operands: makeOperands(
+					makeRegister("r1"),
+					makeImmediate("-1"))},
+			expected:      BaseInstruction{},
+			errorExpected: true,
+		},
+		{
+			instr: grammar.Instruction{
+				Mnemonic: "cmp",
+				Operands: makeOperands(
+					makeRegister("r31"),
+					makeImmediate("-1"))},
+			expected: BaseInstruction{
+				OpType: RegImm,
+				Rd:     31,
+				ALU:    0b1110,
+				Imm:    -1,
+			}},
+		{
+			instr: grammar.Instruction{
+				Mnemonic: "sub",
+				Operands: makeOperands(
+					makeRegister("r30"),
+					makeImmediate("-65535"))},
+			expected:      BaseInstruction{},
+			errorExpected: true,
+		},
+	}
+
+	runTests(t, &tests)
+}
+
+func TestRegReg(t *testing.T) {
+	var tests = []testCase{
+		{
+			instr: grammar.Instruction{
+				Mnemonic: "add",
+				Operands: makeOperands(
+					makeRegister("r1"),
+					makeRegister("r2"))},
+			expected: BaseInstruction{
+				OpType: RegReg,
+				Rd:     1,
+				Rs:     2,
+				ALU:    0b0000,
+			}},
+		{
+			instr: grammar.Instruction{
+				Mnemonic: "cmp",
+				Operands: makeOperands(
+					makeRegister("r31"),
+					makeRegister("r64"),
+				)},
+			expected:      BaseInstruction{},
+			errorExpected: true,
+		},
+	}
+
+	runTests(t, &tests)
+}

@@ -39,60 +39,116 @@ type ControlOp struct {
 	Flag uint8 // 4 bits
 }
 
+var (
+	// ControlOp
+	NE   = ControlOp{Mode: 0b000, Flag: 0b0000}
+	NZ   = ControlOp{Mode: 0b000, Flag: 0b0000}
+	EQ   = ControlOp{Mode: 0b000, Flag: 0b0001}
+	Z    = ControlOp{Mode: 0b000, Flag: 0b0001}
+	LT   = ControlOp{Mode: 0b001, Flag: 0b0110}
+	GE   = ControlOp{Mode: 0b011, Flag: 0b0110}
+	LU   = ControlOp{Mode: 0b100, Flag: 0b1000}
+	AE   = ControlOp{Mode: 0b000, Flag: 0b1000}
+	A    = ControlOp{Mode: 0b010, Flag: 0b1000}
+	OF   = ControlOp{Mode: 0b100, Flag: 0b0100}
+	NF   = ControlOp{Mode: 0b000, Flag: 0b0100}
+	UNC  = ControlOp{Mode: 0b111, Flag: 0b0000}
+	CALL = ControlOp{Mode: 0b111, Flag: 0b1111}
+)
+
 var Conditions = map[string]ControlOp{
-	"ne":   {Mode: 0b000, Flag: 0b0000},
-	"nz":   {Mode: 0b000, Flag: 0b0000},
-	"eq":   {Mode: 0b000, Flag: 0b0001},
-	"z":    {Mode: 0b000, Flag: 0b0001},
-	"lt":   {Mode: 0b001, Flag: 0b0110},
-	"ge":   {Mode: 0b011, Flag: 0b0110},
-	"lu":   {Mode: 0b100, Flag: 0b1000},
-	"ae":   {Mode: 0b000, Flag: 0b1000},
-	"a":    {Mode: 0b010, Flag: 0b1000},
-	"of":   {Mode: 0b100, Flag: 0b0100},
-	"nf":   {Mode: 0b000, Flag: 0b0100},
-	"unc":  {Mode: 0b111, Flag: 0b0000},
-	"call": {Mode: 0b111, Flag: 0b1111},
+	"ne":   NE,
+	"nz":   NZ,
+	"eq":   EQ,
+	"z":    Z,
+	"lt":   LT,
+	"ge":   GE,
+	"lu":   LU,
+	"ae":   AE,
+	"a":    A,
+	"of":   OF,
+	"nf":   NF,
+	"unc":  UNC,
+	"call": CALL,
 }
+
+const (
+	IMM_ADD = iota
+	IMM_SUB
+	IMM_MUL
+	IMM_AND
+	IMM_XOR
+	IMM_OR
+	IMM_NOT
+	IMM_NEG
+	IMM_SHR
+	IMM_SAR
+	IMM_SHL
+	IMM_ROL
+	IMM_LDI
+	IMM_LDX
+	IMM_CMP
+)
 
 var ImmALU = map[string]uint8{
-	"add": 0b0000,
-	"sub": 0b0001,
-	"mul": 0b0010,
-	"and": 0b0011,
-	"xor": 0b0100,
-	"orr": 0b0101,
-	"or":  0b0101,
-	"not": 0b0110,
-	"neg": 0b0111,
-	"shr": 0b1000,
-	"sar": 0b1001,
-	"shl": 0b1010,
-	"rol": 0b1011,
-	"ldi": 0b1100,
-	"ldx": 0b1101,
-	"cmp": 0b1110,
+	"add": IMM_ADD,
+	"sub": IMM_SUB,
+	"mul": IMM_MUL,
+	"and": IMM_AND,
+	"xor": IMM_XOR,
+	"orr": IMM_OR,
+	"or":  IMM_OR,
+	"not": IMM_NOT,
+	"neg": IMM_NEG,
+	"shr": IMM_SHR,
+	"sar": IMM_SAR,
+	"shl": IMM_SHL,
+	"rol": IMM_ROL,
+	"ror": IMM_ROL,
+	"ldi": IMM_LDI,
+	"ldx": IMM_LDX,
+	"cmp": IMM_CMP,
 }
 
+const (
+	REG_ADD = iota
+	REG_SUB
+	REG_MUL
+	REG_DIV
+	REG_REM
+	REG_OR
+	REG_XOR
+	REG_AND
+	REG_NOT
+	REG_SHL
+	REG_SHR
+	REG_SAR
+	REG_ROL
+	REG_CMP
+	REG_CPY
+	REG_MOV
+	REG_NSA
+)
+
 var RegALU = map[string]uint8{
-	"add": 0b0000,
-	"sub": 0b0001,
-	"mul": 0b0010,
-	"div": 0b0011,
-	"rem": 0b0100,
-	"orr": 0b0101,
-	"or":  0b0101,
-	"xor": 0b0110,
-	"and": 0b0111,
-	"not": 0b1000,
-	"shl": 0b1001,
-	"shr": 0b1010,
-	"sar": 0b1011,
-	"rol": 0b1100,
-	"cmp": 0b1101,
-	"cpy": 0b1110,
-	"mov": 0b1110,
-	"nsa": 0b1111,
+	"add": REG_ADD,
+	"sub": REG_SUB,
+	"mul": REG_MUL,
+	"div": REG_DIV,
+	"rem": REG_REM,
+	"orr": REG_OR,
+	"or":  REG_OR,
+	"xor": REG_XOR,
+	"and": REG_AND,
+	"not": REG_NOT,
+	"shl": REG_SHL,
+	"shr": REG_SHR,
+	"sar": REG_SAR,
+	"rol": REG_ROL,
+	"cmp": REG_CMP,
+	"cpy": REG_CPY,
+	"mov": REG_MOV,
+	"nsa": REG_NSA,
 }
 
 const (
@@ -131,24 +187,11 @@ type BaseInstruction struct {
 
 // parse 16 bit two's complement immediate value
 func parseImm(imm string) (int16, error) {
-	var ret int16 = 0
 	temp, err := strconv.ParseInt(imm, 0, 16)
 	if err != nil {
-		return ret, err
+		return 0, err
 	}
 	return int16(temp), err
-}
-
-// Parse a 16 bit twos complement displacement value
-func parseDisp(disp string) (int16, error) {
-	var ret int16 = 0
-	// decimal number
-	temp, err := strconv.ParseInt(disp, 0, 16)
-	if err != nil {
-		return ret, err
-	}
-	ret = int16(temp)
-	return ret, nil
 }
 
 // Parse a memory operand and return the base register and displacement as signed 16 bit integer
@@ -181,7 +224,7 @@ func parseMemory(mem grammar.OperandMemory) (uint8, int16, error) {
 		mem.Value.Displacement.Value = "-" + mem.Value.Displacement.Value
 	}
 	// parse the displacement
-	disp, err = parseDisp(mem.Value.Displacement.Value)
+	disp, err = parseImm(mem.Value.Displacement.Value)
 	if err != nil {
 		err = fmt.Errorf("[parseMemory] invalid displacement: parseDisp: %s %v", mem.Value.Displacement.Value, err)
 		return 0, 0, err
@@ -202,7 +245,7 @@ func parseInstNoOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			ALU:    RegALU["cpy"],
 			Rs:     0x00, // r0
 		}
-	case "hlt":
+	case "hlt", "meow":
 		// encoded as "bunc [r0+0xFFFF]"
 		ret = BaseInstruction{
 			OpType: Control,
@@ -493,7 +536,7 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 func parseInstTwoOp(inst *grammar.Instruction) (BaseInstruction, error) {
 	var ret BaseInstruction
 	var err error
-	
+
 	rdval, ok := inst.Operands[0].(grammar.OperandRegister)
 	if !ok {
 		err = fmt.Errorf("[parseInstTwoOp] invalid operand 1 type: %T", inst.Operands[0])
@@ -535,11 +578,34 @@ func parseRI(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
 	switch inst.Mnemonic {
 	case "add", "sub", "mul", "and", "xor", "or", "orr":
 		break
-	case "shr", "sar", "shl", "rol":
-		imm &= 0x1F
+	case "shr", "sar", "shl":
+		if imm < 0 {
+			err = fmt.Errorf("[parserRI] invalid negative immediate value for shift: %v", imm)
+			return ret, err
+		}
+		if imm > 31 {
+			err = fmt.Errorf("[parseRI] immediate value for shift is greater than 31: %v", imm)
+			return ret, err
+		}
+	case "rol":
+		if imm < 0 {
+			err = fmt.Errorf("[parserRI] invalid negative immediate value for rotate right: %v", imm)
+			return ret, err
+		}
+		if imm > 31 {
+			err = fmt.Errorf("[parserRI] immediate value for rotate left is greater than 31: %v", imm)
+			return ret, err
+		}
 	case "ror":
-		imm = (32 - imm)
-		imm &= 0x1F
+		if imm < 0 {
+			err = fmt.Errorf("[parserRI] invalid negative immediate value for rotate right: %v", imm)
+			return ret, err
+		}
+		if imm > 31 {
+			err = fmt.Errorf("[parserRI] immediate value for rotate right is greater than 31: %v", imm)
+			return ret, err
+		}
+		imm = (32 - imm) // rotate right is 32 - imm
 	case "ldi", "ldx", "cmp":
 		break
 	}
@@ -646,6 +712,8 @@ func parseInst(inst *grammar.Instruction) (BaseInstruction, error) {
 	case 2:
 		// two operands
 		return parseInstTwoOp(inst)
+	default:
+		err := fmt.Errorf("[parseInst] invalid number of operands: %d", len(inst.Operands))
+		return BaseInstruction{}, err
 	}
-	return BaseInstruction{}, nil
 }
