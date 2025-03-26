@@ -6,184 +6,8 @@ import (
 	"strconv"
 
 	"github.com/leon332157/risc-y-8/cmd/r8/internal/assembler/grammar"
+	. "github.com/leon332157/risc-y-8/pkg/types"
 )
-
-var IntegerRegisters = map[string]uint8{
-	"r0": 0x00, // r0 is reserved for the zero register
-	"r1": 0x01, "r2": 0x02, "r3": 0x03, "r4": 0x04,
-	"r5": 0x05, "r6": 0x06, "r7": 0x07, "r8": 0x08,
-	"r9": 0x09, "r10": 0x0A, "r11": 0x0B, "r12": 0x0C,
-	"r13": 0x0D, "r14": 0x0E, "r15": 0x0F, "r16": 0x10,
-	"r17": 0x11, "r18": 0x12, "r19": 0x13, "r20": 0x14,
-	"r21": 0x15, "r22": 0x16, "r23": 0x17, "r24": 0x18,
-	"r25": 0x19, "r26": 0x1A, "r27": 0x1B, "r28": 0x1C,
-	"r29": 0x1D, "r30": 0x1E, "r31": 0x1F,
-	"bp": 29, // base pointer
-	"sp": 30, // stack pointer
-	"lr": 31, // link register
-}
-
-var FPRegisters = map[string]uint8{
-	"f1": 0x00, "f2": 0x01, "f3": 0x02, "f4": 0x03,
-	"f5": 0x04, "f6": 0x05, "f7": 0x06, "f8": 0x07,
-}
-
-var VectorRegisters = map[string]uint8{
-	"v1": 0x00, "v2": 0x01, "v3": 0x02, "v4": 0x03,
-	"v5": 0x04, "v6": 0x05, "v7": 0x06, "v8": 0x07,
-}
-
-// Control
-type ControlOp struct {
-	Mode uint8 // 3 bits
-	Flag uint8 // 4 bits
-}
-
-var (
-	// ControlOp
-	NE   = ControlOp{Mode: 0b000, Flag: 0b0000}
-	NZ   = ControlOp{Mode: 0b000, Flag: 0b0000}
-	EQ   = ControlOp{Mode: 0b000, Flag: 0b0001}
-	Z    = ControlOp{Mode: 0b000, Flag: 0b0001}
-	LT   = ControlOp{Mode: 0b001, Flag: 0b0110}
-	GE   = ControlOp{Mode: 0b011, Flag: 0b0110}
-	LU   = ControlOp{Mode: 0b100, Flag: 0b1000}
-	AE   = ControlOp{Mode: 0b000, Flag: 0b1000}
-	A    = ControlOp{Mode: 0b010, Flag: 0b1000}
-	OF   = ControlOp{Mode: 0b100, Flag: 0b0100}
-	NF   = ControlOp{Mode: 0b000, Flag: 0b0100}
-	UNC  = ControlOp{Mode: 0b111, Flag: 0b0000}
-	CALL = ControlOp{Mode: 0b111, Flag: 0b1111}
-)
-
-var Conditions = map[string]ControlOp{
-	"ne":   NE,
-	"nz":   NZ,
-	"eq":   EQ,
-	"z":    Z,
-	"lt":   LT,
-	"ge":   GE,
-	"lu":   LU,
-	"ae":   AE,
-	"a":    A,
-	"of":   OF,
-	"nf":   NF,
-	"unc":  UNC,
-	"call": CALL,
-}
-
-const (
-	IMM_ADD = iota
-	IMM_SUB
-	IMM_MUL
-	IMM_AND
-	IMM_XOR
-	IMM_OR
-	IMM_NOT
-	IMM_NEG
-	IMM_SHR
-	IMM_SAR
-	IMM_SHL
-	IMM_ROL
-	IMM_LDI
-	IMM_LDX
-	IMM_CMP
-)
-
-var ImmALU = map[string]uint8{
-	"add": IMM_ADD,
-	"sub": IMM_SUB,
-	"mul": IMM_MUL,
-	"and": IMM_AND,
-	"xor": IMM_XOR,
-	"orr": IMM_OR,
-	"or":  IMM_OR,
-	"not": IMM_NOT,
-	"neg": IMM_NEG,
-	"shr": IMM_SHR,
-	"sar": IMM_SAR,
-	"shl": IMM_SHL,
-	"rol": IMM_ROL,
-	"ror": IMM_ROL,
-	"ldi": IMM_LDI,
-	"ldx": IMM_LDX,
-	"cmp": IMM_CMP,
-}
-
-const (
-	REG_ADD = iota
-	REG_SUB
-	REG_MUL
-	REG_DIV
-	REG_REM
-	REG_OR
-	REG_XOR
-	REG_AND
-	REG_NOT
-	REG_SHL
-	REG_SHR
-	REG_SAR
-	REG_ROL
-	REG_CMP
-	REG_CPY
-	REG_MOV
-	REG_NSA
-)
-
-var RegALU = map[string]uint8{
-	"add": REG_ADD,
-	"sub": REG_SUB,
-	"mul": REG_MUL,
-	"div": REG_DIV,
-	"rem": REG_REM,
-	"orr": REG_OR,
-	"or":  REG_OR,
-	"xor": REG_XOR,
-	"and": REG_AND,
-	"not": REG_NOT,
-	"shl": REG_SHL,
-	"shr": REG_SHR,
-	"sar": REG_SAR,
-	"rol": REG_ROL,
-	"cmp": REG_CMP,
-	"cpy": REG_CPY,
-	"mov": REG_MOV,
-	"nsa": REG_NSA,
-}
-
-const (
-	LDW  = iota // Load Word
-	POP         // Pop
-	PUSH        // Load X
-	STW         // Store Word
-)
-
-type DataType uint8
-
-const (
-	//reserved	DataType = 0b00
-	Integer DataType = 0b01
-	Float   DataType = 0b10
-	Vector  DataType = 0b11
-)
-
-const (
-	RegImm    = 0b00 // reg-imm
-	RegReg    = 0b01 // reg-reg
-	LoadStore = 0b10 // load/store
-	Control   = 0b11 // control
-)
-
-type BaseInstruction struct {
-	OpType uint8 // 00 for reg-imm, 01 for reg-reg, 10 for load/store, 11 for control
-	Rd     uint8 // Destination register
-	ALU    uint8 // ALU operation
-	Rs     uint8 // Source register
-	RMem   uint8 // Memory register
-	Flag   uint8 // Flag for control instructions
-	Mode   uint8 // Mode for load/store instructions (0 for load, 10 pop, 10 for store, 11 push)
-	Imm    int16 // 16 bit twos complement immediate value
-}
 
 // parse 16 bit two's complement immediate value
 func parseImm(imm string) (int16, error) {
@@ -676,25 +500,27 @@ func parseRMem(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
 		err = fmt.Errorf("[parseRMem] invalid memory operand: %+v err: %s", memval.Value, err)
 		return ret, err
 	}
-	alu, ok := RegALU[inst.Mnemonic]
-	if !ok {
-		err = fmt.Errorf("[parseRMem] invalid ALU operation %v", inst.Mnemonic)
-		return ret, err
-	}
 
 	switch inst.Mnemonic {
-	case "ldw", "stw":
-		break
+	case "ldw":
+		ret = BaseInstruction{
+			OpType: LoadStore,
+			Rd:     rd,
+			Mode:   LDW,
+			RMem:   rmem,
+			Imm:    disp,
+		}
+	case "stw":
+		ret = BaseInstruction{
+			OpType: LoadStore,
+			Rd:     rd,
+			Mode:   STW,
+			RMem:   rmem,
+			Imm:    disp,
+		}
 	default:
 		err = fmt.Errorf("[parseRMem] invalid instruction: %s", inst.Mnemonic)
 		return ret, err
-	}
-	ret = BaseInstruction{
-		OpType: LoadStore,
-		Rd:     rd,
-		RMem:   rmem,
-		ALU:    alu,
-		Imm:    disp,
 	}
 	return ret, err
 }
@@ -716,4 +542,36 @@ func parseInst(inst *grammar.Instruction) (BaseInstruction, error) {
 		err := fmt.Errorf("[parseInst] invalid number of operands: %d", len(inst.Operands))
 		return BaseInstruction{}, err
 	}
+}
+
+var Instructions []BaseInstruction
+var Labels map[string]uint32
+
+func ParseLines(lines []grammar.Line) error {
+	for _, line := range lines {
+		if line.Directive != nil {
+			// TODO: handle directives
+			continue
+		}
+		if line.Label != nil {
+			// TODO: handle labels
+			continue
+		}
+		if line.Instruction != nil {
+			inst, err := parseInst(line.Instruction)
+			if err != nil {
+				return fmt.Errorf("[parseLines] invalid instruction at position %v: %v", line.Pos, err)
+			}
+			Instructions = append(Instructions, inst)
+		}
+	}
+	return nil
+}
+
+func EncInstructions() []uint32 {
+	enc := make([]uint32, len(Instructions))
+	for i, inst := range Instructions {
+		enc[i] = inst.Encode()
+	}
+	return enc
 }

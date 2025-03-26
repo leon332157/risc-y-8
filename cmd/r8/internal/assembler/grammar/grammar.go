@@ -35,7 +35,7 @@ var asmLexerDyn = lexer.MustStateful(lexer.Rules{
 })
 
 type Program struct {
-	Pos lexer.Position
+	//Pos lexer.Position
 
 	Lines []Line `@@*`
 }
@@ -113,7 +113,7 @@ type OperandMemory struct {
 	Value Memory `@@`
 }
 
-var parser = participle.MustBuild[Program](
+var Parser = participle.MustBuild[Program](
 	participle.Lexer(asmLexerDyn),
 	participle.Elide("Comment"),
 	participle.UseLookahead(2),
@@ -124,5 +124,5 @@ func ParseString(name, input string) (*Program, error) {
 	if name == "" {
 		name = "<unknown>"
 	}
-	return parser.ParseString(name, input)
+	return Parser.ParseString(name, input)
 }
