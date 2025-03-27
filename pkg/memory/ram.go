@@ -17,13 +17,21 @@ type RAM struct {
 }
 
 /* This function creates a new uint32 array of a certain size, lineSize, and delay.
-*  numLines int refers to the number of words the memory can hold (length of array)
-   wordsPerLine int refers to the number of words per line
-   delay int refers to the number of cycles that must be delayed between requests
+*  	numLines int refers to the number of words the memory can hold (length of array)
+   	wordsPerLine int refers to the number of words per line
+   	delay int refers to the number of cycles that must be delayed between requests
 */
 func Create(numLines int, wordsPerLine int, delay int) RAM {
+
+	// Create a slice
 	size := numLines * wordsPerLine
 	mem := make([]uint32, size)
+
+	// Initialize memory to zero
+	for i := range size {
+		mem[i] = 0
+	}
+
 	return RAM{
 		Contents:     mem,
 		NumLines:     numLines,
