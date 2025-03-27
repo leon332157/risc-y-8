@@ -32,7 +32,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 	defer f.Close()
 	if infile == "-" {
-		fmt.Errorf("Stdin is not supported yet")
+		return fmt.Errorf("Stdin is not supported yet")
 	}
 
 	prog, err := grammar.Parser.Parse(infile, f)
