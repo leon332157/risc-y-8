@@ -27,6 +27,7 @@ var asmLexerDyn = lexer.MustStateful(lexer.Rules{
 		{"Hex", `(?i)0x[0-9a-f]+`, nil},
 		{"Decimal", `\d+`, nil},
 		{"Ident", `(?i)[a-z0-9]\w*`, nil},
+		{"whitespace", `[ \t]+`, nil},
 		{"MemoryEnd", `]`, lexer.Pop()},
 		//{"Displacement",`0x[0-9a-f]+|[-+]?\d+`,nil},
 		//{"Hex", `0x[0-9a-f]+`, nil},
