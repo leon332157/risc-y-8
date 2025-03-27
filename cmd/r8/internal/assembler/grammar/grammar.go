@@ -76,20 +76,20 @@ type Instruction struct {
 
 type Immediate struct {
 	// Allows signed numbers and hex numbers
-	Pos *lexer.Position
+	//Pos *lexer.Position
 
 	Value string ` @Number|@Hex`
 }
 
 type Displacement struct {
 	// Allows only positive numbers (as decimal representation) and hex numbers
-	Pos *lexer.Position
+	//Pos *lexer.Position
 
 	Value string `@Decimal|@Hex`
 }
 
 type Memory struct {
-	Pos *lexer.Position
+	//Pos *lexer.Position
 
 	Base         string       `"[" @Ident `
 	Operation    string       `@Operation? `
@@ -100,17 +100,17 @@ type Operand interface {
 }
 
 type OperandRegister struct {
-	Pos *lexer.Position
+	//Pos *lexer.Position
 
 	Value string `@Ident ","?`
 }
 type OperandImmediate struct {
-	Pos *lexer.Position
+	//Pos *lexer.Position
 
 	Value string ` (@Number|@Hex) ","? `
 }
 type OperandMemory struct {
-	Pos *lexer.Position
+	//Pos *lexer.Position
 
 	Value Memory `@@`
 }
