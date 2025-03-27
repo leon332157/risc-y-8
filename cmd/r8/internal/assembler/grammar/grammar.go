@@ -3,6 +3,7 @@ package grammar
 import (
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
+	"strings"
 )
 
 // Define the lexer for extended assembly
@@ -88,7 +89,7 @@ type Displacement struct {
 }
 
 type Memory struct {
-	Pos          *lexer.Position
+	Pos *lexer.Position
 
 	Base         string       `"[" @Ident `
 	Operation    string       `@Operation? `
@@ -100,18 +101,23 @@ type Operand interface {
 
 type OperandRegister struct {
 	Pos *lexer.Position
-	
+
 	Value string `@Ident ","?`
 }
 type OperandImmediate struct {
 	Pos *lexer.Position
-	
+
 	Value string ` (@Number|@Hex) ","? `
 }
 type OperandMemory struct {
 	Pos *lexer.Position
-	
+
 	Value Memory `@@`
+}
+
+func toLower(token lexer.Token) (lexer.Token, error) {
+	token.Value = strings.ToLower(token.Value)
+	return token, nil
 }
 
 var Parser = participle.MustBuild[Program](
@@ -119,6 +125,7 @@ var Parser = participle.MustBuild[Program](
 	participle.Elide("Comment"),
 	participle.UseLookahead(2),
 	participle.Union[Operand](OperandRegister{}, OperandImmediate{}, OperandMemory{}),
+	participle.Map(toLower, "Mnemonic", "Ident"), // lowercase all mnemonics and identifiers such as register names
 )
 
 func ParseString(name, input string) (*Program, error) {
