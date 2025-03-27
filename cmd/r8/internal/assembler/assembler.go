@@ -11,11 +11,25 @@ import (
 
 // parse 16 bit two's complement immediate value
 func parseImm(imm string) (int16, error) {
-	temp, err := strconv.ParseInt(imm, 0, 16)
+	var i64 int64
+	//var u64 uint64
+	var ret int16
+	var err error
+
+	i64, err = strconv.ParseInt(imm, 0, 17) // attempt to parse as signed
 	if err != nil {
 		return 0, err
 	}
-	return int16(temp), err
+	if i64 < -65536 {
+		return 0, fmt.Errorf("[parseImm] immediate value less than -65536 : %s", imm)
+	}
+	if i64 > 65535 {
+		return 0, fmt.Errorf("[parseImm] immediate value greater than 65535 : %s", imm)
+	}
+	// if good then return signed value
+	ret = int16(i64)
+	//return int16(u64), nil
+	return ret, nil
 }
 
 // Parse a memory operand and return the base register and displacement as signed 16 bit integer
@@ -50,7 +64,7 @@ func parseMemory(mem grammar.OperandMemory) (uint8, int16, error) {
 	// parse the displacement
 	disp, err = parseImm(mem.Value.Displacement.Value)
 	if err != nil {
-		err = fmt.Errorf("[parseMemory] invalid displacement: parseDisp: %s %v", mem.Value.Displacement.Value, err)
+		err = fmt.Errorf("[parseMemory] invalid displacement: %v", err)
 		return 0, 0, err
 	}
 	return rmem, disp, err
@@ -152,7 +166,7 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 		}
 		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %v %s", mem.Value, err)
 			return ret, err
 		}
 		ret = BaseInstruction{
@@ -170,7 +184,7 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 		}
 		rmem, disp, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v err: %s", mem.Value, err)
+			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v %s", mem.Value, err)
 			return ret, err
 		}
 		if cond, ok := Conditions[inst.Mnemonic[1:]]; ok {
