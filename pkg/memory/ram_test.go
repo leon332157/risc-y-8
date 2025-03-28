@@ -5,7 +5,7 @@ import (
 )
 
 func TestCreate(t *testing.T) {
-	newMem := Create(32, 8, 5)
+	newMem := CreateRAM(32, 8, 5)
 	size := len(newMem.Contents)
 	if size != 256 {
 		t.Errorf("mem size = %d; want 256", size)
@@ -13,7 +13,7 @@ func TestCreate(t *testing.T) {
 }
 
 func TestReadEmpty(t *testing.T) {
-	newMem := Create(32, 8, 5)
+	newMem := CreateRAM(32, 8, 5)
 	firstZero := newMem.Read(0)
 	if firstZero != 0 {
 		t.Errorf("firstZero = %08x; want 0x0", firstZero)
@@ -21,7 +21,7 @@ func TestReadEmpty(t *testing.T) {
 }
 
 func TestReadRandom(t *testing.T) {
-	newMem := Create(32, 8, 5)
+	newMem := CreateRAM(32, 8, 5)
 	randomZero := newMem.Read(125)
 	if randomZero != 0 {
 		t.Errorf("firstZero = %08x; want 0x0", randomZero)
@@ -29,7 +29,7 @@ func TestReadRandom(t *testing.T) {
 }
 
 func TestWriteFrontNoDelay(t *testing.T) {
-	newMem := Create(32, 8, 0)
+	newMem := CreateRAM(32, 8, 0)
 	newMem.Write(0, 1)
 	read := newMem.Read(0)
 	if read != 1 {
@@ -38,7 +38,7 @@ func TestWriteFrontNoDelay(t *testing.T) {
 }
 
 func TestWriteEndNoDelay(t *testing.T) {
-	newMem := Create(32, 8, 0)
+	newMem := CreateRAM(32, 8, 0)
 	newMem.Write(255, 28)
 	read := newMem.Read(255)
 	if read != 28 {
@@ -47,7 +47,7 @@ func TestWriteEndNoDelay(t *testing.T) {
 }
 
 func TestWriteNoDelay(t *testing.T) {
-	newMem := Create(32, 8, 0)
+	newMem := CreateRAM(32, 8, 0)
 	newMem.Write(32, 3735928559)
 	newMem.Write(197, 65535)
 
@@ -63,7 +63,7 @@ func TestWriteNoDelay(t *testing.T) {
 }
 
 func TestWriteSameLocationNoDelay(t *testing.T) {
-	newMem := Create(32, 8, 0)
+	newMem := CreateRAM(32, 8, 0)
 
 	newMem.Write(32, 3735928559)
 	read1 := newMem.Read(32)

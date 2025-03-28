@@ -4,9 +4,9 @@ import "fmt"
 
 // Create a memory interface
 type Memory interface {
-	Create(numLines int, wordsPerLine int, delay int) []uint32
-	Read() uint32
-	Write() bool
+	CreateRAM(numLines int, wordsPerLine int, delay int) []uint32
+	Read(addr int) uint32
+	Write(addr int, val uint32) bool
 }
 
 type RAM struct {
@@ -21,7 +21,7 @@ type RAM struct {
    	wordsPerLine int refers to the number of words per line
    	delay int refers to the number of cycles that must be delayed between requests
 */
-func Create(numLines int, wordsPerLine int, delay int) RAM {
+func CreateRAM(numLines int, wordsPerLine int, delay int) RAM {
 
 	// Create a slice
 	size := numLines * wordsPerLine
