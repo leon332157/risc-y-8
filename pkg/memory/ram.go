@@ -14,6 +14,7 @@ type RAM struct {
 	NumLines     int
 	WordsPerLine int
 	Delay        int
+	Busy         bool
 }
 
 /* This function creates a new uint32 array of a certain size, lineSize, and delay.
@@ -37,6 +38,7 @@ func CreateRAM(numLines int, wordsPerLine int, delay int) RAM {
 		NumLines:     numLines,
 		WordsPerLine: wordsPerLine,
 		Delay:        delay,
+		Busy:         false, // if a stage has requested, flip to true
 	}
 }
 
