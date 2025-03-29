@@ -4,169 +4,86 @@ import "fmt"
 
 // Create a memory interface
 type Memory interface {
-    CreateRAM(size, lineSize, wordSize, latency int) RAM
-    Read(addr int, lin bool) *RAMValue
-    Write(addr int, val *RAMValue) bool
+	CreateRAM(numLines int, wordsPerLine int, delay int) []uint32
+	Read(addr int) uint32
+	Write(addr int, val uint32) bool
 }
 
-// A line of memory or value in memory
-type RAMValue struct {
-    Line  []uint32
-    value uint32
-}
-
-// RAM type with size and memory attributes
 type RAM struct {
-    size            int
-    lineSize        int
-    wordSize        int
-    Access          AccessState
-    Contents        [][]uint32
-    WriteCyclesLeft int
-    WriteInProgress bool
-    WriteAddr       int
-    WriteData       []uint32
-    LastReadAddr    int // Stores the last read address
-    ReadInProgress  bool // Indicates if a read is ongoing
+	Contents     []uint32
+	NumLines     int
+	WordsPerLine int
+	Delay        int
+	Busy         bool
 }
 
-// AccessState tracks memory access
-type AccessState struct {
-    latency    int
-    CyclesLeft int
-    accessed   bool
-}
+/* This function creates a new uint32 array of a certain size, lineSize, and delay.
+*  	numLines int refers to the number of words the memory can hold (length of array)
+   	wordsPerLine int refers to the number of words per line
+   	delay int refers to the number of cycles that must be delayed between requests
+*/
+func CreateRAM(numLines int, wordsPerLine int, delay int) RAM {
 
-// AccessControl constructor
-func createAccessState(latency int) *AccessState {
-    return &AccessState{
-        latency:    latency,
-        CyclesLeft: latency,
-        accessed:   false,
-    }
-}
+	// Create a slice
+	size := numLines * wordsPerLine
+	mem := make([]uint32, size)
 
-// Returns whether memory can be accessed
-func (c *AccessState) AccessAttempt() bool {
-    if c.accessed && c.CyclesLeft != 0 {
-        c.CyclesLeft--
-        return false
-    }
-    c.accessed = true
-    c.CyclesLeft = c.latency + 1
-    return true
-}
+	// Initialize memory to zero
+	for i := range size {
+		mem[i] = 0
+	}
 
-// RAM constructor
-func CreateRAM(size, lineSize, wordSize, latency int) RAM {
-    contents := make([][]uint32, size)
-    for i := 0; i < size; i++ {
-        contents[i] = make([]uint32, lineSize)
-    }
-    access := createAccessState(latency)
-
-    return RAM{
-        size:     size,
-        lineSize: lineSize,
-        wordSize: wordSize,
-        Access:   *access,
-        Contents: contents,
-    }
-}
-
-// Aligns address to memory constraints
-func (mem *RAM) alignRAM(addr int) int {
-    return ((addr % mem.size) / mem.wordSize) * mem.wordSize
-}
-
-// Calculates block and offset from address
-func (mem *RAM) addrToOffset(addr int) (int, int) {
-    alignedAddr := mem.alignRAM(addr)
-    return (alignedAddr / mem.wordSize) % mem.size / mem.lineSize, (alignedAddr / mem.wordSize) % mem.lineSize
+	return RAM{
+		Contents:     mem,
+		NumLines:     numLines,
+		WordsPerLine: wordsPerLine,
+		Delay:        delay,
+		Busy:         false, // if a stage has requested, flip to true
+	}
 }
 
 // Reads a value from memory
-func (mem *RAM) Read(addr int, lin bool) *RAMValue {
+func (mem RAM) Read(addr int) uint32 {
 
-    if mem.WriteInProgress {
-        mem.WriteCyclesLeft--
-        fmt.Println("WAIT, memory write in progress. Cycles left:", mem.WriteCyclesLeft)
-        return nil
-    } else if !mem.Access.AccessAttempt() {
-        fmt.Println("WAIT, memory cannot be accessed this cycle. Cycles left:", mem.Access.CyclesLeft)
-        mem.ReadInProgress = true
-        mem.LastReadAddr = addr
-        return nil
-    }
-
-    mem.Access.accessed = false
-    mem.ReadInProgress = false
-
-    index, offset := mem.addrToOffset(addr)
-
-    if lin {
-        return &RAMValue{Line: append([]uint32{}, mem.Contents[index]...)}
-    }
-
-    return &RAMValue{value: mem.Contents[index][offset]}
+	// Make sure address is valid
+	if addr > (len(mem.Contents) - 1) {
+		fmt.Println("Address cannot be read. Not a valid address.")
+		panic(mem.Contents[addr])
+	}
+	return mem.Contents[addr]
 }
 
 // Writes a value to memory
-func (mem *RAM) Write(addr int, val *RAMValue) bool {
-    
-    if mem.ReadInProgress {
-        mem.Access.CyclesLeft--
-        fmt.Println("WAIT, memory read in progress. Cycles left:", mem.Access.CyclesLeft)
-        return false
-    }
+func (mem RAM) Write(addr int, val uint32) bool {
 
-    if mem.WriteInProgress {
-        if mem.WriteCyclesLeft > 0 {
-            mem.WriteCyclesLeft--
-            fmt.Println("WAIT, memory write in progress. Cycles left:", mem.WriteCyclesLeft)
-            return false
-        }
-        mem.WriteInProgress = false
-    }
+	// Make sure address is valid
+	if addr > (len(mem.Contents) - 1) {
+		fmt.Println("Address cannot be written to. Not a valid address.")
+		panic(mem.Contents[addr])
+	}
 
-    if !mem.WriteInProgress {
-        mem.Access.AccessAttempt()
-        mem.WriteInProgress = true
-        mem.WriteCyclesLeft = mem.Access.latency
-        mem.WriteAddr = addr
-        mem.WriteData = append([]uint32{}, val.Line...)
-        fmt.Println("Memory write initiated, will complete in", mem.WriteCyclesLeft, "cycles.")
-        return false
-    }
-
-    if len(val.Line) > 0 {
-        mem.Contents[mem.WriteAddr] = val.Line
-    }
-
-    // mem.writeInProgress = false
-    fmt.Printf("Memory write completed, wrote %08X to address %d\n", val.Line, mem.WriteAddr)
-    return true
+	mem.Contents[addr] = val
+	return true
 }
 
-func (m *RAM) StartRead(addr int) {
-    if m.ReadInProgress {
-        fmt.Println("Memory read already in progress. Wait.")
-        return
-    }
+// Prints memory
+func (mem RAM) PrintMem() {
 
-    m.ReadInProgress = true
-    m.Access.CyclesLeft = m.Access.latency
-    m.LastReadAddr = addr
-    fmt.Println("Memory read started. Will take", m.Access.latency, "cycles.")
-}
+	addr := 0
+	for i := range mem.NumLines {
+		if i < 10 {
+			fmt.Print(i, "  [ ")
+		} else {
+			fmt.Print(i, " [ ")
+		}
 
+		for range mem.WordsPerLine {
+			fmt.Printf("%08x ", mem.Contents[addr])
+			addr++
+		}
 
-// Prints memory in hex
-func Print2DSlice(slice [][]uint32) {
-    for _, row := range slice {
-        for _, val := range row {
-            fmt.Printf("0x%08X ", val)
-        }
-        fmt.Println()
-    }
+		if addr%8 == 0 && addr != 0 {
+			fmt.Println("]")
+		}
+	}
 }

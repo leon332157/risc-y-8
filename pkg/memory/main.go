@@ -1,8 +1,12 @@
 package memory
 
-// import (
-// 	"fmt"
-// )
+import (
+	"fmt"
+)
+
+func main() {
+	fmt.Println("hello")
+}
 
 // func main() {
 // 	var mem Memory

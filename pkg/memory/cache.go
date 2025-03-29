@@ -1,175 +1,175 @@
 package memory
 
 import (
-    "container/list" // for LRU queue
-    "fmt"
+	"fmt"
+	"math"
 )
 
 type Cache interface {
-    CreateDefault(mem RAM) CacheType
-    ConfigureCache(lineSize, numSets, ways, latency int, mem RAM) CacheType
-    Search(addr int) bool
-}
-
-type CacheLine struct {
-    tag   int
-    data  []uint32
-    valid bool
-    dirty bool
-}
-
-type Set struct {
-    lines    []CacheLine
-    LRUQueue *list.List // Tracks LRU order for the sets lines with a queue
+	Default(mem RAM) CacheType
+	CreateCache(numSets, numWays, delay int, mem RAM) CacheType
+	Read(addr int) uint32
+	Write(addr int, val uint) bool
 }
 
 type CacheType struct {
-    lineSize int
-    numSets  int
-    ways     int
-    access   AccessState
-    sets     []Set
-    memory   *RAM
+	Contents [][]CacheLine
+	Sets     int
+	Ways     int
+	Delay    int
+	Memory   RAM
 }
 
-// CACHE FUNCTIONS:
+type CacheLine struct {
+	Valid bool
+	Tag   int
+	Data  uint32
+	LRU   int
+}
+
+type IdxTag struct {
+	index int
+	tag   int
+}
+
+func CreateCache(numSets, numWays, delay int, mem RAM) CacheType {
+	contents := make([][]CacheLine, numSets)
+
+	// initialize cache contents to zero
+	for i := range numSets {
+		contents[i] = make([]CacheLine, numWays)
+		lru := numWays - 1
+		for j := range numWays {
+			contents[i][j] = CacheLine{Valid: false, Tag: 0, Data: 0, LRU: lru}
+			lru -= 1
+		}
+	}
+
+	return CacheType{
+		Contents: contents,
+		Sets:     numSets,
+		Ways:     numWays,
+		Delay:    delay,
+		Memory:   mem,
+	}
+}
 
 // Creates the default cache
-func CreateDefault(mem *RAM) CacheType {
-    return ConfigureCache(4, 4, 2, 0, mem)
+func Default(mem *RAM) CacheType {
+	return CreateCache(8, 2, 0, *mem)
 }
 
-// Creates a cache with configurable params
-func ConfigureCache(lineSize, numSets, ways, latency int, mem *RAM) CacheType {
+func (c *CacheType) FindIndexAndTag(addr int) IdxTag {
+	// Get set index from address
+	index := addr % c.Sets
 
-    access := createAccessState(latency)
-    // initialize the sets
-    sets := make([]Set, numSets)
+	// Get tag bits based on total bits needed for mem address
+	memSize := c.Memory.NumLines * c.Memory.WordsPerLine
+	totalBits := int(math.Log2(float64(memSize)))
+	tagBits := totalBits - int(math.Log2(float64(c.Sets)))
 
-    // Initialize empty sets with lru queue
-    for i := range sets {
-        sets[i] = Set{
-            lines:    make([]CacheLine, ways),
-            LRUQueue: list.New(),
-        }
-        // Initialize sets with empty lines
-        for j := range sets[i].lines {
-            sets[i].lines[j] = CacheLine{data: make([]uint32, lineSize), valid: false, dirty: false}
-        }
-    }
+	// Get tag using the address
+	bin := 0b1
+	for range tagBits - 1 {
+		bin = (bin << 1)
+		bin += 1
+	}
+	tag := (addr >> (totalBits - tagBits)) & bin
 
-    return CacheType{
-        lineSize: lineSize,
-        numSets:  numSets,
-        ways:     ways,
-        access:   *access,
-        sets:     sets,
-        memory:   mem,
-    }
+	return IdxTag{
+		index: index,
+		tag:   tag,
+	}
 }
 
-func (c *CacheType) Search(addr int) []uint32 {
+func (c *CacheType) Read(addr int) uint32 {
+	// Given the address, find the index of the set and tag
+	idxTag := c.FindIndexAndTag(addr)
+	index, tag := idxTag.index, idxTag.tag
 
-    // i swear this same if writing/reading inProgress logic has been used like 3 or 4 times already just make it a function
-    if c.memory.WriteInProgress {
+	// If tag exists, check valid bit (false -> miss, true -> hit) cache hit: return the data, update lru
+	set := c.Contents[index]
+	for i := range c.Ways {
 
-        if c.memory.WriteCyclesLeft > 0 {
-            c.memory.WriteCyclesLeft--
-            fmt.Println("WAIT, memory write in progress. Cycles left:", c.memory.WriteCyclesLeft)
-        }
+		if set[i].Tag == tag && set[i].Valid {
+			c.UpdateLRU(index, i)
+			return set[i].Data
+		}
+	}
+	// Else, cache miss: read memory, load into cache, return data (no need to write back to mem)
+	replacement := c.Memory.Read(addr)
+	lruIdx := c.GetLRU(index)
+	c.Contents[index][lruIdx] = CacheLine{Valid: true, Tag: tag, Data: replacement, LRU: 0}
+	c.UpdateLRU(index, lruIdx)
 
-        return nil
-
-    } else if c.memory.ReadInProgress {
-
-        if c.memory.Access.CyclesLeft > 0 {
-            c.memory.Access.CyclesLeft--
-            fmt.Println("WAIT, memory read in progress. Cycles left:", c.memory.Access.CyclesLeft)
-        }
-
-        return nil
-    }
-
-    index := (addr / c.lineSize) % c.numSets
-    tag := addr / (c.lineSize * c.numSets)
-    set := &c.sets[index]
-
-    // Check if data is in cache
-    for i, line := range set.lines {
-        if line.valid && line.tag == tag {
-            c.updateLRU(set, i)
-            fmt.Println("Cache hit!")
-            return line.data
-        }
-    }
-
-    // Cache miss: Start memory read process
-    fmt.Println("Cache miss. Requesting memory read at address:", addr)
-    c.memory.StartRead(addr)
-    
-    return nil // No data yet, memory will complete later
+	return replacement
 }
 
-func (c *CacheType) Insert(addr int, data []uint32) {
-    index := (addr / c.lineSize) % c.numSets
-    tag := addr / (c.lineSize * c.numSets)
-    set := &c.sets[index]
+// Write through, no allocate policy
+func (c *CacheType) Write(addr int, val uint32) bool {
+	// Given address find the set index and tag
+	idxTag := c.FindIndexAndTag(addr)
+	index, tag := idxTag.index, idxTag.tag
 
-    // Find an empty cache slot
-    for i, line := range set.lines {
-        if !line.valid {
-            set.lines[i] = CacheLine{
-                tag:   tag,
-                data:  data,
-                valid: true,
-                dirty: false,
-            }
-            c.updateLRU(set, i)
-            fmt.Println("Inserted into cache (empty slot).")
-            return
-        }
-    }
+	set := c.Contents[index]
+	for i := range c.Ways - 1 {
 
-    // No empty slot: Evict least recently used
-    victimIdx := c.getLRUVictim(set)
-    set.lines[victimIdx] = CacheLine{
-        tag:   tag,
-        data:  data,
-        valid: true,
-        dirty: false,
-    }
-    c.updateLRU(set, victimIdx)
-    fmt.Println("Inserted into cache (evicted LRU line).")
+		// If idx-tag exits, write to cache and write-through to memory
+		if set[i].Tag == tag && set[i].Valid {
+
+			// if data is the same, update lru, do nothing
+			if set[i].Data == val {
+				c.UpdateLRU(index, i)
+				return true
+			}
+			// if data is different, write-through to memory
+			c.Contents[index][i].Data = val
+			c.UpdateLRU(index, i)
+			c.Memory.Write(addr, val)
+			return true
+		}
+	}
+	// Find next empty line or LRU (empty line will be lru!), write-through to memory
+	lruIdx := c.GetLRU(index)
+	c.Contents[index][lruIdx] = CacheLine{Valid: true, Tag: tag, Data: val, LRU: 0}
+	c.UpdateLRU(index, lruIdx)
+	c.Memory.Write(addr, val)
+	return true
 }
 
-// Update the LRU queue to see which line must be evicted next, pass most recently used as parameter
-func (c *CacheType) updateLRU(set *Set, idx int) {
+func (c *CacheType) UpdateLRU(setIndex int, line int) {
+	set := c.Contents[setIndex]
+	for i := range c.Ways {
 
-    for e := set.LRUQueue.Front(); e != nil; e = e.Next() {
-        if e.Value.(int) == idx {
-            set.LRUQueue.Remove(e)
-            break
-        }
-    }
-    set.LRUQueue.PushFront(idx)
+		if i == line {
+			c.Contents[setIndex][i].LRU = 0
+		} else if set[i].LRU < c.Ways-1 {
+			c.Contents[setIndex][i].LRU += 1
+		}
+	}
 }
 
-func (c *CacheType) getLRUVictim(set *Set) int {
+func (c *CacheType) GetLRU(setIndex int) int {
+	set := c.Contents[setIndex]
+	lru := -1
 
-    elem := set.LRUQueue.Back()
-    if elem != nil {
-        return elem.Value.(int)
-    }
-    return 0
+	for i := range c.Ways {
+		if set[i].LRU > lru {
+			lru = i
+		}
+	}
+	return lru
 }
 
-func PrintCache(cache CacheType) {
+func (cache *CacheType) PrintCache() {
 
-    for i := 0; i < len(cache.sets); i++ {
-        for j := 0; j < len(cache.sets[i].lines); j++ {
-            fmt.Printf("%08X\n", cache.sets[i].lines[j].data)
-        }
-    }
-    fmt.Println("DONE")
-    fmt.Println("")
+	fmt.Println("Tag    Index        Data    Valid    LRU")
+	for i := range cache.Contents {
+		for j := 0; j < len(cache.Contents[i]); j++ {
+			line := cache.Contents[i][j]
+			fmt.Printf("%05b    %03b    %08x    %t    %d\n", line.Tag, i, line.Data, line.Valid, line.LRU)
+		} // might have to adjust depending on cache configs --> but nice looking for default cache
+	}
+	fmt.Println("DONE")
+	fmt.Println("")
 }
