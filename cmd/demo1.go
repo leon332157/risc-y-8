@@ -14,8 +14,8 @@ func main() {
 	fmt.Println("Commands:\nstore <address> <value>\nload <address>\nread <address>\nnext\nview\ncache")
 	fmt.Println("")
 
-	mem := memory.CreateRAM(16, 4, 32, 5)
-	cache := memory.CreateDefault(&mem)
+	mem := memory.CreateRAM(32, 8, 5)
+	cache := memory.Default(&mem)
 
 	reader := bufio.NewReader(os.Stdin)
 
@@ -28,37 +28,37 @@ func main() {
 			fmt.Println("Next cycle")
 
 			// Handle memory write completion
-			if mem.WriteInProgress {
-				if mem.WriteCyclesLeft > 0 {
-					mem.WriteCyclesLeft--
-					fmt.Println("WAIT, memory write in progress. Cycles left:", mem.WriteCyclesLeft)
-					continue
-				}
-				mem.Contents[mem.WriteAddr] = mem.WriteData
-				mem.WriteInProgress = false
-				fmt.Printf("\nMemory write completed, wrote %08X to address %d\n", mem.WriteData, mem.WriteAddr)
-				fmt.Println("")
-				continue
-			}
+			// if mem.WriteInProgress {
+			// 	if mem.WriteCyclesLeft > 0 {
+			// 		mem.WriteCyclesLeft--
+			// 		fmt.Println("WAIT, memory write in progress. Cycles left:", mem.WriteCyclesLeft)
+			// 		continue
+			// 	}
+			// 	mem.Contents[mem.WriteAddr] = mem.WriteData
+			// 	mem.WriteInProgress = false
+			// 	fmt.Printf("\nMemory write completed, wrote %08X to address %d\n", mem.WriteData, mem.WriteAddr)
+			// 	fmt.Println("")
+			// 	continue
+			// }
 
 			// Handle memory read completion
-			if mem.ReadInProgress {
-				if mem.Access.CyclesLeft > 0 {
-					mem.Access.CyclesLeft--
-					fmt.Println("WAIT, memory read in progress. Cycles left:", mem.Access.CyclesLeft)
-					continue
-				}
+			// if mem.ReadInProgress {
+			// 	if mem.Access.CyclesLeft > 0 {
+			// 		mem.Access.CyclesLeft--
+			// 		fmt.Println("WAIT, memory read in progress. Cycles left:", mem.Access.CyclesLeft)
+			// 		continue
+			// 	}
 
-				// Read from memory and insert into cache
-				fetchedValue := mem.Read(mem.LastReadAddr, true)
-				if fetchedValue != nil {
-					fmt.Printf("\nMemory read completed. Data: %08X\n", fetchedValue.Line)
-					cache.Insert(mem.LastReadAddr, fetchedValue.Line) // New function to insert into cache
-					fmt.Println("Memory read completed. Data loaded into cache.")
-				}
-				mem.ReadInProgress = false
-				continue
-			}
+			// 	// Read from memory and insert into cache
+			// 	fetchedValue := mem.Read(mem.LastReadAddr, true)
+			// 	if fetchedValue != nil {
+			// 		fmt.Printf("\nMemory read completed. Data: %08X\n", fetchedValue.Line)
+			// 		cache.Insert(mem.LastReadAddr, fetchedValue.Line) // New function to insert into cache
+			// 		fmt.Println("Memory read completed. Data loaded into cache.")
+			// 	}
+			// 	mem.ReadInProgress = false
+			// 	continue
+			// }
 
 			continue
 		}
@@ -86,7 +86,7 @@ func main() {
 			}
 
 			// since its write-through, no-allocate, we can write directly to memory
-			mem.Write(int(addr), &memory.RAMValue{Line: []uint32{uint32(val), 0, 0, 0}})
+			mem.Write(int(addr), uint32(val))
 
 		case "load":
 			if len(parts) != 2 {
@@ -100,11 +100,9 @@ func main() {
 				continue
 			}
 
-			res := cache.Search(int(addr))
+			res := cache.Read(int(addr))
 
-			if res != nil {
-				fmt.Printf("Value loaded from Cache: 0x%08X\n", res[0])
-			}
+			fmt.Printf("Value loaded from Cache: 0x%08X\n", res)
 
 			// res := mem.Read(int(addr), false)
 			// if res == nil {
@@ -124,9 +122,10 @@ func main() {
 				fmt.Println("Invalid address")
 				continue
 			}
+			fmt.Print("Valid Addr", addr)
 
 			fmt.Print("[")
-			for i, v := range mem.Contents[int(addr)] {
+			for i, v := range mem.Contents {
 				if i > 0 {
 					fmt.Print(" ")
 				}
@@ -136,11 +135,11 @@ func main() {
 			fmt.Println("")
 
 		case "view":
-			memory.Print2DSlice(mem.Contents)
+			mem.PrintMem()
 			fmt.Println("")
 
 		case "cache":
-			memory.PrintCache(cache)
+			cache.PrintCache()
 
 		default:
 			fmt.Println("Unknown command. Must be either store, load, read, next, view, cache")

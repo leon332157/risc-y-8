@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -160,13 +161,13 @@ func (c *CacheType) GetLRU(setIndex int) int {
 	return lru
 }
 
-// func PrintCache(cache CacheType) {
+func (cache *CacheType) PrintCache() {
 
-// 	for i := 0; i < len(cache.sets); i++ {
-// 		for j := 0; j < len(cache.sets[i].lines); j++ {
-// 			fmt.Printf("%08X\n", cache.sets[i].lines[j].data)
-// 		}
-// 	}
-// 	fmt.Println("DONE")
-// 	fmt.Println("")
-// }
+	for i := 0; i < len(cache.Contents); i++ {
+		for j := 0; j < len(cache.Contents[i]); j++ {
+			fmt.Printf("%08X\n", cache.Contents[i][j].Data)
+		}
+	}
+	fmt.Println("DONE")
+	fmt.Println("")
+}

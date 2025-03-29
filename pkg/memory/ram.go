@@ -66,14 +66,24 @@ func (mem RAM) Write(addr int, val uint32) bool {
 	return true
 }
 
-// Prints memory in hex
+// Prints memory
 func (mem RAM) PrintMem() {
 
-	for i := range mem.NumLines - 1 {
-		fmt.Print(i, " [ ")
-		for j := range mem.WordsPerLine - 1 {
-			fmt.Print(mem.Contents[j], " ")
+	addr := 0
+	for i := range mem.NumLines {
+		if i < 10 {
+			fmt.Print(i, "  [ ")
+		} else {
+			fmt.Print(i, " [ ")
 		}
-		fmt.Println("]")
+
+		for range mem.WordsPerLine {
+			fmt.Printf("%08x ", mem.Contents[addr])
+			addr++
+		}
+
+		if addr%8 == 0 && addr != 0 {
+			fmt.Println("]")
+		}
 	}
 }

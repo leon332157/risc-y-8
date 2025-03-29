@@ -62,6 +62,22 @@ func TestWriteNoDelay(t *testing.T) {
 	}
 }
 
+func TestWrite1And9(t *testing.T) {
+	mem := CreateRAM(32, 8, 0)
+	mem.Write(1, 0xfeebdaed)
+
+	read1 := mem.Read(1)
+	read9 := mem.Read(9)
+
+	if read1 != 0xfeebdaed {
+		t.Errorf("read 0x1 resulted in %08x; want 0xfeebdaed", read1)
+	}
+	if read9 != 0 {
+		t.Errorf("read resulted in %08x; want 0x0", read9)
+	}
+
+}
+
 func TestWriteSameLocationNoDelay(t *testing.T) {
 	newMem := CreateRAM(32, 8, 0)
 
