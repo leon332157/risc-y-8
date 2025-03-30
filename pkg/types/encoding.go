@@ -14,7 +14,8 @@ func (inst *BaseInstruction) Encode() uint32 {
 
 		encoded |= uint32(inst.Rd) << 4   // 5 bit Rd (Bits 8-4)
 		encoded |= uint32(inst.ALU) << 9  // 4 bit ALU Op (Bits 12-9)
-		encoded |= uint32(inst.Imm) << 13 // 16 bit Immediate (Bits 28-13)
+		encoded |= uint32(0) << 13		  // 3 bit reserve (Bits 15-13)
+		encoded |= uint32(inst.Imm) << 16 // 16 bit Immediate (Bits 31-16)
 
 	case RegReg:
 
@@ -50,7 +51,7 @@ func (inst *BaseInstruction) Decode(encoded uint32) {
 
 		inst.Rd = uint8((encoded >> 4) & 0x1F)     // 5 bit Rd (Bits 8-4)
 		inst.ALU = uint8((encoded >> 9) & 0xF)     // 4 bit ALU Op (Bits 12-9)
-		inst.Imm = int16((encoded >> 13) & 0xFFFF) // 16 bit Immediate (Bits 28-13)
+		inst.Imm = int16((encoded >> 16) & 0xFFFF) // 16 bit Immediate (Bits 28-13)
 
 	case RegReg:
 
