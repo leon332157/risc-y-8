@@ -93,7 +93,6 @@ const (
 	REG_ROL
 	REG_CMP
 	REG_CPY
-	REG_MOV
 	REG_NSA
 )
 
@@ -114,7 +113,7 @@ var RegALU = map[string]uint8{
 	"rol": REG_ROL,
 	"cmp": REG_CMP,
 	"cpy": REG_CPY,
-	"mov": REG_MOV,
+	"mov": REG_CPY,
 	"nsa": REG_NSA,
 }
 
