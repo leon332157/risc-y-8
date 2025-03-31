@@ -4,47 +4,49 @@ import (
 	"github.com/leon332157/risc-y-8/pkg/types"
 )
 
-func ExecuteInstruction(regs *Registers, inst types.BaseInstruction) types.MemoryStageInput{
+var etodecode types.ExeToDecode
 
-	switch inst.OpType {
+func ExecuteStageToMemory(regs *Registers, inst types.DecodeToExe) types.ExeToMem{
+
+	switch inst.Instruction.OpType {
 
 	case types.RegImm:
 
-		switch inst.ALU {
+		switch inst.Instruction.ALU {
 
 		case types.IMM_ADD:
-			return regs.IMM_ADD(inst.Rd, inst.Imm)
+			return regs.IMM_ADD(inst.Instruction.Rd, inst.Instruction.Imm)
 		case types.IMM_SUB:
-			return regs.IMM_SUB(inst.Rd, inst.Imm)
+			return regs.IMM_SUB(inst.Instruction.Rd, inst.Instruction.Imm)
 		default:
 			panic("unsupported immediate ALU operation")
 		}
 
 	case types.RegReg:
 
-		switch inst.ALU {
+		switch inst.Instruction.ALU {
 		case types.REG_MUL:
-			return regs.REG_MUL(inst.Rd, inst.Rs)
+			return regs.REG_MUL(inst.Instruction.Rd, inst.Instruction.Rs)
 		default:
 			panic("unsupported register ALU operation")
 		}
 
 	case types.LoadStore:
 
-		switch inst.Mode{
+		switch inst.Instruction.Mode{
 
 		case types.LDW:
-			return regs.IMM_STW(inst.Rd, inst.RMem, inst.Imm)
+			return regs.IMM_STW(inst.Instruction.Rd, inst.Instruction.RMem, inst.Instruction.Imm)
 		case types.STW:
-			return regs.IMM_LDW(inst.Rd, inst.RMem, inst.Imm)
+			return regs.IMM_LDW(inst.Instruction.Rd, inst.Instruction.RMem, inst.Instruction.Imm)
 		default:
 			panic("unsupported load/store operation")
 		}
 	case types.Control:
 		
 		// BNE
-		if (inst.Mode == 0b000 && inst.Flag == 0b0000) {
-			return regs.BNE(inst.RMem, inst.Imm)
+		if (inst.Instruction.Mode == 0b000 && inst.Instruction.Flag == 0b0000) {
+			return regs.BNE(inst.Instruction.RMem, inst.Instruction.Imm)
 		} else {
 			panic("unsupported control operation")
 		}
@@ -53,4 +55,10 @@ func ExecuteInstruction(regs *Registers, inst types.BaseInstruction) types.Memor
 		// Handle unsupported operation type
 		panic("unsupported operation type")
 	}
+}
+
+func ExecuteStageToDecode() types.ExeToDecode {
+
+	return etodecode
+
 }

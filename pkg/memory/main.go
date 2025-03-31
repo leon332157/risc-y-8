@@ -6,23 +6,32 @@ import (
 	"github.com/leon332157/risc-y-8/pkg/types"
 )
 
-func MemoryStage(msi types.MemoryStageInput, cache CacheType) types.WriteBackStageInput{
+var mtoexe types.MemToExe
 
-	wbsi := msi.WriteBackStageInput
+func MemoryStageToWriteBack(etom types.ExeToMem, cache CacheType) types.MemToWB{
 
-	if msi.IsLoad {
+	mtowb := etom.MemToWB
 
-		cache_val := cache.Read(msi.Address)
-		wbsi.RegVal = cache_val
+	if etom.IsLoad {
 
-	} else if !msi.IsLoad && !msi.IsControl && !msi.IsALU {
+		cache_val := cache.Read(etom.Address)
+		mtoexe.Address = etom.Address
+		mtowb.RegVal = cache_val
 
-		cache.Write(msi.Address, msi.Data)
-		return types.WriteBackStageInput{}
+	} else if !etom.IsLoad && !etom.IsControl && !etom.IsALU {
+
+		cache.Write(etom.Address, etom.Data)
+		mtoexe.Address = etom.Address
+		return types.MemToWB{}
 			
 	}
 
-	return wbsi
+	return mtowb
+}
+
+func MemoryStageToExecute() types.MemToExe {
+
+	return mtoexe
 
 }
 

@@ -10,9 +10,9 @@ func SignExtend(val uint32) int64 {
 }
 
 /* Adds an immediate (source) to rd. Calculation is signed arithmetic. CF is set when carry out is 1. ZF is set when the addition result is 0, SF is set when the result of addition is negative, OF is calculated as SF ^ MSB of imm ^ MSB of rd */
-func (reg *Registers) IMM_ADD(rd uint8, imm int16) types.MemoryStageInput{
+func (reg *Registers) IMM_ADD(rd uint8, imm int16) types.ExeToMem{
 
-	msi := types.MemoryStageInput{}
+	etom := types.ExeToMem{}
 
 	// If rd is 0, do nothing
 	// if rd == 0x00 {
@@ -24,37 +24,37 @@ func (reg *Registers) IMM_ADD(rd uint8, imm int16) types.MemoryStageInput{
 
 	result, carry := bits.Add32(augend, addend, 0)
 
-	msi.Reg = rd
-	msi.RegVal = result
-	msi.IsALU = true
+	etom.Reg = rd
+	etom.RegVal = result
+	etom.IsALU = true
 
 	// Reset previous flags
 	reg.ResetFlags()
 
 	if carry == 1 {
-		msi.Flag |= types.CF
+		etom.Flag |= types.CF
 	}
 
 	if result == 0 {
-		msi.Flag |= types.ZF
+		etom.Flag |= types.ZF
 	}
 
 	if result & 0x80000000 != 0 {
-		msi.Flag |= types.SF
+		etom.Flag |= types.SF
 	}
 
 	if ((augend ^ addend) & 0x80000000 == 0) && ((augend ^ result) & 0x80000000 != 0) {
-		msi.Flag |= types.OVF
+		etom.Flag |= types.OVF
 	}
 
-	return msi
+	return etom
 
 }
 
 // rd = imm - rd, performed as rd + (-1*imm) Flag behavior follows ADD
-func (regs *Registers) IMM_SUB(rd uint8, imm int16) types.MemoryStageInput{
+func (regs *Registers) IMM_SUB(rd uint8, imm int16) types.ExeToMem{
 
-	msi := types.MemoryStageInput{}
+	etom := types.ExeToMem{}
 
 	// if rd == 0x00 {
 	// 	return
@@ -65,34 +65,34 @@ func (regs *Registers) IMM_SUB(rd uint8, imm int16) types.MemoryStageInput{
 
 	result, carry := bits.Sub32(subtrahend, minuend, 0)
 
-	msi.Reg = rd
-	msi.RegVal = result
-	msi.IsALU = true
+	etom.Reg = rd
+	etom.RegVal = result
+	etom.IsALU = true
 
 	regs.ResetFlags()
 	if carry == 1 {
-		msi.Flag |= types.CF
+		etom.Flag |= types.CF
 	}
 
 	if result == 0 {
-		msi.Flag |= types.ZF
+		etom.Flag |= types.ZF
 	}
 
 	if result&0x80000000 != 0 {
-		msi.Flag |= types.SF
+		etom.Flag |= types.SF
 	}
 
 	if ((subtrahend ^ minuend) & 0x80000000 != 0) && ((subtrahend ^ result)&0x80000000 != 0) {
-		msi.Flag |= types.OVF
+		etom.Flag |= types.OVF
 	}
 
-	return msi
+	return etom
 
 }
 
-func (regs *Registers) REG_MUL(rd uint8, rs uint8) types.MemoryStageInput{
+func (regs *Registers) REG_MUL(rd uint8, rs uint8) types.ExeToMem{
 
-	msi := types.MemoryStageInput{}
+	etom := types.ExeToMem{}
 
 	// if rd == 0x00 {
 	// 	return
@@ -103,31 +103,31 @@ func (regs *Registers) REG_MUL(rd uint8, rs uint8) types.MemoryStageInput{
 
 	hi, lo := bits.Mul32(multiplicand, multiplier)
 
-	msi.Reg = rd
-	msi.RegVal = lo
+	etom.Reg = rd
+	etom.RegVal = lo
 
 	regs.ResetFlags()
 
 	if (hi | lo) == 0 {
-		msi.Flag |= types.ZF
+		etom.Flag |= types.ZF
 	}
 
 	if hi != 0 {
-		msi.Flag |= types.CF
+		etom.Flag |= types.CF
 	}
 
 	if SignExtend(lo) != (int64(hi)<<32 | int64(lo)) {
-		msi.Flag |= types.OVF
+		etom.Flag |= types.OVF
 	}
 
-	return msi
+	return etom
 
 }
 
-func (regs *Registers) IMM_LDW(rd uint8, rs uint8, imm int16) types.MemoryStageInput {
+func (regs *Registers) IMM_LDW(rd uint8, rs uint8, imm int16) types.ExeToMem {
 
-	return types.MemoryStageInput{
-		WriteBackStageInput: types.WriteBackStageInput{
+	return types.ExeToMem{
+		MemToWB: types.MemToWB{
 			Reg:	rd,
 		},
 		Address:	int(regs.IntRegisters[rs-1]) + int(imm), 
@@ -136,9 +136,9 @@ func (regs *Registers) IMM_LDW(rd uint8, rs uint8, imm int16) types.MemoryStageI
 
 }
 
-func (regs *Registers) IMM_STW(rd uint8, rs uint8, imm int16) types.MemoryStageInput {
+func (regs *Registers) IMM_STW(rd uint8, rs uint8, imm int16) types.ExeToMem {
 
-	return types.MemoryStageInput{
+	return types.ExeToMem{
 		Address:	int(regs.IntRegisters[rs-1]) + int(imm), 
 		Data:		regs.IntRegisters[rd-1],
 		IsLoad:		false,
@@ -147,9 +147,9 @@ func (regs *Registers) IMM_STW(rd uint8, rs uint8, imm int16) types.MemoryStageI
 }
 
 // exact same as subtract but doesnt set the destination register.
-func (regs *Registers) IMM_CMP(rd uint8, imm int16) types.MemoryStageInput{
+func (regs *Registers) IMM_CMP(rd uint8, imm int16) types.ExeToMem{
 
-	msi := types.MemoryStageInput{}
+	etom := types.ExeToMem{}
 
 	// if rd == 0x00 {
 	// 	return
@@ -162,36 +162,36 @@ func (regs *Registers) IMM_CMP(rd uint8, imm int16) types.MemoryStageInput{
 
 	regs.ResetFlags()
 	if carry == 1 {
-		msi.Flag |= types.CF
+		etom.Flag |= types.CF
 	}
 
 	if result == 0 {
-		msi.Flag |= types.ZF
+		etom.Flag |= types.ZF
 	}
 
 	if result&0x80000000 != 0 {
-		msi.Flag |= types.SF
+		etom.Flag |= types.SF
 	}
 
 	if ((subtrahend ^ minuend) & 0x80000000 != 0) && ((subtrahend ^ result)&0x80000000 != 0) {
-		msi.Flag |= types.OVF
+		etom.Flag |= types.OVF
 	}
 
-	return msi
+	return etom
 
 }
 
 // JMP if ZF == 0
-func (regs *Registers) BNE(rmem uint8, imm int16) types.MemoryStageInput{
+func (regs *Registers) BNE(rmem uint8, imm int16) types.ExeToMem{
 
-	msi := types.MemoryStageInput{}
-	msi.IsControl = true
+	etom := types.ExeToMem{}
+	etom.IsControl = true
 
 	if !regs.CheckFlag(types.ZF) {
 		newAddress := int(uint16(rmem) + uint16(imm))
-		msi.Branch_PC = uint32(newAddress)
+		etom.Branch_PC = uint32(newAddress)
 	}
 
-	return msi
+	return etom
 
 }

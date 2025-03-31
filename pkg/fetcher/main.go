@@ -3,15 +3,18 @@ package fetcher
 import (
 	"github.com/leon332157/risc-y-8/pkg/alu"
 	"github.com/leon332157/risc-y-8/pkg/memory"
+	"github.com/leon332157/risc-y-8/pkg/types"
 )
 
-var next_inst_addr uint32 = 0
+func FetchStageToDecode(mem memory.RAM, regs *alu.Registers) types.FetchToDecode {
 
-func FetchInstruction(mem memory.RAM, regs *alu.Registers) uint32 {
+	inst := types.FetchToDecode{}
+	pc := regs.IntRegisters[0]
 
-	regs.IntRegisters[0] = next_inst_addr
-	inst := mem.Read(int(next_inst_addr))
-	next_inst_addr += 1
+	regs.IntRegisters[0] = pc
+	inst.MemInst = mem.Read(int(pc))
+	pc++
+
 	return inst
 
 }
