@@ -32,22 +32,25 @@ func ExecuteInstruction(regs *Registers, inst types.BaseInstruction) types.Memor
 	case types.LoadStore:
 
 		switch inst.Mode{
+
 		case types.LDW:
 			return regs.IMM_STW(inst.Rd, inst.RMem, inst.Imm)
 		case types.STW:
 			return regs.IMM_LDW(inst.Rd, inst.RMem, inst.Imm)
+		default:
+			panic("unsupported load/store operation")
 		}
 	case types.Control:
 		
 		// BNE
 		if (inst.Mode == 0b000 && inst.Flag == 0b0000) {
 			return regs.BNE(inst.RMem, inst.Imm)
+		} else {
+			panic("unsupported control operation")
 		}
 		
 	default:
 		// Handle unsupported operation type
 		panic("unsupported operation type")
 	}
-
-	return types.MemoryStageInput{}
 }

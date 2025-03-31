@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 
+	"github.com/leon332157/risc-y-8/pkg/writeback"
+	"github.com/leon332157/risc-y-8/pkg/memory"
+	"github.com/leon332157/risc-y-8/pkg/alu"
 	"github.com/leon332157/risc-y-8/pkg/decoder"
 	"github.com/leon332157/risc-y-8/pkg/fetcher"
-	"github.com/leon332157/risc-y-8/pkg/alu"
-	"github.com/leon332157/risc-y-8/pkg/memory"
 	"github.com/leon332157/risc-y-8/pkg/types"
 )
 
@@ -16,7 +17,7 @@ func main() {
 	ram_memory := memory.CreateRAM(32, 8, 3)
 	
 	// Create a cache with 8 sets, 2 ways, and no delay
-	// cache := memory.Default(&ram_memory)
+	cache := memory.Default(&ram_memory)
 
 	registers := alu.CreateRegisters()
 
@@ -100,10 +101,10 @@ func main() {
 		fmt.Printf("Instruction %d: 0x%08x\n", i, ram_memory.Contents[i])
 	}
 
-	// Fetch the instruction using the fetcher
-	instruction := fetcher.FetchInstruction(ram_memory)
+	instruction := fetcher.FetchInstruction(ram_memory, registers)
 
 	fmt.Printf("\nFetched Instruction: 0x%08x\n", instruction)
+	fmt.Printf("Current PC: %d\n", registers.IntRegisters[0])
 
 	decoded_inst := decoder.DecodeInstruction(instruction)
 
@@ -114,5 +115,15 @@ func main() {
 	mem_stage_input := alu.ExecuteInstruction(registers, decoded_inst)
 
 	fmt.Printf("\nMemory Stage Input: %+v\n", mem_stage_input)
+
+	wbsi := memory.MemoryStage(mem_stage_input, cache)
+
+	fmt.Printf("\nWrite Back Stage Input: %+v\n", wbsi)
+
+	writeback.WriteBackStage(registers, wbsi)
+
+	alu.PrintIntegerRegisters(registers)
+
+	alu.PrintRFlag(registers)
 
 }
