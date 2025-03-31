@@ -1,15 +1,15 @@
 package fetcher
 
 import (
+	"github.com/leon332157/risc-y-8/pkg/alu"
 	"github.com/leon332157/risc-y-8/pkg/memory"
 )
 
-// fetcher check that pc is always +0x10 else squash the pipeline
-// should pc be sent as input to each stage?
 var next_inst_addr uint32 = 0
 
-func FetchInstruction(mem memory.RAM) uint32 {
+func FetchInstruction(mem memory.RAM, regs *alu.Registers) uint32 {
 
+	regs.IntRegisters[0] = next_inst_addr
 	inst := mem.Read(int(next_inst_addr))
 	next_inst_addr += 1
 	return inst

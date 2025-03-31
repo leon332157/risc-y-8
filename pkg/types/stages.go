@@ -1,13 +1,17 @@
 package types
 
 type MemoryStageInput struct {
+	WriteBackStageInput
 	Address		int
 	Data		uint32
 	IsLoad		bool
 	IsControl	bool
 	IsALU		bool
-	DestReg		uint8
+}
+
+type WriteBackStageInput struct {
+	Reg			uint8
 	RegVal		uint32
+	Branch_PC	uint32
 	Flag		uint32
-	PC			uint32	// if pc = 0, then no change to pc for branch
 }

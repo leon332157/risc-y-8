@@ -40,29 +40,53 @@ func CreateRegisters() *Registers {
 }
 
 func PrintIntegerRegisters(cpu *Registers) {
-	println("Integer Registers:")
-	for i := 0; i < 32; i++ {
-		fmt.Printf("r%d: %d\n", i+1, cpu.IntRegisters[i])
+	fmt.Println("\nInteger Registers:")
+
+	for i := range 4 {
+		fmt.Printf("r%d:\t0x%08x\tr%d:\t0x%08x\tr%d:\t0x%08x\tr%d:\t0x%08x\tr%d:\t0x%08x\tr%d:\t0x%08x\tr%d:\t0x%08x\tr%d:\t0x%08x\n",
+			i*8+0, cpu.IntRegisters[i*8+0],
+			i*8+1, cpu.IntRegisters[i*8+1],
+			i*8+2, cpu.IntRegisters[i*8+2],
+			i*8+3, cpu.IntRegisters[i*8+3],
+			i*8+4, cpu.IntRegisters[i*8+4],
+			i*8+5, cpu.IntRegisters[i*8+5],
+			i*8+6, cpu.IntRegisters[i*8+6],
+			i*8+7, cpu.IntRegisters[i*8+7])
 	}
 }
 
 func PrintFloatingPointRegisters(cpu *Registers) {
-	println("Floating Point Registers:")
-	for i := 0; i < 8; i++ {
-		fmt.Printf("f%d: %.6f\n", i+1, cpu.FPRegisters[i])
-	}
+	fmt.Println("\nFloating Point Registers:")
+
+	fmt.Printf("fp1:\t0x%08x\tfp2:\t0x%08x\tfp3:\t0x%08x\tfp4:\t0x%08x\tfp5:\t0x%08x\tfp6:\t0x%08x\tfp7:\t0x%08x\tfp8:\t0x%08x\n",
+		uint32(cpu.FPRegisters[0]),
+		uint32(cpu.FPRegisters[1]),
+		uint32(cpu.FPRegisters[2]),
+		uint32(cpu.FPRegisters[3]),
+		uint32(cpu.FPRegisters[4]),
+		uint32(cpu.FPRegisters[5]),
+		uint32(cpu.FPRegisters[6]),
+		uint32(cpu.FPRegisters[7]),
+	)
 }
 
 func PrintVectorRegisters(cpu *Registers) {
-	println("Vector Registers:")
-	for i := 0; i < 8; i++ {
-		fmt.Printf("v%d: %d\n", i+1, cpu.VecRegisters[i])
-	}
+	println("\nVector Registers:")
+	fmt.Printf("vec1:\t0x%08x\tvec2:\t0x%08x\tvec3:\t0x%08x\tvec4:\t0x%08x\tvec5:\t0x%08x\tvec6:\t0x%08x\tvec7:\t0x%08x\tvec8:\t0x%08x\n",
+		cpu.VecRegisters[0],
+		cpu.VecRegisters[1],
+		cpu.VecRegisters[2],
+		cpu.VecRegisters[3],
+		cpu.VecRegisters[4],
+		cpu.VecRegisters[5],
+		cpu.VecRegisters[6],
+		cpu.VecRegisters[7],
+	)
 }
 
 func PrintRFlag(cpu *Registers) {
 
-	fmt.Printf("RFlag: %032b\n", cpu.RFlag)
+	fmt.Printf("\nRFlag: %032b\n", cpu.RFlag)
 
 	fmt.Println("Flags:")
 	

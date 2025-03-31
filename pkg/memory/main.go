@@ -1,12 +1,34 @@
 package memory
 
 import (
-	"fmt"
+	// "fmt"
+
+	"github.com/leon332157/risc-y-8/pkg/types"
 )
 
-func main() {
-	fmt.Println("hello")
+func MemoryStage(msi types.MemoryStageInput, cache CacheType) types.WriteBackStageInput{
+
+	wbsi := msi.WriteBackStageInput
+
+	if msi.IsLoad {
+
+		cache_val := cache.Read(msi.Address)
+		wbsi.RegVal = cache_val
+
+	} else if !msi.IsLoad && !msi.IsControl && !msi.IsALU {
+
+		cache.Write(msi.Address, msi.Data)
+		return types.WriteBackStageInput{}
+			
+	}
+
+	return wbsi
+
 }
+
+// func main() {
+// 	fmt.Println("hello")
+// }
 
 // func main() {
 // 	var mem Memory

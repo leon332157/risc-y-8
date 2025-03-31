@@ -24,7 +24,7 @@ func (reg *Registers) IMM_ADD(rd uint8, imm int16) types.MemoryStageInput{
 
 	result, carry := bits.Add32(augend, addend, 0)
 
-	msi.DestReg = rd
+	msi.Reg = rd
 	msi.RegVal = result
 	msi.IsALU = true
 
@@ -65,7 +65,7 @@ func (regs *Registers) IMM_SUB(rd uint8, imm int16) types.MemoryStageInput{
 
 	result, carry := bits.Sub32(subtrahend, minuend, 0)
 
-	msi.DestReg = rd
+	msi.Reg = rd
 	msi.RegVal = result
 	msi.IsALU = true
 
@@ -103,7 +103,7 @@ func (regs *Registers) REG_MUL(rd uint8, rs uint8) types.MemoryStageInput{
 
 	hi, lo := bits.Mul32(multiplicand, multiplier)
 
-	msi.DestReg = rd
+	msi.Reg = rd
 	msi.RegVal = lo
 
 	regs.ResetFlags()
@@ -127,9 +127,11 @@ func (regs *Registers) REG_MUL(rd uint8, rs uint8) types.MemoryStageInput{
 func (regs *Registers) IMM_LDW(rd uint8, rs uint8, imm int16) types.MemoryStageInput {
 
 	return types.MemoryStageInput{
-		Address: int(regs.IntRegisters[rs-1]) + int(imm), 
-		Data:    0,
-		IsLoad:  true,
+		WriteBackStageInput: types.WriteBackStageInput{
+			Reg:	rd,
+		},
+		Address:	int(regs.IntRegisters[rs-1]) + int(imm), 
+		IsLoad:		true,
 	}
 
 }
@@ -137,9 +139,9 @@ func (regs *Registers) IMM_LDW(rd uint8, rs uint8, imm int16) types.MemoryStageI
 func (regs *Registers) IMM_STW(rd uint8, rs uint8, imm int16) types.MemoryStageInput {
 
 	return types.MemoryStageInput{
-		Address: int(regs.IntRegisters[rs-1]) + int(imm), 
-		Data:    uint32(regs.IntRegisters[rd-1]),
-		IsLoad:  false,
+		Address:	int(regs.IntRegisters[rs-1]) + int(imm), 
+		Data:		regs.IntRegisters[rd-1],
+		IsLoad:		false,
 	}
 
 }
@@ -187,7 +189,7 @@ func (regs *Registers) BNE(rmem uint8, imm int16) types.MemoryStageInput{
 
 	if !regs.CheckFlag(types.ZF) {
 		newAddress := int(uint16(rmem) + uint16(imm))
-		msi.PC = uint32(newAddress)
+		msi.Branch_PC = uint32(newAddress)
 	}
 
 	return msi
