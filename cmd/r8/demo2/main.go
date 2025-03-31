@@ -101,29 +101,72 @@ func main() {
 		fmt.Printf("Instruction %d: 0x%08x\n", i, ram_memory.Contents[i])
 	}
 
-	instruction := fetcher.FetchInstruction(ram_memory, registers)
+	var wb_result types.WBToMem
+	var mem_result types.MemToExe
+	var alu_result types.ExeToDecode
+	var decode_result types.DecodeToFetch
+	var decode_input types.FetchToDecode
+	var execute_input types.DecodeToExe
+	var mem_input types.ExeToMem
+	var wb_input types.MemToWB
+
+	// pipeline loop until
+	for {
+
+		wb_result = writeback.WriteBackStage(registers, wb_input)
+		fmt.Printf("\nWrite Back Stage to Memory Stage Result: %+v\n", wb_result)
+
+		mem_result = memory.MemoryStageToExecute()
+		fmt.Printf("\nMemory Stage to Execute Stage Result: %+v\n", mem_result)
+
+		alu_result = alu.ExecuteStageToDecode()
+		fmt.Printf("\nExecute Stage to Decode Stage Result: %+v\n", alu_result)
+
+		decode_result = decoder.DecodeStageToFetch()
+		fmt.Printf("\nDecode Stage to Fetch Stage Result: %+v\n", decode_result)
+
+		decode_input = fetcher.FetchStageToDecode(ram_memory, registers)
+		fmt.Printf("\nFetch Stage to Decode Stage Result: %+v\n", decode_input)
+
+		execute_input = decoder.DecodeStageToExecute(decode_input)
+		fmt.Printf("\nDecode Stage to Execute Stage Input: %+v\n", execute_input)
+
+		mem_input = alu.ExecuteStageToMemory(registers, execute_input)
+		fmt.Printf("\nExecute Stage to Memory Stage Input: %+v\n", mem_input)
+
+		wb_input = memory.MemoryStageToWriteBack(mem_input, cache)
+		fmt.Printf("\nMemory Stage to Write Back Stage Input: %+v\n", mem_input)
+
+		if registers.IntRegisters[0] == 0 {
+			fmt.Println("Program finished, exiting...")
+			break
+		}
+
+	}
+
+	// This works fine
+	/* instruction := fetcher.FetchStageToDecode(ram_memory, registers)
 
 	fmt.Printf("\nFetched Instruction: 0x%08x\n", instruction)
 	fmt.Printf("Current PC: %d\n", registers.IntRegisters[0])
 
-	decoded_inst := decoder.DecodeInstruction(instruction)
+	decoded_inst := decoder.DecodeStageToExecute(instruction)
 
 	fmt.Printf("Decoded Instruction: %+v\n", decoded_inst)
 
 	alu.PrintIntegerRegisters(registers)
 
-	mem_stage_input := alu.ExecuteInstruction(registers, decoded_inst)
+	mem_stage_input := alu.ExecuteStageToMemory(registers, decoded_inst)
 
 	fmt.Printf("\nMemory Stage Input: %+v\n", mem_stage_input)
 
-	wbsi := memory.MemoryStage(mem_stage_input, cache)
+	wbsi := memory.MemoryStageToWriteBack(mem_stage_input, cache)
 
 	fmt.Printf("\nWrite Back Stage Input: %+v\n", wbsi)
 
 	writeback.WriteBackStage(registers, wbsi)
 
 	alu.PrintIntegerRegisters(registers)
-
-	alu.PrintRFlag(registers)
+	alu.PrintRFlag(registers) */
 
 }
