@@ -1,5 +1,6 @@
 package memory
 
+/*
 import (
 	// "fmt"
 
@@ -64,3 +65,4 @@ func MemoryStageToExecute() types.MemToExe {
 // 	c.Search(32)
 // 	PrintCache(c)
 // }
+*/

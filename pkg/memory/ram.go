@@ -2,19 +2,11 @@ package memory
 
 import "fmt"
 
-// Create a memory interface
-type Memory interface {
-	CreateRAM(numLines int, wordsPerLine int, delay int) []uint32
-	Read(addr int) uint32
-	Write(addr int, val uint32) bool
-}
-
 type RAM struct {
 	Contents     []uint32
-	NumLines     int
-	WordsPerLine int
-	Delay        int
-	Busy         bool
+	NumLines     uint
+	WordsPerLine uint
+	MemoryRequestState
 }
 
 /* This function creates a new uint32 array of a certain size, lineSize, and delay.
@@ -22,7 +14,7 @@ type RAM struct {
    	wordsPerLine int refers to the number of words per line
    	delay int refers to the number of cycles that must be delayed between requests
 */
-func CreateRAM(numLines int, wordsPerLine int, delay int) RAM {
+func CreateRAM(numLines uint, wordsPerLine uint, delay uint) RAM {
 
 	// Create a slice
 	size := numLines * wordsPerLine
@@ -33,41 +25,103 @@ func CreateRAM(numLines int, wordsPerLine int, delay int) RAM {
 		mem[i] = 0
 	}
 
-	return RAM{
-		Contents:     mem,
-		NumLines:     numLines,
-		WordsPerLine: wordsPerLine,
-		Delay:        delay,
-		Busy:         false, // if a stage has requested, flip to true
+	r := MemoryRequestState{
+		NONE,
+		delay,
+		0,
 	}
+
+	return RAM{
+		Contents:           mem,
+		NumLines:           numLines,
+		WordsPerLine:       wordsPerLine,
+		MemoryRequestState: r,
+	}
+}
+
+func (mem *RAM) IsBusy() bool {
+	return mem.MemoryRequestState.CyclesLeft >= 0 
+}
+
+func (mem *RAM) service(who Requester) bool {
+	if mem.MemoryRequestState.CyclesLeft > 0 { // if memory is busy rn
+		if mem.MemoryRequestState.requester == who {
+			// if the same requester, then we decrement cycle left
+			mem.MemoryRequestState.CyclesLeft--
+		} else {
+			// different requester, cannot service
+			if (mem.MemoryRequestState.requester == NONE)  {
+				// If the memory is idle, we can service the new request
+			}
+			return false
+		}
+	} else {
+		// Memory is idle, can service new request
+		mem.MemoryRequestState.CyclesLeft = int(mem.MemoryRequestState.Delay) // Reset the delay counter
+		mem.MemoryRequestState.requester = who                                // Set the requester
+		return true
+	}
+	return false
 }
 
 // Reads a value from memory
-func (mem RAM) Read(addr int) uint32 {
-
-	// Make sure address is valid
-	if addr > (len(mem.Contents) - 1) {
-		fmt.Println("Address cannot be read. Not a valid address.")
-		panic(mem.Contents[addr])
+func (mem *RAM) Read(addr uint, who Requester) ReadResult {
+	if who <= 0 {
+		// if not cache
+		panic("Ram can not accept request from non-cache")
 	}
-	return mem.Contents[addr]
+
+	if !mem.service(who) { // if memory is busy, return WAIT
+		return ReadResult{WAIT, 0} // Indicate that we are waiting
+	}
+
+	if addr > uint(len(mem.Contents)-1) {
+		fmt.Println("Address cannot be read. Not a valid address.")
+		return ReadResult{FAILURE_OUT_OF_RANGE, 0}
+	}
+
+	return ReadResult{SUCCESS, mem.Contents[addr]}
 }
 
 // Writes a value to memory
-func (mem RAM) Write(addr int, val uint32) bool {
+func (mem *RAM) Write(addr uint, who Requester, val uint32) WriteResult {
+	if who <= 0 {
+		// if not cache
+		panic("RAM can not accept request from non-cache")
+	}
 
-	// Make sure address is valid
-	if addr > (len(mem.Contents) - 1) {
-		fmt.Println("Address cannot be written to. Not a valid address.")
-		panic(mem.Contents[addr])
+	if !mem.service(who) { // if memory is busy, return WAIT
+		return WAIT // Indicate that we are waiting
+	}
+
+	if addr > uint(len(mem.Contents)-1) {
+		fmt.Println("Address cannot be read. Not a valid address.")
+		return FAILURE_OUT_OF_RANGE
 	}
 
 	mem.Contents[addr] = val
-	return true
+	return SUCCESS
+
+}
+
+func (mem *RAM) SizeBytes() uint {	
+	return mem.NumLines * mem.WordsPerLine * 4 // 4 bytes per uint32
+}
+
+func (mem *RAM) SizeWords() uint {
+	return mem.NumLines * mem.WordsPerLine
+}
+
+func (mem *RAM) SizeLines() uint {
+	return mem.NumLines
+}
+
+func (mem *RAM) RequestState() MemoryRequestState {
+	return mem.MemoryRequestState
 }
 
 // Prints memory
-func (mem RAM) PrintMem() {
+func (mem *RAM) PrintMem() {
 
 	addr := 0
 	for i := range mem.NumLines {

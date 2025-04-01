@@ -6,7 +6,7 @@ import (
 
 func TestFindIndexAndTag(t *testing.T) {
 	newMem := CreateRAM(32, 8, 5)
-	c := Default(&newMem)
+	c := CreateCacheDefault(&newMem)
 
 	idxTag := c.FindIndexAndTag(128)
 	idx, tag := idxTag.index, idxTag.tag
@@ -21,7 +21,7 @@ func TestFindIndexAndTag(t *testing.T) {
 
 func TestCreateCacheDefault(t *testing.T) {
 	newMem := CreateRAM(32, 8, 5)
-	c := Default(&newMem)
+	c := CreateCacheDefault(&newMem)
 	sets := len(c.Contents)
 	ways := len(c.Contents[7])
 
@@ -36,36 +36,41 @@ func TestCreateCacheDefault(t *testing.T) {
 
 func TestReadHitAndMiss(t *testing.T) {
 	newMem := CreateRAM(32, 8, 5)
-	c := Default(&newMem)
+	c := CreateCacheDefault(&newMem)
 
 	//load into mem, read miss empty cache
-	newMem.Write(32, 0xDEADBEEF)
-	read := c.Read(32)
+	for range 6 {
+		newMem.Write(32, LAST_LEVEL_CACHE,0xDEADBEEF)
+	}
 
-	if read != 3735928559 {
-		t.Errorf("read resulted in %08x; want 0xDEADBEEF", read)
+	var read ReadResult
+
+	read = c.Read(32, FETCH)
+
+	if read.Value != 3735928559 {
+		t.Errorf("read 1 resulted in %08x; want 0xDEADBEEF", read.Value)
 	}
 
 	// Check if loaded into cache, read hit
-	newMem.Write(32, 0xFFFF)
-	read = c.Read(32)
+	newMem.Write(32,LAST_LEVEL_CACHE, 0xFFFF)
+	read = c.Read(32, FETCH)
 
-	if read != 3735928559 {
-		t.Errorf("read resulted in %08x; want 0xDEADBEEF", read)
+	if read.Value != 3735928559 {
+		t.Errorf("read 2 resulted in %08x; want 0xDEADBEEF", read.Value)
 	}
 
 }
 
 func TestWriteThrough(t *testing.T) {
 	newMem := CreateRAM(32, 8, 5)
-	c := Default(&newMem)
+	c := CreateCacheDefault(&newMem)
 
-	c.Write(3, 0x123456)
-	readMem := newMem.Read(3)
-	readC := c.Read(3)
+	c.Write(3, MEMORY, 0x123456)
+	readMem := newMem.Read(3,LAST_LEVEL_CACHE)
+	readC := c.Read(3, MEMORY)
 
-	if readMem != 0x123456 && readC != 0x123456 {
-		t.Errorf("mem read resulted in %08x; want 0x123456", readMem)
-		t.Errorf("cache read resulted in %08x; want 0x123456", readC)
+	if readMem.Value != 0x123456 && readC.Value != 0x123456 {
+		t.Errorf("mem read resulted in %08x; want 0x123456", readMem.Value)
+		t.Errorf("cache read resulted in %08x; want 0x123456", readC.Value)
 	}
 }
