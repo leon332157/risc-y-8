@@ -2,6 +2,7 @@ package cpu
 
 import (
 	"fmt"
+
 	"github.com/leon332157/risc-y-8/pkg/memory"
 )
 
@@ -41,10 +42,10 @@ func (f *FetchStage) Execute() {
 	}
 
 	f.currentInstruction = nil // Reset current instruction before fetching a new one
-	
+	fmt.Println("[FetchStage Execute] Fetching instruction from memory...") // For debugging purposes
 	instruction := cpu.Cache.Read(uint(cpu.ProgramCounter), memory.FETCH_STAGE)
 	if instruction.State != memory.SUCCESS {
-		fmt.Printf("[FetchExecute] Memory fetch failed: %v", memory.LookUpMemoryResult(instruction.State)) // Memory fetch failed
+		fmt.Printf("[FetchExecute] Memory fetch failed: %v\n", memory.LookUpMemoryResult(instruction.State)) // Memory fetch failed
 		return 
 	}
 
@@ -60,5 +61,6 @@ func (f *FetchStage) Advance(_ *InstructionIR, stall bool) {
 		f.next.Advance(nil, true) // Pass 0 instruction to next stage and stall it
 		return
 	}
+	fmt.Printf("[FetchStage] Advancing to next stage with instruction: 0x%08x\n", f.currentInstruction.rawInstruction)
 	f.next.Advance(f.currentInstruction, false)
 }

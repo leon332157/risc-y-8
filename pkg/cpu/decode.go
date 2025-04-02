@@ -49,6 +49,7 @@ func (d *DecodeStage) Execute() {
 	// d.instructionIR = DecodeInstruction(d.instruction)
 	// d.next.Advance(d.instructionIR, false) // Pass the decoded instruction to the next stage
 	if (d.currentInstruction == nil) {
+		fmt.Println("[DecodeStage Execute] No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
 		return
 	}
 	baseInstruction := types.BaseInstruction{} // Create a new BaseInstruction to decode the instruction
@@ -92,10 +93,11 @@ func (d *DecodeStage) Execute() {
 
 func (d *DecodeStage) Advance(i *InstructionIR, stalled bool) {
 	if stalled {
-		fmt.Printf("[%v] previous stage %v returned stall ", d.Name(), d.prev.Name())
-		d.next.Advance(nil, true)
-		return
+		fmt.Printf("[%v] previous stage %v returned stall\n", d.Name(), d.prev.Name())
+		//d.next.Advance(nil, true)
+		//return
 	}
+	fmt.Printf("[%v] Advancing to next stage with instruction: %+v\n", d.Name(), d.currentInstruction)
 	d.next.Advance(d.currentInstruction, false) // Pass the instruction to the next stage
 	d.currentInstruction = i
 }	

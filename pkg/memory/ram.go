@@ -135,10 +135,12 @@ func (mem *RAM) PrintMem() {
 		for range mem.WordsPerLine {
 			fmt.Printf("%08x ", mem.Contents[addr])
 			addr++
+			fmt.Print("] ")
 		}
 
 		if addr%8 == 0 && addr != 0 {
-			fmt.Println("]")
+			fmt.Println("")
 		}
 	}
+	fmt.Println()
 }

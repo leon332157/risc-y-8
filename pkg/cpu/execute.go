@@ -112,6 +112,7 @@ func (e *ExecuteStage) Control(instruction *InstructionIR) {
 func (e *ExecuteStage) Execute() {
 	if e.currentInstruction == nil {
 		// If there is no instructionIR to execute, return early
+		fmt.Println("[ExecuteStage Execute] No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
 		return
 	}
 	switch e.currentInstruction.BaseInstruction.OpType {
@@ -130,10 +131,11 @@ func (e *ExecuteStage) Execute() {
 }
 func (e *ExecuteStage) Advance(i *InstructionIR, stalled bool) {
 	if stalled {
-		fmt.Printf("[%v] previous stage %v returned stall ", e.Name(), e.prev.Name())
-		e.next.Advance(nil, true)
-		return
+		fmt.Printf("[%v] previous stage %v returned stall\n", e.Name(), e.prev.Name())
+		//e.next.Advance(nil, true)
+		//return
 	}
+	fmt.Printf("[%v] Advancing to next stage with instruction: %+v\n", e.Name(), e.currentInstruction)
 	e.next.Advance(e.currentInstruction, false) // Pass the instruction to the next stage
 	e.currentInstruction = i
 }

@@ -35,6 +35,7 @@ func (w *WriteBackStage) Name() string {
 func (w *WriteBackStage) Execute() {
 	if w.currentInstruction == nil {
 		// No instruction to write back, return early
+		fmt.Println("[WriteBackStage Execute] No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
 		return
 	}
 	// Perform the write-back operation, typically writing the result back to the register file or memory
@@ -48,12 +49,12 @@ func (w *WriteBackStage) Execute() {
 			}
 			if w.currentInstruction.BaseInstruction.Rd == 0 {
 				// writing to PC
-				fmt.Println("[WriteBackStage] Writing to Program Counter directly from control instruction")
+				fmt.Printf("[WriteBackStage] Writing to Program Counter directly from control instruction to %v\n", w.currentInstruction.DestMemAddr)
 				w.pipeline.SquashALL()
 				w.pipeline.cpu.ProgramCounter = w.currentInstruction.DestMemAddr // Update the Program Counter if this is a control instruction
 			}
 		}
-		fmt.Printf("[WriteBackStage] Writing back result: %v to %v\n", w.currentInstruction.Result, w.currentInstruction.BaseInstruction.Rd)
+		fmt.Printf("[WriteBackStage] Writing back result: %v to r%v\n", w.currentInstruction.Result, w.currentInstruction.BaseInstruction.Rd)
 		w.pipeline.cpu.unblockRegister(w.currentInstruction.BaseInstruction.Rd)                                     // Unblock the destination register if applicable
 		(&w.pipeline.cpu.IntRegisters[w.currentInstruction.BaseInstruction.Rd]).Value = w.currentInstruction.Result // Write the result back to the register file
 	} else {
@@ -64,9 +65,9 @@ func (w *WriteBackStage) Execute() {
 
 func (w *WriteBackStage) Advance(i *InstructionIR, stalled bool) {
 	if stalled {
-		fmt.Printf("[%v] previous stage %v returned stall ", w.Name(), w.prev.Name())
-		return
+		fmt.Printf("[%v] previous stage %v returned stall\n", w.Name(), w.prev.Name())
+		//return
 	}
+	fmt.Printf("[WriteBackStage] Got with instruction: %+v\n", i) // Debugging output to see which instruction is being processed
 	w.currentInstruction = i // Set the current instruction to the one passed in, this is used in Execute()
-	fmt.Println("Hits write back")
 }
