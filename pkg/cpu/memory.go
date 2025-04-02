@@ -53,11 +53,14 @@ func (m *MemoryStage) Name() string {
 
 func (m *MemoryStage) Execute() {
 	if m.currentInstruction == nil {
+		fmt.Println("[MemoryStage Execute] No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
 		return
 	}
 	if m.currentInstruction.BaseInstruction.OpType != types.LoadStore {
-		fmt.Println("[MemoryStage Execute] Current instruction is not a load/store type, skipping memory stage execution")
+		fmt.Printf("[MemoryStage Execute] Current instruction is not a load/store type, skipping memory stage execution %+v\n", m.currentInstruction) // For debugging purposes, skip if not a load/store instruction
 		return
+	} else {
+		fmt.Printf("[MemoryStage Execute] Processing instruction: %+v\n", m.currentInstruction) // For debugging purposes
 	}
 	cache := m.pipeline.cpu.Cache
 	destAddr := uint(m.currentInstruction.DestMemAddr)
@@ -100,14 +103,16 @@ func (m *MemoryStage) Execute() {
 
 func (m *MemoryStage) Advance(i *InstructionIR, stalled bool) {
 	if stalled {
-		fmt.Printf("[%v] previous stage %v returned stall ", m.Name(), m.prev.Name())
+		fmt.Printf("[%v] previous stage %v returned stall\n", m.Name(), m.prev.Name())
+		//m.next.Advance(nil, true)
+		//return
+	}
+	if m.waiting {
+		fmt.Printf("[%v] still waiting for operation, can not advance\n", m.Name())
 		m.next.Advance(nil, true)
 		return
 	}
-	if m.waiting {
-		fmt.Printf("[%v] still waiting for operation, can not advance", m.Name())
-		m.next.Advance(nil, true)
-	}
+	fmt.Printf("[%v] Advancing to next stage with instruction: %+v\n", m.Name(), m.currentInstruction)
 	m.next.Advance(m.currentInstruction, false)
 	m.currentInstruction = i
 }

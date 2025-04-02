@@ -89,6 +89,7 @@ func (cpu *CPU) PrintReg() {
 		fmt.Printf("r%d: 0x%08x\t", i, reg.Value)
 
 	}
+	fmt.Println()
 }
 
 const INIT_VECTOR = 0
@@ -112,16 +113,38 @@ func Main() {
 			ALU:    types.ImmALU["add"],
 			Imm:    32,
 		}).Encode(),
-
-		// MUL r4, r5
+		// ADD r5, 32
 		(&types.BaseInstruction{
-			OpType: types.RegReg,
-			Rd:     4,
-			ALU:    types.RegALU["mul"],
-			Rs:     5,
+			OpType: types.RegImm,
+			Rd:     5,
+			ALU:    types.ImmALU["add"],
+			Imm:    32,
 		}).Encode(),
 
-		// STW r4, [r20 + 32]
+		// ADD r5, 32
+		(&types.BaseInstruction{
+			OpType: types.RegImm,
+			Rd:     5,
+			ALU:    types.ImmALU["add"],
+			Imm:    32,
+		}).Encode(),
+
+		// ADD r5, 32
+		(&types.BaseInstruction{
+			OpType: types.RegImm,
+			Rd:     5,
+			ALU:    types.ImmALU["add"],
+			Imm:    32,
+		}).Encode(),
+		// ADD r5, 32
+		(&types.BaseInstruction{
+			OpType: types.RegImm,
+			Rd:     5,
+			ALU:    types.ImmALU["add"],
+			Imm:    32,
+		}).Encode(),
+
+		// STW r4, [r20 + 30]
 		(&types.BaseInstruction{
 			OpType: types.LoadStore,
 			Rd:     4,
@@ -130,13 +153,22 @@ func Main() {
 			Imm:    30,
 		}).Encode(),
 
-		// LDW r6, [r20 + 32]
+		// LDW r6, [r20 + 29]
 		(&types.BaseInstruction{
 			OpType: types.LoadStore,
 			Rd:     6,
 			Mode:   types.LDW,
 			RMem:   20,
-			Imm:    30,
+			Imm:    29,
+		}).Encode(),
+
+		// STW r6, [r20 + 29]
+		(&types.BaseInstruction{
+			OpType: types.LoadStore,
+			Rd:     6,
+			Mode:   types.STW,
+			RMem:   20,
+			Imm:    29,
 		}).Encode(),
 
 		// CMP r6, 0
@@ -161,7 +193,7 @@ func Main() {
 			OpType: types.RegImm,
 			Rd:     4,
 			ALU:    types.ImmALU["sub"],
-			Imm:    16,
+			Imm:    1,
 		}).Encode(),
 
 		(&types.BaseInstruction{
@@ -170,6 +202,7 @@ func Main() {
 			ALU:    types.ImmALU["add"],
 			Imm:    2,
 		}).Encode(),
+
 		(&types.BaseInstruction{
 			OpType: types.RegImm,
 			Rd:     8,
@@ -196,7 +229,7 @@ func Main() {
 		}).Encode(),
 	}
 
-	ram := memory.CreateRAM(32, 1, 0)
+	ram := memory.CreateRAM(32, 1, 4)
 
 	copy(ram.Contents, inst_array)
 
@@ -215,16 +248,14 @@ func Main() {
 	ms.Init(pipeline, ws, es)
 	ws.Init(pipeline, nil, ms)
 	pipeline.AddStages(ws, ms, es, ds, fs)
-	for range 20 {
-	pipeline.RunOnePass()
-	fmt.Println("Clock:", cpu.Clock) // Print the clock cycle for debugging purposes
-	fmt.Println("PC:", cpu.ProgramCounter)
-	cpu.Cache.PrintCache()
-	cpu.RAM.PrintMem()
-	cpu.PrintReg()
+	for range 300 {
+		pipeline.RunOnePass()
+		fmt.Println("Clock:", cpu.Clock) // Print the clock cycle for debugging purposes
+		fmt.Println("PC:", cpu.ProgramCounter)
+		fmt.Println("Cache")
+		cpu.Cache.PrintCache()
+		fmt.Println("Memory")
+		cpu.RAM.PrintMem()
+		cpu.PrintReg()
 	}
-
-	cpu.Cache.PrintCache()
-	cpu.RAM.PrintMem()
-	cpu.PrintReg()
 }

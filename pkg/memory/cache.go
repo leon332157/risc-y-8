@@ -221,7 +221,6 @@ func (c *CacheType) GetLRU(setIndex uint) uint {
 }
 
 func (cache *CacheType) PrintCache() {
-
 	fmt.Println("Tag    Index        Data    Valid    LRU")
 	for i := range cache.Contents {
 		for j := 0; j < len(cache.Contents[i]); j++ {
@@ -229,6 +228,5 @@ func (cache *CacheType) PrintCache() {
 			fmt.Printf("%05b    %03b    %08x    %t    %d\n", line.Tag, i, line.Data, line.Valid, line.LRU)
 		} // might have to adjust depending on cache configs --> but nice looking for default cache
 	}
-	fmt.Println("DONE")
 	fmt.Println("")
 }
