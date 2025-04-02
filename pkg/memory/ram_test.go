@@ -112,3 +112,38 @@ func TestDifferentStageAccess(t *testing.T) {
 	}
 
 }
+
+func TestStagingFiveDelayWrite(t *testing.T) {
+	mem := CreateRAM(32, 8, 5)
+
+	call1 := mem.Write(1, LAST_LEVEL_CACHE, 0x122122)
+	call2 := mem.Write(1, LAST_LEVEL_CACHE, 0x122122)
+	call3 := mem.Write(1, LAST_LEVEL_CACHE, 0x122122)
+	call4 := mem.Write(1, LAST_LEVEL_CACHE, 0x122122)
+	call5 := mem.Write(1, LAST_LEVEL_CACHE, 0x122122)
+	call6 := mem.Write(1, LAST_LEVEL_CACHE, 0x122122)
+	call7 := mem.Write(1, LAST_LEVEL_CACHE, 0x122122)
+
+	if call1 != WAIT {
+		t.Errorf("ram should return wait, got %d", call1)
+	}
+	if call2 != WAIT {
+		t.Errorf("ram should return wait %d", call2)
+	}
+	if call3 != WAIT {
+		t.Errorf("ram should return wait %d", call3)
+	}
+	if call4 != WAIT {
+		t.Errorf("ram should return wait %d", call4)
+	}
+	if call5 != WAIT {
+		t.Errorf("ram should return wait %d", call5)
+	}
+	if call6 != SUCCESS {
+		t.Errorf("ram should return success, got %d", call6)
+	}
+	if call7 != WAIT {
+		t.Errorf("ram should return success, got %d", call7)
+	}
+
+}

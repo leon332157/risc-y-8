@@ -28,7 +28,7 @@ func CreateRAM(numLines uint, wordsPerLine uint, delay uint) RAM {
 	r := MemoryRequestState{
 		NONE,
 		delay,
-		0,
+		int(delay),
 	}
 
 	return RAM{
@@ -52,6 +52,7 @@ func (mem *RAM) service(who Requester) bool {
 			// different requester, cannot service
 			if (mem.MemoryRequestState.requester == NONE)  {
 				// If the memory is idle, we can service the new request
+				mem.MemoryRequestState.CyclesLeft--
 			}
 			return false
 		}
@@ -91,16 +92,16 @@ func (mem *RAM) Write(addr uint, who Requester, val uint32) WriteResult {
 	}
 
 	if !mem.service(who) { // if memory is busy, return WAIT
-		return WAIT // Indicate that we are waiting
+		return WriteResult{WAIT, 0}// Indicate that we are waiting
 	}
 
 	if addr > uint(len(mem.Contents)-1) {
 		fmt.Println("Address cannot be read. Not a valid address.")
-		return FAILURE_OUT_OF_RANGE
+		return WriteResult{FAILURE_OUT_OF_RANGE,0}
 	}
 
 	mem.Contents[addr] = val
-	return SUCCESS
+	return WriteResult{SUCCESS, 0}
 
 }
 

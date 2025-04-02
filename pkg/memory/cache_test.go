@@ -74,3 +74,35 @@ func TestWriteThrough(t *testing.T) {
 		t.Errorf("cache read resulted in %08x; want 0x123456", readC.Value)
 	}
 }
+
+func TestStagingDelay(t *testing.T) {
+	newMem := CreateRAM(32, 8, 5)
+	c := CreateCache(8, 2, 1)
+
+	c.Write(3, FETCH, 0xFFFFFF)
+	
+
+}
+
+func TestStagingReadDelay(t *testing.T) {
+	mem := CreateRAM(32, 8, 2)
+	c := CreateCache(8, 2, 2, &mem)
+
+	call1 := c.Read(1, FETCH)
+	call2 := c.Read(1, FETCH)
+	call3 := c.Read(1, MEMORY)
+	call4 := c.Read(1, FETCH)
+
+	if call1.State != WAIT_NEXT_LEVEL {
+		t.Errorf("should be wait on mem, got %d", call1)
+	}
+	if call2.State != WAIT_NEXT_LEVEL {
+		t.Errorf("should be wait on mem, got %d", call2)
+	}
+	if call3.State != WAIT {
+		t.Errorf("should be wait, got %d", call3)
+	}
+	if call4.State != SUCCESS {
+		t.Errorf("should be success, got %d", call4)
+	}
+}

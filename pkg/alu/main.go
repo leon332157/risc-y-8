@@ -1,9 +1,8 @@
 package alu
 
-import (
-	"github.com/leon332157/risc-y-8/pkg/types"
-)
+import ()
 
+/*
 var etodecode types.ExeToDecode
 
 func ExecuteStageToMemory(regs *Registers, inst types.DecodeToExe) types.ExeToMem{
@@ -43,14 +42,14 @@ func ExecuteStageToMemory(regs *Registers, inst types.DecodeToExe) types.ExeToMe
 			panic("unsupported load/store operation")
 		}
 	case types.Control:
-		
+
 		// BNE
 		if (inst.Instruction.Mode == 0b000 && inst.Instruction.Flag == 0b0000) {
 			return regs.BNE(inst.Instruction.RMem, inst.Instruction.Imm)
 		} else {
 			panic("unsupported control operation")
 		}
-		
+
 	default:
 		// Handle unsupported operation type
 		panic("unsupported operation type")
@@ -61,4 +60,9 @@ func ExecuteStageToDecode() types.ExeToDecode {
 
 	return etodecode
 
+}
+*/
+
+func NewALU() *ALU {
+	return new(ALU);
 }

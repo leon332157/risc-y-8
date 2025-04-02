@@ -140,13 +140,6 @@ const (
 	Control   = 0b11 // control
 )
 
-const (
-	CF		uint32 = 1 << 0	// Carry Flag
-	OVF		uint32 = 1 << 1	// Overflow Flag
-	ZF		uint32 = 1 << 2	// Zero Flag
-	SF		uint32 = 1 << 3	// Sign Flag
-)
-
 type BaseInstruction struct {
 	OpType uint8 // 00 for reg-imm, 01 for reg-reg, 10 for load/store, 11 for control
 	Rd     uint8 // Destination register

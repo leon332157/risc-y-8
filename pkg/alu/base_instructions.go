@@ -1,15 +1,12 @@
-
+/*
 package alu
 import (
 	"math/bits"
 	"github.com/leon332157/risc-y-8/pkg/types"
 )
 
-func SignExtend(val uint32) int64 {
-	return int64(int32(val))
-}
 
-/* Adds an immediate (source) to rd. Calculation is signed arithmetic. CF is set when carry out is 1. ZF is set when the addition result is 0, SF is set when the result of addition is negative, OF is calculated as SF ^ MSB of imm ^ MSB of rd */
+// Adds an immediate (source) to rd. Calculation is signed arithmetic. CF is set when carry out is 1. ZF is set when the addition result is 0, SF is set when the result of addition is negative, OF is calculated as SF ^ MSB of imm ^ MSB of rd 
 func (reg *Registers) IMM_ADD(rd uint8, imm int16) types.ExeToMem{
 
 	etom := types.ExeToMem{}
@@ -195,3 +192,5 @@ func (regs *Registers) BNE(rmem uint8, imm int16) types.ExeToMem{
 	return etom
 
 }
+*/
+package alu

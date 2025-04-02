@@ -1,17 +1,14 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/leon332157/risc-y-8/pkg/writeback"
-	"github.com/leon332157/risc-y-8/pkg/memory"
-	"github.com/leon332157/risc-y-8/pkg/alu"
-	"github.com/leon332157/risc-y-8/pkg/decoder"
-	"github.com/leon332157/risc-y-8/pkg/fetcher"
-	"github.com/leon332157/risc-y-8/pkg/types"
+	"github.com/leon332157/risc-y-8/pkg/cpu"
 )
 
 func main() {
+	cpu.Main()
+}
+// richard original code
+/* func main() {
 
 	// Create a RAM memory with 32 lines, 8 words per line, and 3 cycle delay
 	ram_memory := memory.CreateRAM(32, 8, 3)
@@ -142,7 +139,7 @@ func main() {
 			break
 		}
 
-	}
+	} */
 
 	// This works fine
 	/* instruction := fetcher.FetchStageToDecode(ram_memory, registers)
@@ -167,6 +164,6 @@ func main() {
 	writeback.WriteBackStage(registers, wbsi)
 
 	alu.PrintIntegerRegisters(registers)
-	alu.PrintRFlag(registers) */
+	alu.PrintRFlag(registers)
 
-}
+} */

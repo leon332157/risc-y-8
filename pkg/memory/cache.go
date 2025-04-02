@@ -150,7 +150,7 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 // Write through, no allocate policy
 func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	if !c.service(who) {
-		return WAIT
+		return WriteResult{WAIT, 0}
 	}
 	// Given address find the set index and tag
 	idxTag := c.FindIndexAndTag(addr)
@@ -182,16 +182,15 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	}
 
 	written := c.LowerLevel.Write(addr, LAST_LEVEL_CACHE, val)
-	switch written {
-	case WAIT:
-		return WriteResult(WAIT_NEXT_LEVEL)
-	case WAIT_NEXT_LEVEL:
-		return WriteResult(WAIT_NEXT_LEVEL)
+	switch written.State {
+	case WAIT, WAIT_NEXT_LEVEL:
+		return WriteResult{WAIT_NEXT_LEVEL, 0} // Waiting for next level memory to service the request
 	case SUCCESS:
+		return WriteResult{SUCCESS, written.Written} // Successfully wrote to memory (write-through)
 	default:
-		return WriteResult(written)
+		return WriteResult{FAILURE, 0} // Failure to write to memory, return failure
 	}
-	return FAILURE_INVALID_STATE
+	return WriteResult{FAILURE_INVALID_STATE, 0}
 }
 
 func (c *CacheType) UpdateLRU(setIndex uint, line uint) {

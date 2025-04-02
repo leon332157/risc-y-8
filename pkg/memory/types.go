@@ -1,11 +1,15 @@
 package memory
 
 type MemoryResult int32
-type WriteResult MemoryResult
 
 type ReadResult struct {
 	State MemoryResult
 	Value uint32
+}
+
+type WriteResult struct {
+	State MemoryResult
+	Written uint32 // The value that was written, this may be different than the input value if there was an error or a delay in writing
 }
 
 const (
@@ -17,12 +21,31 @@ const (
 	FAILURE
 )
 
+func LookUpMemoryResult(s MemoryResult) string {
+	switch s {
+	case FAILURE_INVALID_STATE:
+		return "FAILURE_INVALID_STATE"
+	case SUCCESS:
+		return "SUCCESS"
+	case WAIT:
+		return "WAIT"
+	case WAIT_NEXT_LEVEL:
+		return "WAIT_NEXT_LEVEL"
+	case FAILURE_OUT_OF_RANGE:
+		return "FAILURE_OUT_OF_RANGE"
+	case FAILURE:
+		return "FAILURE"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 type Requester int
 
 const (
 	NONE Requester = 0 // No requester, used for idle state
-	FETCH Requester = -1// Fetch stage in pipeline
-	MEMORY Requester = -2// Memory stage in pipeline
+	FETCH_STAGE Requester = -1// Fetch stage in pipeline
+	MEMORY_STAGE Requester = -2// Memory stage in pipeline
 )
 
 const (
