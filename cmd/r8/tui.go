@@ -6,6 +6,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// TODO: develop models to represents necessary components of our TUI
+// RAM & Cache --> (configurable cache ??)
+// Registers
+// Pipeline Stages
+// Current instruction
 type Model struct {
 }
 
@@ -28,7 +33,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	return "have a cup of tea"
+	return "have a cup of tea!"
 }
 
 func TUIMain() {
