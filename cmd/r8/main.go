@@ -2,6 +2,7 @@ package r8
 
 import (
 	"fmt"
+
 	"github.com/leon332157/risc-y-8/cmd/r8/internal/assembler"
 	"github.com/spf13/cobra"
 )
@@ -22,4 +23,8 @@ func main1() {
 	fmt.Println("hello from main")
 	//assembler.ParseString("add r1, r2\nadd r3, -1")
 	fmt.Printf("%x\n", assembler.EncInstructions())
+}
+
+func Main() {
+	TUIMain()
 }
