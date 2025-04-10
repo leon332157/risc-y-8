@@ -34,6 +34,7 @@ type Model struct {
 	writeback table.Model
 }
 
+// TODO: CREATE NESTED MODELS
 // type RamModel struct {
 // 	ram table.Model
 // }
