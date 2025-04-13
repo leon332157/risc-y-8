@@ -26,5 +26,5 @@ func main1() {
 }
 
 func Main() {
-	TUIMain()
+	TUImain()
 }

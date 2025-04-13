@@ -2,98 +2,54 @@ package r8
 
 import (
 	"fmt"
-	"log"
+	"os"
 
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	table "github.com/charmbracelet/lipgloss/table"
 	"github.com/leon332157/risc-y-8/pkg/memory"
 )
 
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240")).
-	BorderBackground(lipgloss.Color("240"))
+const (
+	ramLines    = 32
+	ramWords    = 8
+	cacheSets   = 8
+	cacheWays   = 2
+	pipelineLen = 5
+	registers   = 8 // ?????? Int, FP, Vector
+)
 
-// TODO: develop models to represents necessary components of our TUI
-// RAM & Cache --> (configurable cache ??)
-// Registers
-// Pipeline Stages
-// Current instruction
-type Model struct {
-	// embed other models on page
-	ram       table.Model
-	cache     table.Model
-	regs      table.Model
-	instr     textinput.Model
-	fetch     table.Model //single column table
-	decode    table.Model
-	execute   table.Model
-	memory    table.Model
-	writeback table.Model
+var ram = memory.CreateRAM(32, 8, 5)
+var cache = memory.CreateCacheDefault(&ram)
+
+// TODO: get the rest connected and working
+// var pipeline =
+// var alu =
+// var cpu =
+
+type model struct {
+	instr textinput.Model
 }
 
-// TODO: CREATE NESTED MODELS
-// type RamModel struct {
-// 	ram table.Model
-// }
+func initialModel() model {
+	ti := textinput.New()
+	ti.Placeholder = "Instruction . . ."
+	ti.Focus()
+	ti.CharLimit = 100
+	ti.Width = 50
 
-func (m Model) Init() tea.Cmd {
-	return nil
-}
-
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
-	switch msg := msg.(type) {
-	// Keyboard events
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c": // key to exit the tui
-			return m, tea.Quit
-		}
-		// TODO: Click events??
-		// forward arrow advances the pipeline by one stage
-		// ctrl+n advances the pipeline by 5 stages?? (1 cycle)
+	return model{
+		instr: ti,
 	}
-	return m, nil
 }
 
-func (m Model) View() string {
-	return baseStyle.Render(m.cache.View()) //+ baseStyle.Render(m.ram.View()) + "\n"
+func (m model) Init() tea.Cmd {
+	return textinput.Blink
 }
 
-func TUIMain() {
-
-	// RAM DISPLAY:
-	ram := memory.CreateRAM(32, 8, 5)
-
-	// loop thru contents, make RAM rows
-	rRows := []table.Row{}
-	addr := 0
-	for range ram.NumLines {
-		row := []string{}
-		for range ram.WordsPerLine {
-			row = append(row, fmt.Sprintf("%08X", ram.Contents[addr]))
-			addr++
-		}
-		rRows = append(rRows, row)
-	}
-
-	rm := table.New(
-		table.WithColumns([]table.Column{
-			{Title: "RAM", Width: 8}, {Width: 8}, {Width: 8}, {Width: 8},
-			{Width: 8}, {Width: 8}, {Width: 8}, {Width: 8},
-		}),
-		table.WithRows(rRows),
-		table.WithFocused(true),
-		table.WithHeight(int(ram.NumLines)+1),
-	)
-
-	// CACHE DISPLAY:
-	cache := memory.CreateCacheDefault(&ram)
-
-	cRows := []table.Row{}
+func getCacheRows() [][]string {
+	cRows := [][]string{}
 	for i := range cache.Contents {
 		for j := range cache.Ways {
 			data := cache.Contents[i][j]
@@ -106,41 +62,98 @@ func TUIMain() {
 			cRows = append(cRows, row)
 		}
 	}
+	return cRows
+}
 
-	c := table.New(
-		table.WithColumns([]table.Column{
-			{Title: "Tag", Width: 5}, {Title: "Index", Width: 5}, {Title: "Data", Width: 8},
-			{Title: "Valid", Width: 5}, {Title: "LRU", Width: 3},
-		}),
-		table.WithRows(cRows),
-		table.WithFocused(true),
-		table.WithHeight(int(cache.Sets*cache.Ways)+1),
-	)
-
-	rg := table.New(
-	// How are registers created?
-	)
-
-	i := textinput.New()
-
-	fet := table.New()
-	dec := table.New()
-	exe := table.New()
-	mem := table.New()
-	wb := table.New()
-
-	m := Model{rm, c, rg, i, fet, dec, exe, mem, wb}
-
-	// Log details to a file for debugging purposes
-	f, err := tea.LogToFile("debug.log", "debug")
-	if err != nil {
-		log.Fatalf("err: %w", err)
+func getRAMRows() [][]string {
+	rRows := [][]string{}
+	addr := 0
+	for i := 0; i < int(ram.NumLines); i++ {
+		row := []string{}
+		row = append(row, fmt.Sprintf("%d", i))
+		for range ram.WordsPerLine {
+			row = append(row, fmt.Sprintf("%08X", ram.Contents[addr]))
+			addr++
+		}
+		rRows = append(rRows, row)
 	}
-	defer f.Close()
+	return rRows
+}
 
-	// Run a new tea program
-	program := tea.NewProgram(m, tea.WithAltScreen())
-	if _, err := program.Run(); err != nil {
-		log.Fatal(err)
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			return m, tea.Quit
+		case "enter":
+			// TODO: text input is saved and instruction is sent
+			// call view?
+		}
+	case tea.WindowSizeMsg:
+		// handle resize if needed
+	}
+
+	var cmd tea.Cmd
+	m.instr, cmd = m.instr.Update(msg)
+	return m, cmd
+}
+
+func (m model) View() string {
+	ram := drawRAM()
+	cache := drawCache()
+	pipeline := drawPipeline()
+	registerView := drawRegisters()
+	cmdLine := m.instr.View() + "\n"
+
+	// TODO: Show Clock and PC
+
+	column1 := lipgloss.JoinVertical(lipgloss.Top, pipeline)
+	regCache := lipgloss.JoinHorizontal(lipgloss.Left, registerView, cache, "\n")
+	connect := lipgloss.JoinVertical(lipgloss.Top, column1, regCache)
+	row1 := lipgloss.JoinHorizontal(lipgloss.Top, connect, "\n", ram)
+	ui := lipgloss.JoinVertical(lipgloss.Left, row1, cmdLine)
+
+	return "\n" + ui + "\n" + "---- ctrl+c or q to quit ----" + "\n"
+}
+
+func drawRAM() string {
+	rows := getRAMRows()
+	ramTable := table.New().Border(lipgloss.NormalBorder()).Rows(rows...)
+	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("63")).Render("RAM\n" + ramTable.Render())
+}
+
+func drawCache() string {
+	headers := []string{"Tag", "Index", "Data", "Valid", "LRU"}
+	rows := getCacheRows()
+	cacheTable := table.New().Border(lipgloss.NormalBorder()).Headers(headers...).Rows(rows...)
+	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("129")).Render("Cache\n" + cacheTable.Render())
+}
+
+func drawPipeline() string {
+	// TODO: create pipeline instance along with cpu
+	labels := []string{" Fetch ", " Decode ", " Execute ", " Memory ", " Writeback "}
+	row := []string{"", "", "", "", ""}
+	// TODO: show stage result in row?? SUCCESS, STALL, FAILURE, NOOP, etc.
+	pipelineTable := table.New().Border(lipgloss.NormalBorder()).Headers(labels...).Rows(row)
+	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("33")).Render("Pipeline\n" + pipelineTable.Render())
+}
+
+func drawRegisters() string {
+	// TODO: create a cpu instance and make int registers
+	headers := []string{"Register", "Value"}
+	rows := [][]string{}
+	for i := 0; i < registers; i++ {
+		rows = append(rows, []string{fmt.Sprintf("R%d", i), "00"})
+	}
+	regTable := table.New().Border(lipgloss.NormalBorder()).Headers(headers...).Rows(rows...)
+	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render("Registers\n" + regTable.Render())
+}
+
+func TUImain() {
+	p := tea.NewProgram(initialModel())
+	if err := p.Start(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
 	}
 }
