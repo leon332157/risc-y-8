@@ -34,7 +34,7 @@ type model struct {
 
 func initialModel() model {
 	ti := textinput.New()
-	ti.Placeholder = "Instruction . . ."
+	ti.Placeholder = "type an instruction . . ."
 	ti.Focus()
 	ti.CharLimit = 100
 	ti.Width = 50
