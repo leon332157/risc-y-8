@@ -65,9 +65,9 @@ func TestPushPop(t *testing.T) {
 				makeRegister("r1"))},
 
 		expected: BaseInstruction{
-			OpType: LoadStore,
-			Rd:     1,
-			Mode:   PUSH,
+			OpType:  LoadStore,
+			Rd:      1,
+			MemMode: PUSH,
 		},
 	}, {
 		instr: grammar.Instruction{
@@ -118,11 +118,11 @@ func TestCallRet(t *testing.T) {
 				Mnemonic: "call",
 				Operands: makeOperands(makeMemory("r31", "+", "0x100"))},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   31,
-				Mode:   0b111,
-				Flag:   0b1111,
-				Imm:    0x100,
+				OpType:   Control,
+				RMem:     31,
+				CtrlMode:  0b111,
+				CtrlFlag: 0b1111,
+				Imm:      0x100,
 			},
 		},
 		{
@@ -130,11 +130,11 @@ func TestCallRet(t *testing.T) {
 				Mnemonic: "call",
 				Operands: makeOperands(makeMemory("r31", "+", "-1"))},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   31,
-				Mode:   0b111,
-				Flag:   0b1111,
-				Imm:    -1,
+				OpType:   Control,
+				RMem:     31,
+				CtrlMode:  0b111,
+				CtrlFlag: 0b1111,
+				Imm:      -1,
 			},
 		},
 		{
@@ -149,11 +149,11 @@ func TestCallRet(t *testing.T) {
 				Mnemonic: "call",
 				Operands: makeOperands(makeMemory("r10", "-", "0x100"))},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   10,
-				Mode:   0b111,
-				Flag:   0b1111,
-				Imm:    -0x100,
+				OpType:   Control,
+				RMem:     10,
+				CtrlMode:  0b111,
+				CtrlFlag: 0b1111,
+				Imm:      -0x100,
 			},
 		},
 	}
@@ -172,10 +172,10 @@ func TestCallRet(t *testing.T) {
 				Mnemonic: "ret",
 				Operands: makeOperands()},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   31,
-				Mode:   0b111,
-				Flag:   0b0000,
+				OpType:   Control,
+				RMem:     31,
+				CtrlMode:  0b111,
+				CtrlFlag: 0b0000,
 			},
 		},
 		{
@@ -196,11 +196,11 @@ func TestBranch(t *testing.T) {
 				Operands: makeOperands(
 					makeMemory("r1", "+", "0x111"))},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   1,
-				Mode:   0b0,
-				Flag:   0b0,
-				Imm:    0x111,
+				OpType:   Control,
+				RMem:     1,
+			CtrlMode:  0b0,
+				CtrlFlag: 0b0,
+				Imm:      0x111,
 			}},
 		{
 			instr: grammar.Instruction{
@@ -208,11 +208,11 @@ func TestBranch(t *testing.T) {
 				Operands: makeOperands(
 					makeMemory("r9", "+", "-10"))},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   9,
-				Mode:   0b0,
-				Flag:   0b1,
-				Imm:    -10,
+				OpType:   Control,
+				RMem:     9,
+				CtrlMode:  0b0,
+				CtrlFlag: 0b1,
+				Imm:      -10,
 			}},
 		{
 			instr: grammar.Instruction{
@@ -220,11 +220,11 @@ func TestBranch(t *testing.T) {
 				Operands: makeOperands(
 					makeMemory("r29", "-", "0x111"))},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   29,
-				Mode:   0b001,
-				Flag:   0b0110,
-				Imm:    -0x111,
+				OpType:   Control,
+				RMem:     29,
+				CtrlMode:  0b001,
+				CtrlFlag: 0b0110,
+				Imm:      -0x111,
 			}},
 		{
 			instr: grammar.Instruction{
@@ -232,11 +232,11 @@ func TestBranch(t *testing.T) {
 				Operands: makeOperands(
 					makeMemory("r31", "-", "0x111"))},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   31,
-				Mode:   0b011,
-				Flag:   0b0110,
-				Imm:    -0x111,
+				OpType:   Control,
+				RMem:     31,
+				CtrlMode:  0b011,
+				CtrlFlag: 0b0110,
+				Imm:      -0x111,
 			}},
 		{
 			instr: grammar.Instruction{
@@ -244,11 +244,11 @@ func TestBranch(t *testing.T) {
 				Operands: makeOperands(
 					makeMemory("r31", "-", "0x111"))},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   31,
-				Mode:   0b100,
-				Flag:   0b1000,
-				Imm:    -0x111,
+				OpType:   Control,
+				RMem:     31,
+				CtrlMode:  0b100,
+				CtrlFlag: 0b1000,
+				Imm:      -0x111,
 			}},
 		{
 			instr: grammar.Instruction{
@@ -256,11 +256,11 @@ func TestBranch(t *testing.T) {
 				Operands: makeOperands(
 					makeMemory("r31", "-", "0x111"))},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   31,
-				Mode:   0b000,
-				Flag:   0b1000,
-				Imm:    -0x111,
+				OpType:   Control,
+				RMem:     31,
+				CtrlMode:  0b000,
+				CtrlFlag: 0b1000,
+				Imm:      -0x111,
 			}},
 		{
 			instr: grammar.Instruction{
@@ -268,10 +268,10 @@ func TestBranch(t *testing.T) {
 				Operands: makeOperands(
 					makeMemory("r31", "", ""))},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   31,
-				Mode:   0b010,
-				Flag:   0b1000,
+				OpType:   Control,
+				RMem:     31,
+				CtrlMode:  0b010,
+				CtrlFlag: 0b1000,
 			}},
 		{
 			instr: grammar.Instruction{
@@ -280,10 +280,10 @@ func TestBranch(t *testing.T) {
 					makeMemory("r0", "", "")),
 			},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   0,
-				Mode:   0b100,
-				Flag:   0b0100,
+				OpType:   Control,
+				RMem:     0,
+				CtrlMode:  0b100,
+				CtrlFlag: 0b0100,
 			}},
 		{
 			instr: grammar.Instruction{
@@ -292,11 +292,11 @@ func TestBranch(t *testing.T) {
 					makeMemory("r0", "-", "1")),
 			},
 			expected: BaseInstruction{
-				OpType: Control,
-				RMem:   0,
-				Mode:   0b000,
-				Flag:   0b0100,
-				Imm:    -1,
+				OpType:   Control,
+				RMem:     0,
+				CtrlMode:  0b000,
+				CtrlFlag: 0b0100,
+				Imm:      -1,
 			}},
 	}
 
@@ -350,7 +350,7 @@ func TestRegImm(t *testing.T) {
 				OpType: RegImm,
 				Rd:     1,
 				ALU:    0b1011,
-				Imm:    21,
+				Imm:    10,
 			},
 		},
 		{

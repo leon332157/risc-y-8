@@ -12,30 +12,39 @@ type ExecuteStage struct {
 	prev     *DecodeStage // Previous stage in the pipeline
 	//currentRawInstruction  uint32       // Instruction to be executed
 	currentInstruction *InstructionIR
+	state int
+	cyclesLeft uint
 }
+
+const (
+	EXEC_free = iota
+	EXEC_busy_int // busy waiting for integer alu to finish
+	EXEC_busy_float // busy waiting for fpu to finish
+	EXEC_busy_vector // busy waiting for vector unit to finish
+)
 
 func (e *ExecuteStage) Init(pipeline *Pipeline, next Stage, prev Stage) error {
 	if pipeline == nil {
-		panic("[DecodeStage Init] pipeline is null")
+		e.pipeline.log.Fatal().Msg("[Execute Init] pipeline is null")
 	}
 	e.pipeline = pipeline
 	if next == nil {
-		panic("[DecodeStage Init] next is null")
+		e.pipeline.log.Fatal().Msg("[Execute Init] next is null")
 	}
 	n, ok := next.(*MemoryStage)
 	if !ok {
-		return fmt.Errorf("[fetch Init] next stage is not memory stage")
+		e.pipeline.log.Fatal().Msg("[Execute Init] next stage is not memory stage")
 	}
 	if n == nil {
-		return fmt.Errorf("[fetch Init] next stage is null")
+		e.pipeline.log.Fatal().Msg("[Execute Init] next stage is null")
 	}
 	e.next = n
 	p, ok := prev.(*DecodeStage)
 	if !ok {
-		return fmt.Errorf("[fetch Init] prev stage is not decode stage")
+		e.pipeline.log.Fatal().Msg("[Execute Init] prev stage is not decode stage")
 	}
 	if p == nil {
-		return fmt.Errorf("[fetch Init] prev is null")
+		e.pipeline.log.Fatal().Msg("[Execute Init] prev is null")
 	}
 	e.prev = p
 	return nil
@@ -45,18 +54,30 @@ func (e *ExecuteStage) Name() string {
 	return "Execute"
 }
 
-func (e *ExecuteStage) ALU(instructionIR *InstructionIR) {
+func (e *ExecuteStage) ALURI() {
 	// Perform ALU operation for RegImm type instruction
-	op1 := instructionIR.Op1 // First operand (from a register)
-	op2 := instructionIR.Op2 // Second operand (immediate value)
-	switch instructionIR.ALUOp {
+	inst := e.currentInstruction
+	op1 := inst.Result // First operand (from a register)
+	op2 := inst.Operand // Second operand (immediate value)
+
+	// operations are done 
+	switch inst.BaseInstruction.ALU {
 	case types.IMM_ADD:
-		instructionIR.Result = e.pipeline.cpu.ALU.Add(op1, op2)
-	case types.IMM_SUB: // since add and sub overlap, we can use the same case
-		instructionIR.Result = e.pipeline.cpu.ALU.Add(op1, op2)
+		inst.Result = e.pipeline.cpu.ALU.Add(op2, op2)
+	case types.IMM_SUB:
+		inst.Result = e.pipeline.cpu.ALU.Sub(op2, op1)
 	case types.IMM_MUL:
-		instructionIR.Result = e.pipeline.cpu.ALU.Mul(op1, op2)
-	case types.IMM_CMP:
+		inst.Result = e.pipeline.cpu.ALU.Mul(op1, op2)
+	case types.IMM_AND:
+		inst.Result = e.pipeline.cpu.ALU.And(op1, op2)
+	case types.IMM_XOR:
+		inst.Result = e.pipeline.cpu.ALU.Xor(op1, op2)
+	case types.IMM_OR:
+		inst.Result = e.pipeline.cpu.ALU.Or(op1, op2)
+	case types.IMM_NOT:
+		inst.Result = e.pipeline.cpu.ALU.Not(op1)
+	case types.IMM_NEG:
+		inst.Result = e.pipeline.cpu.ALU.Neg(op1)
 	case types.REG_CMP:
 		instructionIR.WriteBack = false
 		e.pipeline.cpu.ALU.Sub(op1, op2)
@@ -74,7 +95,7 @@ func (e *ExecuteStage) calculateMemAddr(inst *InstructionIR) uint32 {
 }
 
 func (e *ExecuteStage) LoadStore(instructionIR *InstructionIR) {
-	switch instructionIR.BaseInstruction.Mode {
+	switch instructionIR.BaseInstruction.MemMode {
 
 	case LOAD:
 		// Load instruction
@@ -90,11 +111,8 @@ func (e *ExecuteStage) LoadStore(instructionIR *InstructionIR) {
 
 func (e *ExecuteStage) Control(instruction *InstructionIR) {
 	// Handle branch instructions, if applicable
-	if instruction.BaseInstruction.OpType != types.Control {
-		panic("not a control instruction")
-	}
 	instruction.WriteBack = true
-	if (instruction.ControlFlag == types.EQ.Flag && instruction.ControlMode == types.EQ.Mode) {
+	if instruction.ControlFlag == types.EQ.Flag && instruction.ControlMode == types.EQ.Mode {
 		if (e.pipeline.cpu.Flag & 0b1) == 0 {
 			// take the branch
 			instruction.DestMemAddr = e.calculateMemAddr(instruction)
@@ -115,15 +133,22 @@ func (e *ExecuteStage) Execute() {
 		fmt.Println("[ExecuteStage Execute] No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
 		return
 	}
+	if e.state != EXEC_free {
+		e.cyclesLeft--
+		e.pipeline.sTraceF(e, "busy %v cycles left %v", e.state, e.cyclesLeft)
+		if e.cyclesLeft == 0 {
+			e.state = EXEC_free
+		}
+	}
 	switch e.currentInstruction.BaseInstruction.OpType {
 	case types.RegImm:
-		e.ALU(e.currentInstruction)
+		e.ALURI()
 	case types.RegReg:
-		e.ALU(e.currentInstruction) // Perform ALU operation for RegReg type instruction
+		e.ALURR() // Perform ALU operation for RegReg type instruction
 	case types.LoadStore:
-		e.LoadStore(e.currentInstruction) // Handle Load/Store operations, this function should be implemented in the memory stage or similar
+		e.LoadStore() // Handle Load/Store operations, passed to memory stage for the actual operation
 	case types.Control:
-		e.Control(e.currentInstruction) // Handle Control operations, this function should be implemented in the memory stage or similar
+		e.Control() // Handle Control operations, this function should be implemented in the memory stage or similar
 	default:
 		fmt.Println(e.currentInstruction.BaseInstruction.OpType)
 		panic("unsupported instruction type in Execute stage") // Handle unsupported instruction types
@@ -138,4 +163,8 @@ func (e *ExecuteStage) Advance(i *InstructionIR, stalled bool) {
 	fmt.Printf("[%v] Advancing to next stage with instruction: %+v\n", e.Name(), e.currentInstruction)
 	e.next.Advance(e.currentInstruction, false) // Pass the instruction to the next stage
 	e.currentInstruction = i
+}
+
+func (e *ExecuteStage) CanAdvance() bool {
+	return e.state == EXEC_free
 }

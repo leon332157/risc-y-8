@@ -18,7 +18,7 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
-func main1() {
+func main() {
 	fmt.Println("hello from main")
 	//assembler.ParseString("add r1, r2\nadd r3, -1")
 	fmt.Printf("%x\n", assembler.EncInstructions())

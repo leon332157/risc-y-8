@@ -55,7 +55,7 @@ func (w *WriteBackStage) Execute() {
 			}
 		}
 		fmt.Printf("[WriteBackStage] Writing back result: %v to r%v\n", w.currentInstruction.Result, w.currentInstruction.BaseInstruction.Rd)
-		w.pipeline.cpu.unblockRegister(w.currentInstruction.BaseInstruction.Rd)                                     // Unblock the destination register if applicable
+		w.pipeline.cpu.unblockIntR(w.currentInstruction.BaseInstruction.Rd)                                     // Unblock the destination register if applicable
 		(&w.pipeline.cpu.IntRegisters[w.currentInstruction.BaseInstruction.Rd]).Value = w.currentInstruction.Result // Write the result back to the register file
 	} else {
 		fmt.Println("[WriteBackStage] No write-back required for this instruction")

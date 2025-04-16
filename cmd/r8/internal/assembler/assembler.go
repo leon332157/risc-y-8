@@ -86,19 +86,19 @@ func parseInstNoOp(inst *grammar.Instruction) (BaseInstruction, error) {
 	case "hlt", "meow":
 		// encoded as "bunc [r0+0xFFFF]"
 		ret = BaseInstruction{
-			OpType: Control,
-			RMem:   0x00,
-			Flag:   Conditions["unc"].Flag,
-			Mode:   Conditions["unc"].Mode,
-			Imm:    -1,
+			OpType:   Control,
+			RMem:     0x00,
+			CtrlFlag: Conditions["unc"].Flag,
+			CtrlMode:  Conditions["unc"].Mode,
+			Imm:      -1,
 		}
 	case "ret":
 		// encoded as "bunc [lr]"
 		ret = BaseInstruction{
-			OpType: Control,
-			RMem:   IntegerRegisters["lr"],
-			Flag:   Conditions["unc"].Flag,
-			Mode:   Conditions["unc"].Mode,
+			OpType:   Control,
+			RMem:     IntegerRegisters["lr"],
+			CtrlFlag: Conditions["unc"].Flag,
+			CtrlMode:  Conditions["unc"].Mode,
 		}
 
 	}
@@ -138,9 +138,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			return ret, err
 		}
 		ret = BaseInstruction{
-			OpType: LoadStore,
-			Rd:     rd,
-			Mode:   PUSH,
+			OpType:  LoadStore,
+			Rd:      rd,
+			MemMode: PUSH,
 		}
 	case "pop":
 		rdval, ok := inst.Operands[0].(grammar.OperandRegister)
@@ -154,9 +154,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			return ret, err
 		}
 		ret = BaseInstruction{
-			OpType: LoadStore,
-			Rd:     rd,
-			Mode:   POP,
+			OpType:  LoadStore,
+			Rd:      rd,
+			MemMode: POP,
 		}
 	case "call":
 		mem, ok := inst.Operands[0].(grammar.OperandMemory)
@@ -170,11 +170,11 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			return ret, err
 		}
 		ret = BaseInstruction{
-			OpType: Control,
-			RMem:   rmem,
-			Flag:   Conditions["call"].Flag,
-			Mode:   Conditions["call"].Mode,
-			Imm:    disp,
+			OpType:   Control,
+			RMem:     rmem,
+			CtrlFlag: Conditions["call"].Flag,
+			CtrlMode:  Conditions["call"].Mode,
+			Imm:      disp,
 		}
 	case "bunc", "beq", "bz", "bne", "bnz", "blt", "bge", "blu", "bae", "ba", "bof", "bnf":
 		mem, ok := inst.Operands[0].(grammar.OperandMemory)
@@ -189,11 +189,11 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 		}
 		if cond, ok := Conditions[inst.Mnemonic[1:]]; ok {
 			ret = BaseInstruction{
-				OpType: Control,
-				RMem:   rmem,
-				Flag:   cond.Flag,
-				Mode:   cond.Mode,
-				Imm:    disp,
+				OpType:   Control,
+				RMem:     rmem,
+				CtrlFlag: cond.Flag,
+				CtrlMode:  cond.Mode,
+				Imm:      disp,
 			}
 		} else {
 			err = fmt.Errorf("[parseInstOneOp] invalid condition code %v on instruction %v", inst.Mnemonic[1:], inst.Mnemonic)
@@ -518,19 +518,19 @@ func parseRMem(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
 	switch inst.Mnemonic {
 	case "ldw":
 		ret = BaseInstruction{
-			OpType: LoadStore,
-			Rd:     rd,
-			Mode:   LDW,
-			RMem:   rmem,
-			Imm:    disp,
+			OpType:  LoadStore,
+			Rd:      rd,
+			MemMode: LDW,
+			RMem:    rmem,
+			Imm:     disp,
 		}
 	case "stw":
 		ret = BaseInstruction{
-			OpType: LoadStore,
-			Rd:     rd,
-			Mode:   STW,
-			RMem:   rmem,
-			Imm:    disp,
+			OpType:  LoadStore,
+			Rd:      rd,
+			MemMode: STW,
+			RMem:    rmem,
+			Imm:     disp,
 		}
 	default:
 		err = fmt.Errorf("[parseRMem] invalid instruction: %s", inst.Mnemonic)

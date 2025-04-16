@@ -2,9 +2,12 @@ package cpu
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/leon332157/risc-y-8/pkg/alu"
 	"github.com/leon332157/risc-y-8/pkg/memory"
 	"github.com/leon332157/risc-y-8/pkg/types"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -13,16 +16,21 @@ const (
 	VECTOR_REG_COUNT = 8
 )
 
+const (
+	READ_BLOCKED  = -1
+	WRITE_BLOCKED = -2
+)
+
 type IntRegister struct {
-	Value       uint32 // Register value
-	ReadEnable  bool   // Read enable flag
-	WriteEnable bool   // Write enable flag
+	value       uint32 // Register value
+	readEnable  bool   // Read enable flag
+	writeEnable bool   // Write enable flag
 }
 
 type FloatRegister struct {
-	Value       float32 // Register value
-	ReadEnable  bool    // Read enable flag
-	WriteEnable bool    // Write enable flag
+	value       float32 // Register value
+	readEnable  bool    // Read enable flag
+	writeEnable bool    // Write enable flag
 }
 
 type VectorRegister struct {
@@ -32,39 +40,62 @@ type VectorRegister struct {
 }
 
 type CPU struct {
+	log *zerolog.Logger
+
 	Clock          uint32
 	ProgramCounter uint32
 	ALU            *alu.ALU
-	Cache          *memory.CacheType
-	RAM            *memory.RAM // Reference to RAM, if needed for direct access (optional)
-	Pipeline       *Pipeline
-	Flag           uint32 // RFlag
-	IntRegisters   [INT_REG_COUNT]IntRegister
-	//FloatRegisters  []FloatRegister
-	//VectorRegisters []VectorRegister
 	//FPU            *FPU
 	//VPU            *VPU
+	Cache        *memory.CacheType
+	RAM          *memory.RAM // Reference to RAM, if needed for direct access (optional)
+	Pipeline     *Pipeline
+	Flag         uint32 // RFlag
+	IntRegisters [INT_REG_COUNT]IntRegister
+	//FloatRegisters  []FloatRegister
+	//VectorRegisters []VectorRegister
+
 }
 
-func (cpu *CPU) blockRegister(r uint8) {
+func (cpu *CPU) blockIntR(r uint8) {
 	if r >= uint8(len(cpu.IntRegisters)) {
 		// Handle out of bounds access, if necessary
-		panic("attempted to block an out of bounds register")
+		cpu.log.Panic().Msgf("attempted to block an out of bounds register: %s", r)
 	}
-	cpu.IntRegisters[r].ReadEnable = false
-	cpu.IntRegisters[r].WriteEnable = false
+	cpu.IntRegisters[r].readEnable = false
+	cpu.IntRegisters[r].writeEnable = false
 }
 
-func (cpu *CPU) unblockRegister(r uint8) {
+func (cpu *CPU) unblockIntR(r uint8) {
 	// Unblock the register for reading and writing
 	if r >= uint8(len(cpu.IntRegisters)) {
-		panic("attempted to unblock an out of bounds register") // Ensure we don't access out of bounds registers
+		cpu.log.Panic().Msgf("attempted to unblock an out of bounds register: %v", r)
 	}
-	cpu.IntRegisters[r].ReadEnable = true  // Allow reading from the register again
-	cpu.IntRegisters[r].WriteEnable = true // Allow writing to the register again
+	cpu.IntRegisters[r].readEnable = true
+	cpu.IntRegisters[r].writeEnable = true
 }
 
-func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline) {
+func (c *CPU) ReadIntR(r uint8) (uint32, int) {
+	if r >= uint8(len(c.IntRegisters)) {
+		c.log.Panic().Msgf("attempted to read an out of bounds register: %v", r)
+	}
+	if !c.IntRegisters[r].readEnable {
+		return 0, READ_BLOCKED // Register is not readable
+	}
+	return c.IntRegisters[r].value, SUCCESS
+}
+
+func (c *CPU) WriteIntR(r uint8) (int, uint32) {
+	if r >= uint8(len(c.IntRegisters)) {
+		c.log.Panic().Msgf("attempted to write an out of bounds register: %v", r)
+	}
+	if !c.IntRegisters[r].writeEnable {
+		return WRITE_BLOCKED, 0 // Register is not writable
+	}
+	return SUCCESS, c.IntRegisters[r].value
+}
+
+func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logger *zerolog.Logger) {
 	cpu.Clock = 0
 	cpu.ProgramCounter = INIT_VECTOR
 	cpu.ALU = alu.NewALU() // Create a new ALU instance
@@ -77,7 +108,8 @@ func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline) {
 		reg.ReadEnable = true       // Allow reading by default
 		reg.WriteEnable = true      // Allow writing by default
 	}
-
+	cpu.log = logger
+	cpu.log.Trace().Msgf("cpu initialized: %+v", &cpu)
 }
 
 func (cpu *CPU) PrintReg() {
@@ -146,29 +178,29 @@ func Main() {
 
 		// STW r4, [r20 + 30]
 		(&types.BaseInstruction{
-			OpType: types.LoadStore,
-			Rd:     4,
-			Mode:   types.STW,
-			RMem:   20,
-			Imm:    30,
+			OpType:  types.LoadStore,
+			Rd:      4,
+			MemMode: types.STW,
+			RMem:    20,
+			Imm:     30,
 		}).Encode(),
 
 		// LDW r6, [r20 + 29]
 		(&types.BaseInstruction{
-			OpType: types.LoadStore,
-			Rd:     6,
-			Mode:   types.LDW,
-			RMem:   20,
-			Imm:    29,
+			OpType:  types.LoadStore,
+			Rd:      6,
+			MemMode: types.LDW,
+			RMem:    20,
+			Imm:     29,
 		}).Encode(),
 
 		// STW r6, [r20 + 29]
 		(&types.BaseInstruction{
-			OpType: types.LoadStore,
-			Rd:     6,
-			Mode:   types.STW,
-			RMem:   20,
-			Imm:    29,
+			OpType:  types.LoadStore,
+			Rd:      6,
+			MemMode: types.STW,
+			RMem:    20,
+			Imm:     29,
 		}).Encode(),
 
 		// CMP r6, 0
@@ -181,11 +213,11 @@ func Main() {
 
 		// Beq [0] skips the next sub instruction
 		(&types.BaseInstruction{
-			OpType: types.Control,
-			RMem:   20,
-			Flag:   types.Conditions["eq"].Flag,
-			Mode:   types.Conditions["eq"].Mode,
-			Imm:    0,
+			OpType:   types.Control,
+			RMem:     20,
+			CtrlFlag: types.Conditions["eq"].Flag,
+			MemMode:  types.Conditions["eq"].Mode,
+			Imm:      0,
 		}).Encode(),
 
 		// SUB r4, 16
@@ -236,7 +268,8 @@ func Main() {
 	cache := memory.CreateCacheDefault(&ram) // Create a cache with default settings, 8 sets, 2 ways, no delay                  // Create a new ALU instance
 	cpu := CPU{}
 	pipeline := NewPipeline(&cpu)
-	cpu.Init(&cache, &ram, pipeline) // Initialize the CPU with the cache and no pipeline yet
+	clog := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Caller().Logger()
+	cpu.Init(&cache, &ram, pipeline, &clog) // Initialize the CPU with the cache and no pipeline yet
 	fs := &FetchStage{}
 	ds := &DecodeStage{}
 	es := &ExecuteStage{}

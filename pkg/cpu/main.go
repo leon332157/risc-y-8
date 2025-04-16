@@ -16,12 +16,3 @@ func NewCPU(cache *memory.CacheType) *CPU {
 	}
 	return cpu;
 }
-
-func NewPipeline(cpu *CPU) *Pipeline {
-	p := &Pipeline{
-		Stages: make([]Stage,0),
-		cpu:    cpu,
-	}
-
-	return p
-}
