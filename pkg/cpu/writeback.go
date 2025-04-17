@@ -2,6 +2,7 @@ package cpu
 
 import (
 	"fmt"
+
 	"github.com/leon332157/risc-y-8/pkg/types"
 )
 
@@ -35,39 +36,62 @@ func (w *WriteBackStage) Name() string {
 func (w *WriteBackStage) Execute() {
 	if w.currentInstruction == nil {
 		// No instruction to write back, return early
-		fmt.Println("[WriteBackStage Execute] No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
+		w.pipeline.sTrace(w, "No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
 		return
 	}
-	// Perform the write-back operation, typically writing the result back to the register file or memory
-	// TODO: Need to check for writing enable?
+	inst:= w.currentInstruction
+	w.pipeline.sTracef(w, "Processing instruction: %+v\n", w.currentInstruction) // For debugging purposes
+	if w.pipeline.scalarMode {
+		w.pipeline.canFetch = true // In scalar mode, we can fetch the next instruction after write back
+	}
 	if w.currentInstruction.WriteBack {
 		if w.currentInstruction.BaseInstruction.OpType == types.Control {
-			fmt.Println("BRANCH")
-			if w.currentInstruction.RDestAux != 0 {
-				// Write to auxiliary register
-				w.pipeline.cpu.IntRegisters[w.currentInstruction.RDestAux].Value = w.pipeline.cpu.ProgramCounter // ?? +1
+			// Control instruction, write back to the Program Counter and RDestAUX
+			w.pipeline.sTrace(w, "Control instruction detected")
+			if (!inst.BranchTaken) {
+				w.pipeline.sTrace(w, "Branch not taken, no write back to Program Counter required")
+				//w.pipeline.cpu.unblockIntR(w.currentInstruction.BaseInstruction.Rd)
+				w.currentInstruction = nil
+				return
 			}
 			if w.currentInstruction.BaseInstruction.Rd == 0 {
 				// writing to PC
-				fmt.Printf("[WriteBackStage] Writing to Program Counter directly from control instruction to %v\n", w.currentInstruction.DestMemAddr)
-				w.pipeline.SquashALL()
+				w.pipeline.sTracef(w, "Writing to Program Counter directly from control instruction to %v\n", w.currentInstruction.DestMemAddr)
 				w.pipeline.cpu.ProgramCounter = w.currentInstruction.DestMemAddr // Update the Program Counter if this is a control instruction
+				w.pipeline.SquashALL()
+				return
 			}
 		}
-		fmt.Printf("[WriteBackStage] Writing back result: %v to r%v\n", w.currentInstruction.Result, w.currentInstruction.BaseInstruction.Rd)
-		w.pipeline.cpu.unblockRegister(w.currentInstruction.BaseInstruction.Rd)                                     // Unblock the destination register if applicable
-		(&w.pipeline.cpu.IntRegisters[w.currentInstruction.BaseInstruction.Rd]).Value = w.currentInstruction.Result // Write the result back to the register file
+		w.pipeline.sTracef(w, "Writing back result: %v to r%v\n", w.currentInstruction.Result, w.currentInstruction.BaseInstruction.Rd)
+		w.pipeline.cpu.unblockIntR(w.currentInstruction.BaseInstruction.Rd)                            // Unblock the destination register if applicable
+		w.pipeline.cpu.WriteIntR(w.currentInstruction.BaseInstruction.Rd, w.currentInstruction.Result) // Write the result to the destination register
+		w.pipeline.sTracef(w, "Written back to raux%v: %v\n", w.currentInstruction.RDestAux, w.currentInstruction.Result)
+		w.pipeline.cpu.WriteIntR(w.currentInstruction.RDestAux, w.currentInstruction.DestMemAddr)
+		w.pipeline.sTracef(w, "Written back to rdestaux: %v %v\n", w.currentInstruction.RDestAux, w.currentInstruction.DestMemAddr)
 	} else {
-		fmt.Println("[WriteBackStage] No write-back required for this instruction")
+		w.pipeline.sTrace(w,"No write-back required for this instruction")
 	}
+	w.pipeline.sTracef(w, "Write back completed for instruction: %+v\n", w.currentInstruction) // For debugging purposes
 	w.currentInstruction = nil
 }
 
-func (w *WriteBackStage) Advance(i *InstructionIR, stalled bool) {
-	if stalled {
-		fmt.Printf("[%v] previous stage %v returned stall\n", w.Name(), w.prev.Name())
-		//return
+func (w *WriteBackStage) Advance(i *InstructionIR, prevstalled bool) bool {
+	if prevstalled {
+		w.pipeline.sTracef(w, "previous stage %v returned is stalled\n", w.prev.Name())
+		return false
 	}
-	fmt.Printf("[WriteBackStage] Got with instruction: %+v\n", i) // Debugging output to see which instruction is being processed
-	w.currentInstruction = i // Set the current instruction to the one passed in, this is used in Execute()
+	w.pipeline.sTracef(w, "Got with instruction: %+v\n", i) // Debugging output to see which instruction is being processed
+	w.currentInstruction = i                                // Set the current instruction to the one passed in, this is used in Execute()
+
+	return true
+}
+
+func (w *WriteBackStage) Squash() bool {
+	w.pipeline.sTracef(w, "Squashing instruction: %+v\n", w.currentInstruction) // For debugging purposes
+	w.currentInstruction = nil
+	return true
+}
+
+func (w *WriteBackStage) CanAdvance() bool {
+	return w.currentInstruction == nil
 }

@@ -1,25 +1,23 @@
 package cpu
 
 import (
-	"fmt"
-
 	"github.com/leon332157/risc-y-8/pkg/memory"
 )
 
 type FetchStage struct {
-	pipeline    *Pipeline // Reference to the pipeline instance
-	next        *DecodeStage
+	pipe               *Pipeline // Reference to the pipeline instance
+	next               *DecodeStage
 	currentInstruction *InstructionIR
 }
 
 func (f *FetchStage) Init(p *Pipeline, next Stage, _ Stage) error {
 	if p == nil {
-		return fmt.Errorf("[FetchStage Init] pipeline is null")
+		f.pipe.log.Fatal().Msg("[Fetch Init] pipeline is null")
 	}
-	f.pipeline = p
-	n,ok:= next.(*DecodeStage) 
+	f.pipe = p
+	n, ok := next.(*DecodeStage)
 	if !ok {
-		return fmt.Errorf("[fetch Init] next stage is not decode stage")
+		f.pipe.log.Fatal().Msg("[Fetch Init] next stage is not decode stage")
 	}
 	f.next = n
 	f.currentInstruction = nil
@@ -31,36 +29,68 @@ func (f *FetchStage) Name() string {
 }
 
 func (f *FetchStage) Execute() {
-	if f.pipeline == nil {
-		panic("[FetchExecute] pipeline pointer is null") // Pipeline not initialized
-	}
-
-	// Fetch the instruction from memory using the Program Counter
-	cpu := f.pipeline.cpu
-	if cpu == nil {
-		panic("[FetchExecute] CPU pointer is null") // CPU not initialized
-	}
-
-	f.currentInstruction = nil // Reset current instruction before fetching a new one
-	fmt.Println("[FetchStage Execute] Fetching instruction from memory...") // For debugging purposes
-	instruction := cpu.Cache.Read(uint(cpu.ProgramCounter), memory.FETCH_STAGE)
-	if instruction.State != memory.SUCCESS {
-		fmt.Printf("[FetchExecute] Memory fetch failed: %v\n", memory.LookUpMemoryResult(instruction.State)) // Memory fetch failed
-		return 
-	}
-
-	f.currentInstruction = new(InstructionIR) // Store the fetched instruction
-	// Increment the Program Counter for the next fetch
-	cpu.ProgramCounter++
-	f.currentInstruction.rawInstruction = uint32(instruction.Value)
-}
-
-func (f *FetchStage) Advance(_ *InstructionIR, stall bool) {
-	if f.currentInstruction == nil {
-		fmt.Println("FetchStage: No instruction fetched, cannot advance")
-		f.next.Advance(nil, true) // Pass 0 instruction to next stage and stall it
+	if f.pipe.scalarMode && f.pipe.canFetch == false {
+		f.pipe.sTrace(f, "Cannot fetch instruction right now, write has not completed yet")
 		return
 	}
-	fmt.Printf("[FetchStage] Advancing to next stage with instruction: 0x%08x\n", f.currentInstruction.rawInstruction)
-	f.next.Advance(f.currentInstruction, false)
+
+	if f.currentInstruction != nil {
+		f.pipe.sTracef(f, "Currently have an instruction %+v, skipping fetch", f.currentInstruction)
+		return
+	}
+	//f.pipe.sTrace(f, "Fetching instruction from memory")
+	cache := f.pipe.cpu.Cache
+	read := cache.Read(uint(f.pipe.cpu.ProgramCounter), memory.FETCH_STAGE)
+	if read.State != memory.SUCCESS {
+		f.pipe.sTracef(f, "Fetch failed: %v", memory.LookUpMemoryResult(read.State)) // Memory fetch failed
+		return
+	}
+
+	if read.Value != 0 {
+		f.pipe.sTracef(f, "Fetched instruction: 0x%08x\n", read.Value)
+		f.currentInstruction = new(InstructionIR) // Store the fetched instruction
+		f.currentInstruction.rawInstruction = read.Value
+		f.pipe.cpu.ProgramCounter++
+		f.pipe.sTracef(f, "Increasing ProgramCounter to: %v", f.pipe.cpu.ProgramCounter)
+		if f.pipe.scalarMode { 
+			// if in scalar mode, we can only fetch one instruction at a time
+			f.pipe.canFetch = false
+		}
+	} else {
+		f.pipe.sTrace(f, "Fetched instruction is zero, no valid instruction found")
+		return
+	}
+}
+
+// Returns if this stage passed the instruction to the next stage
+func (f *FetchStage) Advance(_ *InstructionIR, canFetch bool) bool {
+	if !canFetch {
+		f.pipe.sTrace(f, "Stalling due to cpu stall condition")
+	}
+	if f.currentInstruction == nil {
+		f.pipe.sTrace(f, "No instruction fetched, cannot advance")
+		f.next.Advance(nil, true) // pass bubble and say we are stalled
+		return false
+	}
+	if f.next.CanAdvance() {
+		f.pipe.sTracef(f, "Advancing to next stage with instruction: 0x%08x", f.currentInstruction.rawInstruction)
+		f.next.Advance(f.currentInstruction, false)
+		f.currentInstruction = nil // clear out curr inst after advancing
+		return true
+	} else {
+		f.pipe.sTrace(f, "Next stage cannot advance, stalling")
+		f.next.Advance(nil, false) // pass bubble and say we are not stalled
+		return false
+	}
+}
+
+func (f *FetchStage) Squash() bool {
+	f.pipe.sTracef(f, "Squashing instruction: %+v\n", f.currentInstruction) // For debugging purposes
+	f.currentInstruction = nil
+	return true
+}
+
+// Returns returns if this stage can take in a new instruction
+func (f *FetchStage) CanAdvance() bool {
+	return f.currentInstruction != nil
 }

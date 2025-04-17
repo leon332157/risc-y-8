@@ -39,6 +39,9 @@ func parseMemory(mem grammar.OperandMemory) (uint8, int16, error) {
 
 	var err error
 	var ok bool
+	if mem.Value.Base == "pc" {
+		mem.Value.Base = "r0" // pc is encoded as r0
+	}
 	rmem, ok = IntegerRegisters[mem.Value.Base] // register operand
 	if !ok {
 		err = fmt.Errorf("[parseMemory] invalid base register: %#v", mem.Value.Base)
@@ -86,19 +89,19 @@ func parseInstNoOp(inst *grammar.Instruction) (BaseInstruction, error) {
 	case "hlt", "meow":
 		// encoded as "bunc [r0+0xFFFF]"
 		ret = BaseInstruction{
-			OpType: Control,
-			RMem:   0x00,
-			Flag:   Conditions["unc"].Flag,
-			Mode:   Conditions["unc"].Mode,
-			Imm:    -1,
+			OpType:   Control,
+			RMem:     0x00,
+			CtrlFlag: Conditions["unc"].Flag,
+			CtrlMode:  Conditions["unc"].Mode,
+			Imm:      -1,
 		}
 	case "ret":
 		// encoded as "bunc [lr]"
 		ret = BaseInstruction{
-			OpType: Control,
-			RMem:   IntegerRegisters["lr"],
-			Flag:   Conditions["unc"].Flag,
-			Mode:   Conditions["unc"].Mode,
+			OpType:   Control,
+			RMem:     IntegerRegisters["lr"],
+			CtrlFlag: Conditions["unc"].Flag,
+			CtrlMode:  Conditions["unc"].Mode,
 		}
 
 	}
@@ -138,9 +141,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			return ret, err
 		}
 		ret = BaseInstruction{
-			OpType: LoadStore,
-			Rd:     rd,
-			Mode:   PUSH,
+			OpType:  LoadStore,
+			Rd:      rd,
+			MemMode: PUSH,
 		}
 	case "pop":
 		rdval, ok := inst.Operands[0].(grammar.OperandRegister)
@@ -154,9 +157,9 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			return ret, err
 		}
 		ret = BaseInstruction{
-			OpType: LoadStore,
-			Rd:     rd,
-			Mode:   POP,
+			OpType:  LoadStore,
+			Rd:      rd,
+			MemMode: POP,
 		}
 	case "call":
 		mem, ok := inst.Operands[0].(grammar.OperandMemory)
@@ -170,11 +173,11 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			return ret, err
 		}
 		ret = BaseInstruction{
-			OpType: Control,
-			RMem:   rmem,
-			Flag:   Conditions["call"].Flag,
-			Mode:   Conditions["call"].Mode,
-			Imm:    disp,
+			OpType:   Control,
+			RMem:     rmem,
+			CtrlFlag: Conditions["call"].Flag,
+			CtrlMode:  Conditions["call"].Mode,
+			Imm:      disp,
 		}
 	case "bunc", "beq", "bz", "bne", "bnz", "blt", "bge", "blu", "bae", "ba", "bof", "bnf":
 		mem, ok := inst.Operands[0].(grammar.OperandMemory)
@@ -189,11 +192,11 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 		}
 		if cond, ok := Conditions[inst.Mnemonic[1:]]; ok {
 			ret = BaseInstruction{
-				OpType: Control,
-				RMem:   rmem,
-				Flag:   cond.Flag,
-				Mode:   cond.Mode,
-				Imm:    disp,
+				OpType:   Control,
+				RMem:     rmem,
+				CtrlFlag: cond.Flag,
+				CtrlMode:  cond.Mode,
+				Imm:      disp,
 			}
 		} else {
 			err = fmt.Errorf("[parseInstOneOp] invalid condition code %v on instruction %v", inst.Mnemonic[1:], inst.Mnemonic)
@@ -518,19 +521,19 @@ func parseRMem(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
 	switch inst.Mnemonic {
 	case "ldw":
 		ret = BaseInstruction{
-			OpType: LoadStore,
-			Rd:     rd,
-			Mode:   LDW,
-			RMem:   rmem,
-			Imm:    disp,
+			OpType:  LoadStore,
+			Rd:      rd,
+			MemMode: LDW,
+			RMem:    rmem,
+			Imm:     disp,
 		}
 	case "stw":
 		ret = BaseInstruction{
-			OpType: LoadStore,
-			Rd:     rd,
-			Mode:   STW,
-			RMem:   rmem,
-			Imm:    disp,
+			OpType:  LoadStore,
+			Rd:      rd,
+			MemMode: STW,
+			RMem:    rmem,
+			Imm:     disp,
 		}
 	default:
 		err = fmt.Errorf("[parseRMem] invalid instruction: %s", inst.Mnemonic)
@@ -561,7 +564,15 @@ func parseInst(inst *grammar.Instruction) (BaseInstruction, error) {
 var Instructions []BaseInstruction
 var Labels map[string]uint32
 
-func ParseLines(lines []grammar.Line) error {
+// func parseLabel(label *grammar.Label) (uint32, error) {
+
+// 	var err error
+// 	Labels[label.Text] = label.Offset
+// 	return label.Offset, err
+	
+// }
+
+func ParseLines(lines []grammar.Line) (*[]BaseInstruction,error) {
 	for _, line := range lines {
 		if line.Directive != nil {
 			// TODO: handle directives
@@ -569,22 +580,23 @@ func ParseLines(lines []grammar.Line) error {
 		}
 		if line.Label != nil {
 			// TODO: handle labels
+			Labels[line.Label.Text] = line.Label.Offset
 			continue
 		}
 		if line.Instruction != nil {
 			inst, err := parseInst(line.Instruction)
 			if err != nil {
-				return fmt.Errorf("[parseLines] invalid instruction at position %v: %v", line.Pos, err)
+				return nil,fmt.Errorf("[parseLines] invalid instruction at position %v: %v", line.Pos, err)
 			}
 			Instructions = append(Instructions, inst)
 		}
 	}
-	return nil
+	return &Instructions,nil
 }
 
-func EncInstructions() []uint32 {
-	enc := make([]uint32, len(Instructions))
-	for i, inst := range Instructions {
+func EncInstructions(insts *[]BaseInstruction) []uint32 {
+	enc := make([]uint32, len(*insts))
+	for i, inst := range *insts {
 		enc[i] = inst.Encode()
 	}
 	return enc

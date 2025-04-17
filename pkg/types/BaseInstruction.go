@@ -23,6 +23,10 @@ var (
 	CALL = ControlOp{Mode: 0b111, Flag: 0b1111}
 )
 
+func GetModeFlag(c ControlOp) uint8 {
+	return c.Mode<<4 | c.Flag
+}
+
 var Conditions = map[string]ControlOp{
 	"ne":   NE,
 	"nz":   NZ,
@@ -141,12 +145,13 @@ const (
 )
 
 type BaseInstruction struct {
-	OpType uint8 // 00 for reg-imm, 01 for reg-reg, 10 for load/store, 11 for control
-	Rd     uint8 // Destination register
-	ALU    uint8 // ALU operation
-	Rs     uint8 // Source register
-	RMem   uint8 // Memory register
-	Flag   uint8 // Flag for control instructions
-	Mode   uint8 // Mode for load/store instructions (0 for load, 10 pop, 10 for store, 11 push)
-	Imm    int16 // 16 bit twos complement immediate value
+	OpType   uint8 // 00 for reg-imm, 01 for reg-reg, 10 for load/store, 11 for control
+	Rd       uint8 // Destination register
+	ALU      uint8 // ALU operation
+	Rs       uint8 // Source register
+	RMem     uint8 // Memory register
+	CtrlFlag uint8 // Flag for control instructions
+	CtrlMode uint8
+	MemMode  uint8 // Mode for load/store instructions (0 for load, 10 pop, 10 for store, 11 push)
+	Imm      int16 // 16 bit twos complement immediate value
 }

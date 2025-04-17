@@ -2,9 +2,14 @@ package cpu
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/leon332157/risc-y-8/pkg/alu"
 	"github.com/leon332157/risc-y-8/pkg/memory"
 	"github.com/leon332157/risc-y-8/pkg/types"
+	"github.com/rs/zerolog"
+
+	"github.com/leon332157/risc-y-8/cmd/r8"
 )
 
 const (
@@ -13,16 +18,21 @@ const (
 	VECTOR_REG_COUNT = 8
 )
 
+const (
+	READ_BLOCKED  = -1
+	WRITE_BLOCKED = -2
+)
+
 type IntRegister struct {
-	Value       uint32 // Register value
-	ReadEnable  bool   // Read enable flag
-	WriteEnable bool   // Write enable flag
+	value       uint32 // Register value
+	readEnable  bool   // Read enable flag
+	writeEnable bool   // Write enable flag
 }
 
 type FloatRegister struct {
-	Value       float32 // Register value
-	ReadEnable  bool    // Read enable flag
-	WriteEnable bool    // Write enable flag
+	value       float32 // Register value
+	readEnable  bool    // Read enable flag
+	writeEnable bool    // Write enable flag
 }
 
 type VectorRegister struct {
@@ -32,39 +42,71 @@ type VectorRegister struct {
 }
 
 type CPU struct {
+	log            *zerolog.Logger
+	halted         bool
 	Clock          uint32
 	ProgramCounter uint32
 	ALU            *alu.ALU
-	Cache          *memory.CacheType
-	RAM            *memory.RAM // Reference to RAM, if needed for direct access (optional)
-	Pipeline       *Pipeline
-	Flag           uint32 // RFlag
-	IntRegisters   [INT_REG_COUNT]IntRegister
-	//FloatRegisters  []FloatRegister
-	//VectorRegisters []VectorRegister
 	//FPU            *FPU
 	//VPU            *VPU
+	Cache        *memory.CacheType
+	RAM          *memory.RAM // Reference to RAM, if needed for direct access (optional)
+	Pipeline     *Pipeline
+	IntRegisters [INT_REG_COUNT]IntRegister
+	//FloatRegisters  []FloatRegister
+	//VectorRegisters []VectorRegister
 }
 
-func (cpu *CPU) blockRegister(r uint8) {
+func (cpu *CPU) blockIntR(r uint8) {
 	if r >= uint8(len(cpu.IntRegisters)) {
 		// Handle out of bounds access, if necessary
-		panic("attempted to block an out of bounds register")
+		cpu.log.Panic().Msgf("attempted to block an out of bounds register: %v", r)
 	}
-	cpu.IntRegisters[r].ReadEnable = false
-	cpu.IntRegisters[r].WriteEnable = false
+	cpu.log.Trace().Msgf("Blocking register r%v for reading and writing", r)
+	cpu.IntRegisters[r].readEnable = false
+	cpu.IntRegisters[r].writeEnable = false
 }
 
-func (cpu *CPU) unblockRegister(r uint8) {
+func (cpu *CPU) unblockIntR(r uint8) {
 	// Unblock the register for reading and writing
 	if r >= uint8(len(cpu.IntRegisters)) {
-		panic("attempted to unblock an out of bounds register") // Ensure we don't access out of bounds registers
+		cpu.log.Panic().Msgf("attempted to unblock an out of bounds register: %v", r)
 	}
-	cpu.IntRegisters[r].ReadEnable = true  // Allow reading from the register again
-	cpu.IntRegisters[r].WriteEnable = true // Allow writing to the register again
+	cpu.log.Trace().Msgf("Unblocking register r%v for reading and writing", r)
+	cpu.IntRegisters[r].readEnable = true
+	cpu.IntRegisters[r].writeEnable = true
 }
 
-func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline) {
+func (c *CPU) ReadIntR(r uint8) (uint32, int32) {
+	if r == 0 {
+		c.log.Info().Msg("attempted to read from r0, returning 0")
+		return 0, SUCCESS // r0 is always 0
+	}
+	if r >= uint8(len(c.IntRegisters)) {
+		c.log.Panic().Msgf("attempted to read an out of bounds register: %v", r)
+	}
+	if !c.IntRegisters[r].readEnable {
+		return 0, READ_BLOCKED // Register is not readable
+	}
+	return c.IntRegisters[r].value, SUCCESS
+}
+
+func (c *CPU) WriteIntR(r uint8, value uint32) (uint32, int32) {
+	if r == 0 {
+		c.log.Info().Msg("attempted to write to r0, ignoring write")
+		return SUCCESS, 0 // r0 is always 0, ignore write
+	}
+	if r >= uint8(len(c.IntRegisters)) {
+		c.log.Panic().Msgf("attempted to write an out of bounds register: %v", r)
+	}
+	if !c.IntRegisters[r].writeEnable {
+		return 0, WRITE_BLOCKED // Register is not writable
+	}
+	c.IntRegisters[r].value = value
+	return c.IntRegisters[r].value, SUCCESS
+}
+
+func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logger *zerolog.Logger) {
 	cpu.Clock = 0
 	cpu.ProgramCounter = INIT_VECTOR
 	cpu.ALU = alu.NewALU() // Create a new ALU instance
@@ -73,11 +115,12 @@ func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline) {
 	cpu.RAM = ram
 	for i := 0; i < INT_REG_COUNT; i++ {
 		reg := &cpu.IntRegisters[i] // Get the pointer to the integer register
-		reg.Value = 0               // Initialize all integer registers to 0
-		reg.ReadEnable = true       // Allow reading by default
-		reg.WriteEnable = true      // Allow writing by default
+		reg.value = 0               // Initialize all integer registers to 0
+		reg.readEnable = true       // Allow reading by default
+		reg.writeEnable = true      // Allow writing by default
 	}
-
+	cpu.log = logger
+	cpu.log.Trace().Msgf("cpu initialized: %+v", &cpu)
 }
 
 func (cpu *CPU) PrintReg() {
@@ -86,10 +129,15 @@ func (cpu *CPU) PrintReg() {
 		if i%8 == 0 && i != 0 {
 			fmt.Println() // Newline for readability every 8 registers
 		}
-		fmt.Printf("r%d: 0x%08x\t", i, reg.Value)
+		fmt.Printf("r%d: 0x%08x\t", i, reg.value)
 
 	}
 	fmt.Println()
+}
+
+func (cpu *CPU) Halt() {
+	cpu.halted = true
+	cpu.log.Info().Msg("CPU halted")
 }
 
 const INIT_VECTOR = 0
@@ -106,6 +154,11 @@ func Main() {
 			Imm:    16,
 		}).Encode(),
 
+		(&types.BaseInstruction{
+			OpType: types.Control,
+			RMem:   0,
+			Imm:    -1,
+		}).Encode(),
 		// ADD r5, 32
 		(&types.BaseInstruction{
 			OpType: types.RegImm,
@@ -146,29 +199,29 @@ func Main() {
 
 		// STW r4, [r20 + 30]
 		(&types.BaseInstruction{
-			OpType: types.LoadStore,
-			Rd:     4,
-			Mode:   types.STW,
-			RMem:   20,
-			Imm:    30,
+			OpType:  types.LoadStore,
+			Rd:      4,
+			MemMode: types.STW,
+			RMem:    20,
+			Imm:     30,
 		}).Encode(),
 
 		// LDW r6, [r20 + 29]
 		(&types.BaseInstruction{
-			OpType: types.LoadStore,
-			Rd:     6,
-			Mode:   types.LDW,
-			RMem:   20,
-			Imm:    29,
+			OpType:  types.LoadStore,
+			Rd:      6,
+			MemMode: types.LDW,
+			RMem:    20,
+			Imm:     29,
 		}).Encode(),
 
 		// STW r6, [r20 + 29]
 		(&types.BaseInstruction{
-			OpType: types.LoadStore,
-			Rd:     6,
-			Mode:   types.STW,
-			RMem:   20,
-			Imm:    29,
+			OpType:  types.LoadStore,
+			Rd:      6,
+			MemMode: types.STW,
+			RMem:    20,
+			Imm:     29,
 		}).Encode(),
 
 		// CMP r6, 0
@@ -181,11 +234,11 @@ func Main() {
 
 		// Beq [0] skips the next sub instruction
 		(&types.BaseInstruction{
-			OpType: types.Control,
-			RMem:   20,
-			Flag:   types.Conditions["eq"].Flag,
-			Mode:   types.Conditions["eq"].Mode,
-			Imm:    0,
+			OpType:   types.Control,
+			RMem:     20,
+			CtrlFlag: types.Conditions["eq"].Flag,
+			MemMode:  types.Conditions["eq"].Mode,
+			Imm:      0,
 		}).Encode(),
 
 		// SUB r4, 16
@@ -228,15 +281,35 @@ func Main() {
 			Imm:    2,
 		}).Encode(),
 	}
-
-	ram := memory.CreateRAM(32, 1, 4)
-
-	copy(ram.Contents, inst_array)
+	ram := memory.CreateRAM(32, 1, 1)
+	copy(make([]uint32, 0), inst_array)
+	inststr := `
+	ldi r5, 3
+	ldi r6, 7
+	ldi r2, 10
+	add r4, 2
+	sub r2, 1
+	cmp r2, 0 
+	beq [r6]
+	bne [r5]
+	or r1, 0xbeef
+	meow
+	nop
+	nop
+	nop
+	nop
+	`
+	instructions, err := r8.ParseString("cpuTest", inststr)
+	if err != nil {
+		panic(err)
+	}
+	copy(ram.Contents, instructions)
 
 	cache := memory.CreateCacheDefault(&ram) // Create a cache with default settings, 8 sets, 2 ways, no delay                  // Create a new ALU instance
 	cpu := CPU{}
-	pipeline := NewPipeline(&cpu)
-	cpu.Init(&cache, &ram, pipeline) // Initialize the CPU with the cache and no pipeline yet
+	pipeline := NewPipeline(&cpu, false)
+	clog := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Caller().Logger()
+	cpu.Init(&cache, &ram, pipeline, &clog) // Initialize the CPU with the cache and no pipeline yet
 	fs := &FetchStage{}
 	ds := &DecodeStage{}
 	es := &ExecuteStage{}
@@ -248,8 +321,10 @@ func Main() {
 	ms.Init(pipeline, ws, es)
 	ws.Init(pipeline, nil, ms)
 	pipeline.AddStages(ws, ms, es, ds, fs)
-	for range 300 {
-		pipeline.RunOnePass()
+	for {
+		if !cpu.halted {
+			pipeline.RunOneClock()
+		}
 		fmt.Println("Clock:", cpu.Clock) // Print the clock cycle for debugging purposes
 		fmt.Println("PC:", cpu.ProgramCounter)
 		fmt.Println("Cache")
@@ -257,5 +332,8 @@ func Main() {
 		fmt.Println("Memory")
 		cpu.RAM.PrintMem()
 		cpu.PrintReg()
+		if cpu.halted {
+			break
+		}
 	}
 }
