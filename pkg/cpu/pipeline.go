@@ -36,6 +36,8 @@ type Pipeline struct {
 	pLog   *zerolog.Logger // This logger is for the pipeline itself
 	Stages []Stage         // List of pipeline stages
 	cpu    *CPU            // Reference to the CPU instance
+	canFetch bool
+	scalarMode bool // Flag to indicate if the pipeline is in scalar mode
 }
 
 func (p *Pipeline) AddStage(stage Stage) {
@@ -55,13 +57,19 @@ func (p *Pipeline) Run() {
 
 }
 
-func (p *Pipeline) RunOnePass() {
+func (p *Pipeline) RunOneClock() {
 	// wb -> mem -> exec -> dec -> fet
 	for i := 0; i < len(p.Stages); i++ {
 		p.Stages[i].Execute()
 	}
-	p.Stages[len(p.Stages)-1].Advance(nil, false) // Ensure the last stage can advance even if no instruction was passed to it, this is for the last stage in the pipeline (like WriteBack)
+	p.pLog.Info().Msgf("canFetch: %v\n", p.canFetch)
+	p.Stages[len(p.Stages)-1].Advance(nil, p.canFetch) // Ensure the last stage can advance even if no instruction was passed to it, this is for the last stage in the pipeline (like WriteBack)
 	p.cpu.Clock++
+}
+
+func (p *Pipeline) WriteBackHook() {
+	p.pLog.Info().Msg("WriteBackHook called")
+	p.canFetch = true 
 }
 
 func (p *Pipeline) SquashALL() {
@@ -85,17 +93,21 @@ func (p *Pipeline) sTracef(stage Stage, format string, args ...interface{}) {
 	p.log.Trace().Str("Stage", (stage).Name()).Msgf(format, args...)
 }
 
-func NewPipeline(cpu *CPU) *Pipeline {
+func NewPipeline(cpu *CPU, scalar bool) *Pipeline {
 	option := func(w *zerolog.ConsoleWriter) {
 		w.Out = os.Stderr
 	}
-	plog := zerolog.New(zerolog.NewConsoleWriter(option)).Level(zerolog.TraceLevel).With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 1).Logger()
-	p := &Pipeline{
+	log := zerolog.New(zerolog.NewConsoleWriter(option)).Level(zerolog.TraceLevel).With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 1).Logger()
+	pLog := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Caller().Logger()
+	p := Pipeline{
 		Stages: make([]Stage, 0),
 		cpu:    cpu,
-		log:    &plog,
+		log:    &log,
+		pLog:  &pLog,
+		canFetch: true,
+		scalarMode: scalar,
 	}
-	return p
+	return &p
 }
 
 type Stage interface {

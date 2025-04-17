@@ -285,7 +285,7 @@ func Main() {
 	copy(make([]uint32, 0), inst_array)
 	inststr := `
 	ldi r5, 3
-	ldi r6, 8
+	ldi r6, 7
 	ldi r2, 10
 	add r4, 2
 	sub r2, 1
@@ -293,11 +293,10 @@ func Main() {
 	beq [r6]
 	bne [r5]
 	or r1, 0xbeef
-	nop
-	nop
-	nop
-	nop
 	meow
+	nop
+	nop
+	nop
 	nop
 	`
 	instructions, err := r8.ParseString("cpuTest", inststr)
@@ -308,7 +307,7 @@ func Main() {
 
 	cache := memory.CreateCacheDefault(&ram) // Create a cache with default settings, 8 sets, 2 ways, no delay                  // Create a new ALU instance
 	cpu := CPU{}
-	pipeline := NewPipeline(&cpu)
+	pipeline := NewPipeline(&cpu, false)
 	clog := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Caller().Logger()
 	cpu.Init(&cache, &ram, pipeline, &clog) // Initialize the CPU with the cache and no pipeline yet
 	fs := &FetchStage{}
@@ -324,7 +323,7 @@ func Main() {
 	pipeline.AddStages(ws, ms, es, ds, fs)
 	for {
 		if !cpu.halted {
-		pipeline.RunOnePass()
+			pipeline.RunOneClock()
 		}
 		fmt.Println("Clock:", cpu.Clock) // Print the clock cycle for debugging purposes
 		fmt.Println("PC:", cpu.ProgramCounter)
@@ -333,10 +332,6 @@ func Main() {
 		fmt.Println("Memory")
 		cpu.RAM.PrintMem()
 		cpu.PrintReg()
-		if cpu.ProgramCounter >= uint32(ram.SizeWords()) {
-			fmt.Println("Reached the end of the instruction array, halting execution.")
-			break
-		}
 		if cpu.halted {
 			break
 		}

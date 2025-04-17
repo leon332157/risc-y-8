@@ -41,6 +41,9 @@ func (w *WriteBackStage) Execute() {
 	}
 	inst:= w.currentInstruction
 	w.pipeline.sTracef(w, "Processing instruction: %+v\n", w.currentInstruction) // For debugging purposes
+	if w.pipeline.scalarMode {
+		w.pipeline.canFetch = true // In scalar mode, we can fetch the next instruction after write back
+	}
 	if w.currentInstruction.WriteBack {
 		if w.currentInstruction.BaseInstruction.OpType == types.Control {
 			// Control instruction, write back to the Program Counter and RDestAUX
@@ -66,8 +69,9 @@ func (w *WriteBackStage) Execute() {
 		w.pipeline.cpu.WriteIntR(w.currentInstruction.RDestAux, w.currentInstruction.DestMemAddr)
 		w.pipeline.sTracef(w, "Written back to rdestaux: %v %v\n", w.currentInstruction.RDestAux, w.currentInstruction.DestMemAddr)
 	} else {
-		fmt.Println("[WriteBackStage] No write-back required for this instruction")
+		w.pipeline.sTrace(w,"No write-back required for this instruction")
 	}
+	w.pipeline.sTracef(w, "Write back completed for instruction: %+v\n", w.currentInstruction) // For debugging purposes
 	w.currentInstruction = nil
 }
 
@@ -78,6 +82,7 @@ func (w *WriteBackStage) Advance(i *InstructionIR, prevstalled bool) bool {
 	}
 	w.pipeline.sTracef(w, "Got with instruction: %+v\n", i) // Debugging output to see which instruction is being processed
 	w.currentInstruction = i                                // Set the current instruction to the one passed in, this is used in Execute()
+
 	return true
 }
 
