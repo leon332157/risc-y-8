@@ -2,38 +2,46 @@ package memory
 
 import (
 	"fmt"
-	"math"
+	"math/bits"
 )
 
 type CacheType struct {
-	Contents   [][]CacheLine
-	Sets       uint
-	Ways       uint
-	LowerLevel Memory
+	Contents     [][]CacheLine
+	Sets         uint
+	Ways         uint
+	wordsPerLine uint
+	LowerLevel   Memory
 	MemoryRequestState
 }
 
 type CacheLine struct {
 	Valid bool
 	Tag   uint
-	Data  uint32
+	Data  []uint32
 	LRU   int
 }
 
 type IdxTag struct {
-	index uint
-	tag   uint
+	index  uint
+	tag    uint
+	offset uint
 }
 
-func CreateCache(numSets, numWays, delay uint, lower Memory) CacheType {
+func CreateCache(numSets, numWays, wordsPerLine, delay uint, lower Memory) CacheType {
 	contents := make([][]CacheLine, numSets)
+	data := make([]uint32, wordsPerLine)
+
+	for i := range wordsPerLine {
+		data[i] = 0
+	}
 
 	// initialize cache contents to zero
 	for i := range numSets {
 		contents[i] = make([]CacheLine, numWays)
 		lru := int(numWays - 1)
 		for j := range numWays {
-			contents[i][j] = CacheLine{Valid: false, Tag: 0, Data: 0, LRU: lru}
+
+			contents[i][j] = CacheLine{Valid: false, Tag: 0, Data: data, LRU: lru}
 			lru -= 1
 		}
 	}
@@ -48,6 +56,7 @@ func CreateCache(numSets, numWays, delay uint, lower Memory) CacheType {
 		Contents:           contents,
 		Sets:               numSets,
 		Ways:               numWays,
+		wordsPerLine:       wordsPerLine,
 		LowerLevel:         lower,
 		MemoryRequestState: r,
 	}
@@ -55,7 +64,7 @@ func CreateCache(numSets, numWays, delay uint, lower Memory) CacheType {
 
 // Creates the default cache
 func CreateCacheDefault(lower Memory) CacheType {
-	return CreateCache(8, 4, 0, lower)
+	return CreateCache(8, 2, 4, 0, lower)
 }
 
 func (c *CacheType) IsBusy() bool {
@@ -82,12 +91,18 @@ func (c *CacheType) service(who Requester) bool {
 }
 
 func (c *CacheType) FindIndexAndTag(addr uint) IdxTag {
+	// get lowest order 2 bit for data offset (reps 4 words)
+	offsetBits := uint(bits.Len32(uint32(c.wordsPerLine)))
+	offset := addr & offsetBits
+
 	// Get set index from address
-	index := addr % c.Sets
+	indexBits := bits.Len32(uint32(c.Sets * c.Ways))
+	index := (addr >> offsetBits) & uint(indexBits)
+
 	// Get tag bits based on total bits needed for mem address
-	memSize := c.LowerLevel.SizeWords()
-	totalBits := int(math.Log2(float64(memSize)))
-	tagBits := totalBits - int(math.Log2(float64(c.Sets)))
+	//memSize := c.LowerLevel.SizeWords()
+	totalBits := 32 //int(math.Log2(float64(memSize)))
+	tagBits := totalBits - indexBits - int(offsetBits)
 
 	// Get tag using the address
 	bin := uint(0b1)
@@ -98,8 +113,9 @@ func (c *CacheType) FindIndexAndTag(addr uint) IdxTag {
 	tag := (addr >> uint(totalBits-tagBits)) & bin
 
 	return IdxTag{
-		index: index,
-		tag:   tag,
+		index:  index,
+		tag:    tag,
+		offset: offset,
 	}
 }
 
@@ -114,37 +130,50 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 
 	// Given the address, find the index of the set and tag
 	idxTag := c.FindIndexAndTag(addr)
-	index, tag := idxTag.index, idxTag.tag
+	index, tag, offset := idxTag.index, idxTag.tag, idxTag.offset
 
 	// If tag exists, check valid bit (false -> miss, true -> hit) cache hit: return the data, update lru
 	set := c.Contents[index]
 	for i := range c.Ways {
 		if (set[i].Tag == tag) && (set[i].Valid) {
 			c.UpdateLRU(index, i)
-			return ReadResult{SUCCESS, set[i].Data}
+			return ReadResult{SUCCESS, set[i].Data[offset]}
 		}
 	}
 
-	// Else, cache miss: read memory, load into cache, return data (no need to write back to mem)
-	read := c.LowerLevel.Read(addr, LAST_LEVEL_CACHE)
-	switch read.State {
-	case WAIT:
-		fmt.Println("Cache read, waiting for ram")
-		return ReadResult{WAIT_NEXT_LEVEL, 0}
-	case WAIT_NEXT_LEVEL:
-		fmt.Println("Cache read, waiting for next level memory")
-		return ReadResult{WAIT_NEXT_LEVEL, 0}
-	case SUCCESS:
-	default:
-		return ReadResult{read.State, 0}
-		// do nothing
+	// Else, cache miss: read LINE from memory, load into cache, return data (no need to write back to mem)
+	reads := c.ReadMulti(addr, offset) // TODO: this is readMulti
+	data := []uint32{}
+	for i := range reads {
+		switch reads[i].State {
+		case WAIT:
+			fmt.Println("Cache read, waiting for ram")
+			return ReadResult{WAIT_NEXT_LEVEL, 0}
+		case WAIT_NEXT_LEVEL:
+			fmt.Println("Cache read, waiting for next level memory")
+			return ReadResult{WAIT_NEXT_LEVEL, 0}
+		case SUCCESS:
+		default:
+			data = append(data, reads[i].Value)
+			return ReadResult{reads[i].State, 0}
+			// do nothing
+		}
 	}
 
 	lruIdx := c.GetLRU(index)
-	c.Contents[index][lruIdx] = CacheLine{Valid: true, Tag: tag, Data: read.Value, LRU: 0}
+	c.Contents[index][lruIdx] = CacheLine{Valid: true, Tag: tag, Data: data, LRU: 0}
 	c.UpdateLRU(index, lruIdx)
 
-	return read
+	return ReadResult{SUCCESS, data[offset]}
+}
+
+func (c *CacheType) ReadMulti(addr, offset uint) []ReadResult {
+	addr = addr - offset
+	line := []ReadResult{}
+	for i := range c.wordsPerLine {
+		line = append(line, c.LowerLevel.Read(addr+i, LAST_LEVEL_CACHE))
+	}
+	return line
 }
 
 // Write through, no allocate policy
@@ -154,7 +183,7 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	}
 	// Given address find the set index and tag
 	idxTag := c.FindIndexAndTag(addr)
-	index, tag := idxTag.index, idxTag.tag
+	index, tag, offset := idxTag.index, idxTag.tag, idxTag.offset
 	valid := false
 	set := c.Contents[index]
 	for i := range c.Ways - 1 {
@@ -168,7 +197,7 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 				return SUCCESS
 			}*/
 			// if data is different, write-through to memory
-			c.Contents[index][i].Data = val
+			c.Contents[index][i].Data[offset] = val
 			c.UpdateLRU(index, i)
 			valid = true
 		}
@@ -177,7 +206,9 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	if !valid {
 		// Find next empty line or LRU (empty line will be lru!), write-through to memory
 		lruIdx := c.GetLRU(index)
-		c.Contents[index][lruIdx] = CacheLine{Valid: true, Tag: tag, Data: val, LRU: 0}
+		data := c.Contents[index][lruIdx].Data
+		data[offset] = val
+		c.Contents[index][lruIdx] = CacheLine{Valid: true, Tag: tag, Data: data, LRU: 0}
 		c.UpdateLRU(index, lruIdx)
 	}
 

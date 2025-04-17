@@ -12,15 +12,6 @@ import (
 	"github.com/leon332157/risc-y-8/pkg/memory"
 )
 
-const (
-	ramLines    = 32
-	ramWords    = 8
-	cacheSets   = 8
-	cacheWays   = 2
-	pipelineLen = 5
-	registers   = 32 // just int regs for now
-)
-
 var (
 	ram      = memory.CreateRAM(32, 8, 5)
 	cache    = memory.CreateCacheDefault(&ram)
@@ -114,8 +105,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "enter":
 			m.lastInstr = m.instr.Value()
-			// Send instruction to be computed
-			cache.Write(0x0, memory.FETCH_STAGE, 0xdeadbeef)
+			// TODO: Send instruction to be computed
 			m.instr.Reset()
 			return m, nil
 		}
@@ -172,7 +162,7 @@ func drawPipeline() string {
 }
 
 func drawRegisters() string {
-	// TODO: create a cpu instance and make int registers
+	// create a cpu instance and make int registers
 	rows := getRegVals()
 	regTable := table.New().Border(lipgloss.NormalBorder()).Rows(rows...)
 	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render("IntRegisters\n" + regTable.Render() + "\n")

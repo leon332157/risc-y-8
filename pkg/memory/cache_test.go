@@ -40,20 +40,20 @@ func TestReadHitAndMiss(t *testing.T) {
 
 	//load into mem, read miss empty cache
 	for range 6 {
-		newMem.Write(32, LAST_LEVEL_CACHE,0xDEADBEEF)
+		newMem.Write(32, LAST_LEVEL_CACHE, 0xDEADBEEF)
 	}
 
 	var read ReadResult
 
-	read = c.Read(32, FETCH)
+	read = c.Read(32, FETCH_STAGE)
 
 	if read.Value != 3735928559 {
 		t.Errorf("read 1 resulted in %08x; want 0xDEADBEEF", read.Value)
 	}
 
 	// Check if loaded into cache, read hit
-	newMem.Write(32,LAST_LEVEL_CACHE, 0xFFFF)
-	read = c.Read(32, FETCH)
+	newMem.Write(32, LAST_LEVEL_CACHE, 0xFFFF)
+	read = c.Read(32, FETCH_STAGE)
 
 	if read.Value != 3735928559 {
 		t.Errorf("read 2 resulted in %08x; want 0xDEADBEEF", read.Value)
@@ -65,9 +65,9 @@ func TestWriteThrough(t *testing.T) {
 	newMem := CreateRAM(32, 8, 5)
 	c := CreateCacheDefault(&newMem)
 
-	c.Write(3, MEMORY, 0x123456)
-	readMem := newMem.Read(3,LAST_LEVEL_CACHE)
-	readC := c.Read(3, MEMORY)
+	c.Write(3, MEMORY_STAGE, 0x123456)
+	readMem := newMem.Read(3, LAST_LEVEL_CACHE)
+	readC := c.Read(3, MEMORY_STAGE)
 
 	if readMem.Value != 0x123456 && readC.Value != 0x123456 {
 		t.Errorf("mem read resulted in %08x; want 0x123456", readMem.Value)
@@ -77,21 +77,20 @@ func TestWriteThrough(t *testing.T) {
 
 func TestStagingDelay(t *testing.T) {
 	newMem := CreateRAM(32, 8, 5)
-	c := CreateCache(8, 2, 1)
+	c := CreateCache(8, 2, 4, 1, &newMem)
 
-	c.Write(3, FETCH, 0xFFFFFF)
-	
+	c.Write(3, FETCH_STAGE, 0xFFFFFF)
 
 }
 
 func TestStagingReadDelay(t *testing.T) {
 	mem := CreateRAM(32, 8, 2)
-	c := CreateCache(8, 2, 2, &mem)
+	c := CreateCache(8, 2, 4, 2, &mem)
 
-	call1 := c.Read(1, FETCH)
-	call2 := c.Read(1, FETCH)
-	call3 := c.Read(1, MEMORY)
-	call4 := c.Read(1, FETCH)
+	call1 := c.Read(1, FETCH_STAGE)
+	call2 := c.Read(1, FETCH_STAGE)
+	call3 := c.Read(1, MEMORY_STAGE)
+	call4 := c.Read(1, FETCH_STAGE)
 
 	if call1.State != WAIT_NEXT_LEVEL {
 		t.Errorf("should be wait on mem, got %d", call1)
@@ -105,4 +104,11 @@ func TestStagingReadDelay(t *testing.T) {
 	if call4.State != SUCCESS {
 		t.Errorf("should be success, got %d", call4)
 	}
+}
+
+func TestCacheLoadsLineNoDelay(t *testing.T) {
+	mem := CreateRAM(32, 8, 0)
+	c := CreateCache(8, 2, 4, 0, &mem)
+
+	mem.Write()
 }
