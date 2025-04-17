@@ -39,11 +39,11 @@ func run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := assembler.ParseLines(prog.Lines); // changes state in assembler package
-	err != nil {
+	res,err := assembler.ParseLines(prog.Lines); // changes state in assembler package
+	if err != nil {
 		return err
 	}
-	encoded := assembler.EncInstructions()
+	encoded := assembler.EncInstructions(res)
 	if outfile != "" {
 		of, err := os.Create(outfile)
 		if err != nil {
@@ -56,6 +56,18 @@ func run(cmd *cobra.Command, args []string) error {
 		binary.Write(os.Stdout, binary.LittleEndian, encoded)
 	}
 	return nil
+}
+
+func ParseString(name,s string) ([]uint32, error) {
+	prog, err := grammar.ParseString(name,s)
+	if err != nil {
+		return nil, err
+	}
+	insts,err := assembler.ParseLines(prog.Lines); // changes state in assembler package
+	if err != nil {
+		return nil, err
+	}
+	return assembler.EncInstructions(insts), nil
 }
 
 func init() {

@@ -141,6 +141,7 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			OpType:  LoadStore,
 			Rd:      rd,
 			MemMode: PUSH,
+			RMem:    IntegerRegisters["sp"],
 		}
 	case "pop":
 		rdval, ok := inst.Operands[0].(grammar.OperandRegister)
@@ -157,6 +158,7 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			OpType:  LoadStore,
 			Rd:      rd,
 			MemMode: POP,
+			RMem:    IntegerRegisters["sp"],
 		}
 	case "call":
 		mem, ok := inst.Operands[0].(grammar.OperandMemory)
