@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	table "github.com/charmbracelet/lipgloss/table"
+	"github.com/leon332157/risc-y-8/pkg/cpu"
 	"github.com/leon332157/risc-y-8/pkg/memory"
 )
 
@@ -17,19 +18,34 @@ const (
 	cacheSets   = 8
 	cacheWays   = 2
 	pipelineLen = 5
-	registers   = 8 // ?????? Int, FP, Vector
+	registers   = 32 // just int regs for now
 )
 
-var ram = memory.CreateRAM(32, 8, 5)
-var cache = memory.CreateCacheDefault(&ram)
+var (
+	ram      = memory.CreateRAM(32, 8, 5)
+	cache    = memory.CreateCacheDefault(&ram)
+	control  = cpu.CPU{}
+	pipeline = cpu.NewPipeline(&control)
+	fs       = &cpu.FetchStage{}
+	ds       = &cpu.DecodeStage{}
+	es       = &cpu.ExecuteStage{}
+	ms       = &cpu.MemoryStage{}
+	ws       = &cpu.WriteBackStage{}
+)
 
-// TODO: get the rest connected and working
-// var pipeline =
-// var alu =
-// var cpu =
+func InitSystem() {
+	control.Init(&cache, &ram, pipeline)
+	fs.Init(pipeline, ds, nil)
+	ds.Init(pipeline, es, fs)
+	es.Init(pipeline, ms, ds)
+	ms.Init(pipeline, ws, es)
+	ws.Init(pipeline, nil, ms)
+	pipeline.AddStages(ws, ms, es, ds, fs)
+}
 
 type model struct {
-	instr textinput.Model
+	instr     textinput.Model
+	lastInstr string
 }
 
 func initialModel() model {
@@ -40,7 +56,8 @@ func initialModel() model {
 	ti.Width = 50
 
 	return model{
-		instr: ti,
+		instr:     ti,
+		lastInstr: "",
 	}
 }
 
@@ -80,6 +97,15 @@ func getRAMRows() [][]string {
 	return rRows
 }
 
+func getRegVals() [][]string {
+	regVals := [][]string{}
+	for i := range len(control.IntRegisters) {
+		row := []string{fmt.Sprintf("R%d", i), fmt.Sprintf("%08X", control.IntRegisters[i].Value)}
+		regVals = append(regVals, row)
+	}
+	return regVals
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -87,8 +113,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "enter":
-			// TODO: text input is saved and instruction is sent
-			// call view?
+			m.lastInstr = m.instr.Value()
+			// Send instruction to be computed
+			cache.Write(0x0, memory.FETCH_STAGE, 0xdeadbeef)
+			m.instr.Reset()
+			return m, nil
 		}
 	case tea.WindowSizeMsg:
 		// handle resize if needed
@@ -104,15 +133,16 @@ func (m model) View() string {
 	cache := drawCache()
 	pipeline := drawPipeline()
 	registerView := drawRegisters()
+	clock := drawClock()
+	lastInstr := m.drawLastInstruction()
 	cmdLine := m.instr.View() + "\n"
 
-	// TODO: Show Clock and PC
+	// TODO: Show PC??
 
-	column1 := lipgloss.JoinVertical(lipgloss.Top, pipeline)
-	regCache := lipgloss.JoinHorizontal(lipgloss.Left, registerView, cache, "\n")
-	connect := lipgloss.JoinVertical(lipgloss.Top, column1, regCache)
-	row1 := lipgloss.JoinHorizontal(lipgloss.Top, connect, "\n", ram)
-	ui := lipgloss.JoinVertical(lipgloss.Left, row1, cmdLine)
+	column1 := lipgloss.JoinVertical(lipgloss.Top, pipeline, cache, clock, lastInstr)
+	regsCol := lipgloss.JoinHorizontal(lipgloss.Left, registerView, column1)
+	together := lipgloss.JoinHorizontal(lipgloss.Top, regsCol, ram)
+	ui := lipgloss.JoinVertical(lipgloss.Left, together, cmdLine)
 
 	return "\n" + ui + "\n" + "---- ctrl+c or q to quit ----" + "\n"
 }
@@ -141,16 +171,27 @@ func drawPipeline() string {
 
 func drawRegisters() string {
 	// TODO: create a cpu instance and make int registers
-	headers := []string{"Register", "Value"}
-	rows := [][]string{}
-	for i := 0; i < registers; i++ {
-		rows = append(rows, []string{fmt.Sprintf("R%d", i), "00"})
-	}
-	regTable := table.New().Border(lipgloss.NormalBorder()).Headers(headers...).Rows(rows...)
-	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render("Registers\n" + regTable.Render())
+	rows := getRegVals()
+	regTable := table.New().Border(lipgloss.NormalBorder()).Rows(rows...)
+	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render("IntRegisters\n" + regTable.Render())
+}
+
+func (m model) drawLastInstruction() string {
+	headers := []string{"Last Instruction"}
+	row := []string{m.lastInstr}
+	instrTable := table.New().Border(lipgloss.NormalBorder()).Headers(headers...).Rows(row)
+	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render(instrTable.Render())
+}
+
+func drawClock() string {
+	header := []string{"Clock"}
+	row := []string{fmt.Sprintf("%d", control.Clock)}
+	clockTable := table.New().Border(lipgloss.NormalBorder()).Headers(header...).Rows(row)
+	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render(clockTable.Render())
 }
 
 func TUImain() {
+	InitSystem()
 	p := tea.NewProgram(initialModel())
 	if err := p.Start(); err != nil {
 		fmt.Println("Error running program:", err)
