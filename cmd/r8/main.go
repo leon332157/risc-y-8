@@ -1,6 +1,9 @@
 package r8
 
 import (
+	"fmt"
+
+	"github.com/leon332157/risc-y-8/cmd/r8/internal/assembler"
 	"github.com/spf13/cobra"
 )
 
@@ -14,4 +17,8 @@ var (
 // Execute executes the root command.
 func Execute() error {
 	return rootCmd.Execute()
+}
+
+func Main() {
+	TUImain()
 }
