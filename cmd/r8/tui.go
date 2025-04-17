@@ -136,12 +136,14 @@ func (m model) View() string {
 	clock := drawClock()
 	lastInstr := m.drawLastInstruction()
 	cmdLine := m.instr.View() + "\n"
+	whitespace := lipgloss.Place(3, 3, lipgloss.Right, lipgloss.Bottom, "")
 
 	// TODO: Show PC??
 
-	column1 := lipgloss.JoinVertical(lipgloss.Top, pipeline, cache, clock, lastInstr)
-	regsCol := lipgloss.JoinHorizontal(lipgloss.Left, registerView, column1)
-	together := lipgloss.JoinHorizontal(lipgloss.Top, regsCol, ram)
+	clockAndInstr := lipgloss.JoinHorizontal(lipgloss.Center, clock, whitespace, lastInstr)
+	column1 := lipgloss.JoinVertical(lipgloss.Top, pipeline, cache, clockAndInstr)
+	regsCol := lipgloss.JoinHorizontal(lipgloss.Left, registerView, whitespace, column1)
+	together := lipgloss.JoinHorizontal(lipgloss.Top, regsCol, whitespace, ram)
 	ui := lipgloss.JoinVertical(lipgloss.Left, together, cmdLine)
 
 	return "\n" + ui + "\n" + "---- ctrl+c or q to quit ----" + "\n"
@@ -173,7 +175,7 @@ func drawRegisters() string {
 	// TODO: create a cpu instance and make int registers
 	rows := getRegVals()
 	regTable := table.New().Border(lipgloss.NormalBorder()).Rows(rows...)
-	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render("IntRegisters\n" + regTable.Render())
+	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render("IntRegisters\n" + regTable.Render() + "\n")
 }
 
 func (m model) drawLastInstruction() string {
