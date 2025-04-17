@@ -23,6 +23,10 @@ var (
 	CALL = ControlOp{Mode: 0b111, Flag: 0b1111}
 )
 
+func GetModeFlag(c ControlOp) uint8 {
+	return c.Mode<<4 | c.Flag
+}
+
 var Conditions = map[string]ControlOp{
 	"ne":   NE,
 	"nz":   NZ,

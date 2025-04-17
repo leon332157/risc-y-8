@@ -10,7 +10,7 @@ import (
 var asmLexerDyn = lexer.MustStateful(lexer.Rules{
 	"Root": {
 		{"Comment", `#.*`, nil},
-		{"Label", `\.\w{1,}:`, nil},
+		{"Label", `\w{1,}:`, nil},
 		{"Directive", `\.\w{2,}`, nil},
 		//{"String", `"(\\"|[^"])*"`, nil},
 		//{"Punct", `[!@#$%^&*()_={}\|:;"'<,>.?/]`, nil},

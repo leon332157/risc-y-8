@@ -36,6 +36,26 @@ func (alu *ALU) GetFlag(flag uint32) bool {
 	return (alu.FlagRegister & flag) != 0
 }
 
+// Return true if the Zero Flag is set
+func (alu *ALU) GetZF() bool {
+	return (alu.FlagRegister & ZF) != 0
+}
+
+// Return true if the Sign Flag is set
+func (alu *ALU) GetSF() bool {
+	return (alu.FlagRegister & SF) != 0
+}
+
+// Return true if the Carry Flag is set
+func (alu *ALU) GetCF() bool {
+	return (alu.FlagRegister & CF) != 0
+}
+
+// Return true if the Overflow Flag is set
+func (alu *ALU) GetOVF() bool {
+	return (alu.FlagRegister & OVF) != 0
+}
+
 func (alu *ALU) Add(augend, addend uint32) uint32 {
 	sum, carry := bits.Add32(augend, addend, 0)
 
@@ -111,12 +131,12 @@ func (alu *ALU) Mul(multiplicand, multiplier uint32) uint32 {
 }
 
 func (alu *ALU) Div(dividend, divisor uint32) uint32 {
-	quo, _ := bits.Div32(0, divisor, dividend)
+	quo, _ := bits.Div32(0, dividend, divisor)
 	return quo
 }
 
 func (alu *ALU) Rem(dividend, divisor uint32) uint32 {
-	_, rem := bits.Div32(0, divisor, dividend)
+	_, rem := bits.Div32(0, dividend, divisor)
 	return rem
 }
 
@@ -179,6 +199,11 @@ func (alu *ALU) ShiftLogicalLeftCarry(v uint32, amt uint32) uint32 {
 	}
 	amt = amt & 0x1F // Limit the shift amount to 0-31
 	// Check if the last bit to be shifted out is 1
-	alu.FlagRegister |= (CF & (v & (0b1 << (32 - amt))))
+	lastBitShifted := (v >> (32 - amt)) & 0x1
+	alu.FlagRegister |= (CF & lastBitShifted)
 	return v << amt
+}
+
+func (alu *ALU) RotateLeft(v uint32, amt int32) uint32 {
+	return bits.RotateLeft32(v, int(amt))
 }

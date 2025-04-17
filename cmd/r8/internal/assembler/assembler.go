@@ -39,6 +39,9 @@ func parseMemory(mem grammar.OperandMemory) (uint8, int16, error) {
 
 	var err error
 	var ok bool
+	if mem.Value.Base == "pc" {
+		mem.Value.Base = "r0" // pc is encoded as r0
+	}
 	rmem, ok = IntegerRegisters[mem.Value.Base] // register operand
 	if !ok {
 		err = fmt.Errorf("[parseMemory] invalid base register: %#v", mem.Value.Base)
@@ -141,7 +144,6 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			OpType:  LoadStore,
 			Rd:      rd,
 			MemMode: PUSH,
-			RMem:    IntegerRegisters["sp"],
 		}
 	case "pop":
 		rdval, ok := inst.Operands[0].(grammar.OperandRegister)
@@ -158,7 +160,6 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			OpType:  LoadStore,
 			Rd:      rd,
 			MemMode: POP,
-			RMem:    IntegerRegisters["sp"],
 		}
 	case "call":
 		mem, ok := inst.Operands[0].(grammar.OperandMemory)
@@ -563,7 +564,15 @@ func parseInst(inst *grammar.Instruction) (BaseInstruction, error) {
 var Instructions []BaseInstruction
 var Labels map[string]uint32
 
-func ParseLines(lines []grammar.Line) error {
+// func parseLabel(label *grammar.Label) (uint32, error) {
+
+// 	var err error
+// 	Labels[label.Text] = label.Offset
+// 	return label.Offset, err
+	
+// }
+
+func ParseLines(lines []grammar.Line) (*[]BaseInstruction,error) {
 	for _, line := range lines {
 		if line.Directive != nil {
 			// TODO: handle directives
@@ -571,22 +580,23 @@ func ParseLines(lines []grammar.Line) error {
 		}
 		if line.Label != nil {
 			// TODO: handle labels
+			Labels[line.Label.Text] = line.Label.Offset
 			continue
 		}
 		if line.Instruction != nil {
 			inst, err := parseInst(line.Instruction)
 			if err != nil {
-				return fmt.Errorf("[parseLines] invalid instruction at position %v: %v", line.Pos, err)
+				return nil,fmt.Errorf("[parseLines] invalid instruction at position %v: %v", line.Pos, err)
 			}
 			Instructions = append(Instructions, inst)
 		}
 	}
-	return nil
+	return &Instructions,nil
 }
 
-func EncInstructions() []uint32 {
-	enc := make([]uint32, len(Instructions))
-	for i, inst := range Instructions {
+func EncInstructions(insts *[]BaseInstruction) []uint32 {
+	enc := make([]uint32, len(*insts))
+	for i, inst := range *insts {
 		enc[i] = inst.Encode()
 	}
 	return enc

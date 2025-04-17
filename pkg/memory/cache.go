@@ -55,7 +55,7 @@ func CreateCache(numSets, numWays, delay uint, lower Memory) CacheType {
 
 // Creates the default cache
 func CreateCacheDefault(lower Memory) CacheType {
-	return CreateCache(8, 2, 0, lower)
+	return CreateCache(8, 4, 0, lower)
 }
 
 func (c *CacheType) IsBusy() bool {

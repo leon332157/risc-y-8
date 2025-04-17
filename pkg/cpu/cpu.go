@@ -8,6 +8,8 @@ import (
 	"github.com/leon332157/risc-y-8/pkg/memory"
 	"github.com/leon332157/risc-y-8/pkg/types"
 	"github.com/rs/zerolog"
+
+	"github.com/leon332157/risc-y-8/cmd/r8"
 )
 
 const (
@@ -40,8 +42,8 @@ type VectorRegister struct {
 }
 
 type CPU struct {
-	log *zerolog.Logger
-
+	log            *zerolog.Logger
+	halted         bool
 	Clock          uint32
 	ProgramCounter uint32
 	ALU            *alu.ALU
@@ -50,18 +52,17 @@ type CPU struct {
 	Cache        *memory.CacheType
 	RAM          *memory.RAM // Reference to RAM, if needed for direct access (optional)
 	Pipeline     *Pipeline
-	Flag         uint32 // RFlag
 	IntRegisters [INT_REG_COUNT]IntRegister
 	//FloatRegisters  []FloatRegister
 	//VectorRegisters []VectorRegister
-
 }
 
 func (cpu *CPU) blockIntR(r uint8) {
 	if r >= uint8(len(cpu.IntRegisters)) {
 		// Handle out of bounds access, if necessary
-		cpu.log.Panic().Msgf("attempted to block an out of bounds register: %s", r)
+		cpu.log.Panic().Msgf("attempted to block an out of bounds register: %v", r)
 	}
+	cpu.log.Trace().Msgf("Blocking register r%v for reading and writing", r)
 	cpu.IntRegisters[r].readEnable = false
 	cpu.IntRegisters[r].writeEnable = false
 }
@@ -71,11 +72,16 @@ func (cpu *CPU) unblockIntR(r uint8) {
 	if r >= uint8(len(cpu.IntRegisters)) {
 		cpu.log.Panic().Msgf("attempted to unblock an out of bounds register: %v", r)
 	}
+	cpu.log.Trace().Msgf("Unblocking register r%v for reading and writing", r)
 	cpu.IntRegisters[r].readEnable = true
 	cpu.IntRegisters[r].writeEnable = true
 }
 
-func (c *CPU) ReadIntR(r uint8) (uint32, int) {
+func (c *CPU) ReadIntR(r uint8) (uint32, int32) {
+	if r == 0 {
+		c.log.Info().Msg("attempted to read from r0, returning 0")
+		return 0, SUCCESS // r0 is always 0
+	}
 	if r >= uint8(len(c.IntRegisters)) {
 		c.log.Panic().Msgf("attempted to read an out of bounds register: %v", r)
 	}
@@ -85,14 +91,19 @@ func (c *CPU) ReadIntR(r uint8) (uint32, int) {
 	return c.IntRegisters[r].value, SUCCESS
 }
 
-func (c *CPU) WriteIntR(r uint8) (int, uint32) {
+func (c *CPU) WriteIntR(r uint8, value uint32) (uint32, int32) {
+	if r == 0 {
+		c.log.Info().Msg("attempted to write to r0, ignoring write")
+		return SUCCESS, 0 // r0 is always 0, ignore write
+	}
 	if r >= uint8(len(c.IntRegisters)) {
 		c.log.Panic().Msgf("attempted to write an out of bounds register: %v", r)
 	}
 	if !c.IntRegisters[r].writeEnable {
-		return WRITE_BLOCKED, 0 // Register is not writable
+		return 0, WRITE_BLOCKED // Register is not writable
 	}
-	return SUCCESS, c.IntRegisters[r].value
+	c.IntRegisters[r].value = value
+	return c.IntRegisters[r].value, SUCCESS
 }
 
 func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logger *zerolog.Logger) {
@@ -104,9 +115,9 @@ func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logg
 	cpu.RAM = ram
 	for i := 0; i < INT_REG_COUNT; i++ {
 		reg := &cpu.IntRegisters[i] // Get the pointer to the integer register
-		reg.Value = 0               // Initialize all integer registers to 0
-		reg.ReadEnable = true       // Allow reading by default
-		reg.WriteEnable = true      // Allow writing by default
+		reg.value = 0               // Initialize all integer registers to 0
+		reg.readEnable = true       // Allow reading by default
+		reg.writeEnable = true      // Allow writing by default
 	}
 	cpu.log = logger
 	cpu.log.Trace().Msgf("cpu initialized: %+v", &cpu)
@@ -118,10 +129,15 @@ func (cpu *CPU) PrintReg() {
 		if i%8 == 0 && i != 0 {
 			fmt.Println() // Newline for readability every 8 registers
 		}
-		fmt.Printf("r%d: 0x%08x\t", i, reg.Value)
+		fmt.Printf("r%d: 0x%08x\t", i, reg.value)
 
 	}
 	fmt.Println()
+}
+
+func (cpu *CPU) Halt() {
+	cpu.halted = true
+	cpu.log.Info().Msg("CPU halted")
 }
 
 const INIT_VECTOR = 0
@@ -138,6 +154,11 @@ func Main() {
 			Imm:    16,
 		}).Encode(),
 
+		(&types.BaseInstruction{
+			OpType: types.Control,
+			RMem:   0,
+			Imm:    -1,
+		}).Encode(),
 		// ADD r5, 32
 		(&types.BaseInstruction{
 			OpType: types.RegImm,
@@ -260,10 +281,30 @@ func Main() {
 			Imm:    2,
 		}).Encode(),
 	}
-
-	ram := memory.CreateRAM(32, 1, 4)
-
-	copy(ram.Contents, inst_array)
+	ram := memory.CreateRAM(32, 1, 1)
+	copy(make([]uint32, 0), inst_array)
+	inststr := `
+	ldi r5, 3
+	ldi r6, 8
+	ldi r2, 10
+	add r4, 2
+	sub r2, 1
+	cmp r2, 0 
+	beq [r6]
+	bne [r5]
+	or r1, 0xbeef
+	nop
+	nop
+	nop
+	nop
+	meow
+	nop
+	`
+	instructions, err := r8.ParseString("cpuTest", inststr)
+	if err != nil {
+		panic(err)
+	}
+	copy(ram.Contents, instructions)
 
 	cache := memory.CreateCacheDefault(&ram) // Create a cache with default settings, 8 sets, 2 ways, no delay                  // Create a new ALU instance
 	cpu := CPU{}
@@ -281,8 +322,10 @@ func Main() {
 	ms.Init(pipeline, ws, es)
 	ws.Init(pipeline, nil, ms)
 	pipeline.AddStages(ws, ms, es, ds, fs)
-	for range 300 {
+	for {
+		if !cpu.halted {
 		pipeline.RunOnePass()
+		}
 		fmt.Println("Clock:", cpu.Clock) // Print the clock cycle for debugging purposes
 		fmt.Println("PC:", cpu.ProgramCounter)
 		fmt.Println("Cache")
@@ -290,5 +333,12 @@ func Main() {
 		fmt.Println("Memory")
 		cpu.RAM.PrintMem()
 		cpu.PrintReg()
+		if cpu.ProgramCounter >= uint32(ram.SizeWords()) {
+			fmt.Println("Reached the end of the instruction array, halting execution.")
+			break
+		}
+		if cpu.halted {
+			break
+		}
 	}
 }

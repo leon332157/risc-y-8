@@ -19,6 +19,10 @@ type DecodeStage struct {
 	prev *FetchStage
 }
 
+func signExtend(v int16) uint32 {
+	return uint32(int32(v))
+}
+
 func (d *DecodeStage) Init(pipeline *Pipeline, next Stage, prev Stage) error {
 	if pipeline == nil {
 		d.pipe.log.Fatal().Msg("[Decode Init] pipeline is null")
@@ -59,25 +63,22 @@ func (d *DecodeStage) Execute() {
 	}
 	d.state = DEC_busy
 	baseInstruction := types.BaseInstruction{} // Create a new BaseInstruction to decode the instruction
-	if d.currInst.rawInstruction == 0 {
-		d.pipe.log.Panic().Msg("[DecodeStage Execute] currentRawInstruction is zero, cannot decode") // this should not happen
-	}
 	(&baseInstruction).Decode(d.currInst.rawInstruction) // Decode the raw instruction into a BaseInstruction
 	// assume success
 	d.currInst.BaseInstruction = baseInstruction // Store the base instruction in the InstructionIR
-
+    d.pipe.sTracef(d, "Decoded instruction: %+v\n", d.currInst) // For debugging purposes
 	switch baseInstruction.OpType {
 	case types.RegImm:
 
 		v, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
 		if st != SUCCESS {
-			d.pipe.sTraceF(d, "Failed to read register r%v %v", baseInstruction.Rs, st)
+			d.pipe.sTracef(d, "Failed to read register r%v %v", baseInstruction.Rd, st)
 			d.state = DEC_busy
 			return
 		}
 		d.pipe.cpu.blockIntR(baseInstruction.Rd)
 		d.currInst.Result = v
-		d.currInst.Operand = uint32(baseInstruction.Imm) // sign extend immediate value
+		d.currInst.Operand = signExtend(baseInstruction.Imm) // sign extend immediate value
 		//d.currInst.ALUOp = baseInstruction.ALU
 		d.currInst.WriteBack = baseInstruction.Rd != 0 // Only write back if Rd is not zero
 
@@ -85,13 +86,13 @@ func (d *DecodeStage) Execute() {
 
 		rdv, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
 		if st != SUCCESS {
-			d.pipe.sTraceF(d, "Failed to read dest register r%v %v", baseInstruction.Rs, st)
+			d.pipe.sTracef(d, "Failed to read dest register r%v %v", baseInstruction.Rs, st)
 			d.state = DEC_busy
 			return
 		}
 		rsv, st := d.pipe.cpu.ReadIntR(baseInstruction.Rs)
 		if st != SUCCESS {
-			d.pipe.sTraceF(d, "Failed to read source register r%v %v", baseInstruction.Rs, st)
+			d.pipe.sTracef(d, "Failed to read source register r%v %v", baseInstruction.Rs, st)
 			d.state = DEC_reg_read
 			return
 		}
@@ -102,58 +103,91 @@ func (d *DecodeStage) Execute() {
 		d.currInst.WriteBack = baseInstruction.Rd != 0 // Only write back if Rd is not zero, otherwise it might be a nop operation
 
 	case types.Control:
-
-		if baseInstruction.RMem == 0 {
-			d.pipe.sTraceF(d, "Control instruction memory source is 0, pc relative memory address will not be used")
+		if baseInstruction.RMem == 0 && baseInstruction.Imm == -1 {
+			d.pipe.log.Error().Msg("[DecodeStage Execute] Bruh, why are branching to -1? Are you trying to halt?")
+			d.pipe.cpu.Halt()
+			return
 		}
 		rmemv, st := d.pipe.cpu.ReadIntR(baseInstruction.RMem)
 		if st != SUCCESS {
-			d.pipe.sTraceF(d, "Failed to read control instruction memory source r%v %v", baseInstruction.RMem, st)
+			d.pipe.sTracef(d, "Failed to read control instruction memory source r%v %v", baseInstruction.RMem, st)
 			d.state = DEC_reg_read
 			return
 		}
-		d.pipe.cpu.blockIntR(baseInstruction.RMem)
 		d.currInst.DestMemAddr = rmemv
-		d.currInst.Operand = uint32(baseInstruction.Imm) // sign extend immediate value
+		if baseInstruction.RMem == 0 {
+			d.currInst.DestMemAddr = d.pipe.cpu.ProgramCounter // use PC as destination address if RMem is 0
+		}
+		d.currInst.Operand = signExtend(baseInstruction.Imm) // sign extend immediate value
 		//d.currInst.ALUOp = types.IMM_ADD // 0 for add alu operation
 		d.currInst.WriteBack = true
 
 	case types.LoadStore:
 
 		d.pipe.cpu.blockIntR(baseInstruction.Rd)
-		rmemv, st := d.pipe.cpu.ReadIntR(baseInstruction.RMem)
-		if st != SUCCESS {
-			d.pipe.sTraceF(d, "Failed to read load/store instruction memory source r%v %v", baseInstruction.RMem, st)
-			d.state = DEC_reg_read
-			return
+		SP := types.IntegerRegisters["sp"]
+		d.pipe.cpu.blockIntR(SP)
+		if (baseInstruction.MemMode == types.PUSH) || (baseInstruction.MemMode == types.POP) {
+			sp, err := d.pipe.cpu.ReadIntR(SP)
+			if err != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read stack pointer r%v %v", SP, err)
+				d.state = DEC_reg_read
+				return
+			}
+			d.currInst.DestMemAddr = sp
+		} else {
+			d.pipe.cpu.blockIntR(baseInstruction.RMem)
+			rmemv, st := d.pipe.cpu.ReadIntR(baseInstruction.RMem) // rmemv should be zero for push pop
+			if st != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read load/store instruction memory source r%v %v", baseInstruction.RMem, st)
+				d.state = DEC_reg_read
+				return
+			}
+			d.currInst.DestMemAddr = rmemv
 		}
-		d.pipe.cpu.blockIntR(baseInstruction.RMem)
-		d.currInst.DestMemAddr = rmemv
-		d.currInst.Operand = uint32(d.currInst.BaseInstruction.Imm)
+		d.currInst.Operand = signExtend(d.currInst.BaseInstruction.Imm)
 		d.currInst.WriteBack = d.currInst.BaseInstruction.MemMode <= 1 // If LDW or POP
 	}
-
 	d.state = DEC_free
+	d.pipe.sTracef(d, "Decoded filled instruction: %+v\n", d.currInst) // For debugging purposes
 }
 
-func (d *DecodeStage) Advance(i *InstructionIR, stalled bool) bool {
-	if stalled {
-		d.pipe.sTraceF(d, "previous stage %v is stalled", d.prev.Name())
+
+// Returns if this stage passed the instruction to the next stage
+func (d *DecodeStage) Advance(i *InstructionIR, prevstalled bool) bool {
+	if prevstalled {
+		d.pipe.sTracef(d, "previous stage %v is stalled", d.prev.Name())
 	}
 	if d.state != DEC_free {
-		d.pipe.sTraceF(d, "We are busy, cannot advance: %v", d.state)
-		d.next.Advance(nil, true) // tell execute stage we are stalled, push empty instruction
+		d.pipe.sTracef(d, "Decode is busy, cannot advance: %v", d.state)
+		d.next.Advance(nil, true) // tell next stage we are stalled, push bubble
 		return false
 	}
 	if d.next.CanAdvance() {
-		d.pipe.sTraceF(d, "Advancing to next stage with instruction: %+v\n", d.currInst)
+		d.pipe.sTracef(d, "Advancing to next stage with instruction: %+v\n", d.currInst)
 		d.next.Advance(d.currInst, false) // Pass the instruction to the next stage
-		d.currInst = i                    // take in our next instruction
+		d.currInst = i // take in our next instruction
+		return true                   
 	} else {
-		d.pipe.sTraceF(d, "Can not advance to %v, CanAdvance returned false", d.next.Name())
+		d.pipe.sTracef(d, "Can not advance to %v, CanAdvance returned false", d.next.Name())
+		d.next.Advance(nil, false) // pass bubble and say we are not stalled
+		return false
 	}
 }
 
+func (d *DecodeStage) Squash() bool {
+	d.pipe.sTracef(d, "Squashing instruction: %+v\n", d.currInst) // For debugging purposes
+	if d.currInst != nil {
+		d.pipe.cpu.unblockIntR(d.currInst.BaseInstruction.Rd)
+		d.pipe.cpu.unblockIntR(d.currInst.BaseInstruction.Rs)
+		d.pipe.cpu.unblockIntR(d.currInst.BaseInstruction.RMem)
+	}
+	d.currInst = nil
+	d.state = DEC_free
+	return true
+}
+
+// Returns returns if this stage can take in a new instruction
 func (d *DecodeStage) CanAdvance() bool {
 	return d.state == DEC_free
 }

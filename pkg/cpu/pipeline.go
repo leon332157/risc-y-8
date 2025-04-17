@@ -1,9 +1,10 @@
 package cpu
 
 import (
+	"os"
+
 	"github.com/leon332157/risc-y-8/pkg/types"
 	"github.com/rs/zerolog"
-	"os"
 )
 
 type StageResult int
@@ -31,10 +32,10 @@ func LookUpStageResult(s StageResult) string {
 }
 
 type Pipeline struct {
-	log *zerolog.Logger // This logger is for stages
-	pLog *zerolog.Logger // This logger is for the pipeline itself
-	Stages []Stage // List of pipeline stages
-	cpu    *CPU    // Reference to the CPU instance
+	log    *zerolog.Logger // This logger is for stages
+	pLog   *zerolog.Logger // This logger is for the pipeline itself
+	Stages []Stage         // List of pipeline stages
+	cpu    *CPU            // Reference to the CPU instance
 }
 
 func (p *Pipeline) AddStage(stage Stage) {
@@ -66,7 +67,7 @@ func (p *Pipeline) RunOnePass() {
 func (p *Pipeline) SquashALL() {
 	for i := len(p.Stages) - 1; i >= 0; i-- {
 		// Call Advance with a nil instruction and set stalled to true to squash the pipeline
-		p.Stages[i].Advance(nil, true)
+		p.Stages[i].Squash()
 	}
 }
 
@@ -77,7 +78,7 @@ func (p *Pipeline) sTrace(stage Stage, msg string) {
 	p.log.Trace().Str("Stage", (stage).Name()).Msg(msg)
 }
 
-func (p *Pipeline) sTraceF(stage Stage, format string, args ...interface{}) {
+func (p *Pipeline) sTracef(stage Stage, format string, args ...interface{}) {
 	if stage == nil {
 		return
 	}
@@ -102,6 +103,7 @@ type Stage interface {
 	Name() string                                          // Get the name of the stage
 	Execute()                                              // Execute the stage logic
 	Advance(i *InstructionIR, stalled bool) bool           // Advance the stage with the current instruction and stalled status, return true if the stage advanced, false if it was stalled
+	Squash() bool                                          // Squash the instruction in the stage, return true if the stage was squashed
 	CanAdvance() bool                                      // Check if the stage can take in new instruction
 }
 
@@ -113,12 +115,9 @@ type InstructionIR struct {
 	//FloatInstruction types.FloatInstruction
 	//VecInstruction types.VecInstruction
 	Operand     uint32
-	Result      uint32 // Calculated as "result = Operand op result"
+	Result      uint32 // Calculated as "result = Rd op Rs/imm"
 	RDestAux    uint8  // Auxiliary register destination, used in some instructions (like PUSH, POP, CALL)
-	DestMemAddr uint32 // ??
-	//ALUOp       uint8
-	//MemOp       uint8
-	//ControlFlag uint8
-	//ControlMode uint8
+	DestMemAddr uint32 // Memory address for load/store operations, and branch destination
+	BranchTaken bool
 	WriteBack   bool
 }
