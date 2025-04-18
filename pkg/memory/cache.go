@@ -2,38 +2,42 @@ package memory
 
 import (
 	"fmt"
-	"math"
+	"math/bits"
 )
 
 type CacheType struct {
-	Contents   [][]CacheLine
-	Sets       uint
-	Ways       uint
-	LowerLevel Memory
+	Contents     [][]*CacheLine
+	Sets         uint
+	Ways         uint
+	wordsPerLine uint
+	LowerLevel   Memory
 	MemoryRequestState
 }
 
 type CacheLine struct {
 	Valid bool
 	Tag   uint
-	Data  uint32
+	Data  []uint32
 	LRU   int
 }
 
 type IdxTag struct {
-	index uint
-	tag   uint
+	index  uint
+	tag    uint
+	offset uint
 }
 
-func CreateCache(numSets, numWays, delay uint, lower Memory) CacheType {
-	contents := make([][]CacheLine, numSets)
+func CreateCache(numSets, numWays, wordsPerLine, delay uint, lower Memory) CacheType {
+	contents := make([][]*CacheLine, numSets)
 
 	// initialize cache contents to zero
 	for i := range numSets {
-		contents[i] = make([]CacheLine, numWays)
+		contents[i] = make([]*CacheLine, numWays)
 		lru := int(numWays - 1)
 		for j := range numWays {
-			contents[i][j] = CacheLine{Valid: false, Tag: 0, Data: 0, LRU: lru}
+			data := make([]uint32, wordsPerLine)
+
+			contents[i][j] = &CacheLine{Valid: false, Tag: 0, Data: data, LRU: lru}
 			lru -= 1
 		}
 	}
@@ -48,6 +52,7 @@ func CreateCache(numSets, numWays, delay uint, lower Memory) CacheType {
 		Contents:           contents,
 		Sets:               numSets,
 		Ways:               numWays,
+		wordsPerLine:       wordsPerLine,
 		LowerLevel:         lower,
 		MemoryRequestState: r,
 	}
@@ -55,7 +60,7 @@ func CreateCache(numSets, numWays, delay uint, lower Memory) CacheType {
 
 // Creates the default cache
 func CreateCacheDefault(lower Memory) CacheType {
-	return CreateCache(8, 4, 0, lower)
+	return CreateCache(8, 2, 4, 0, lower)
 }
 
 func (c *CacheType) IsBusy() bool {
@@ -82,12 +87,18 @@ func (c *CacheType) service(who Requester) bool {
 }
 
 func (c *CacheType) FindIndexAndTag(addr uint) IdxTag {
+	// get lowest order 2 bit for data offset (reps 4 words)
+	offsetBits := bits.Len32(uint32(c.wordsPerLine)) - 1
+	offset := addr & ((1 << offsetBits) - 1)
+
 	// Get set index from address
-	index := addr % c.Sets
+	indexBits := bits.Len32(uint32(c.Sets)) - 1
+	index := (addr >> offsetBits) & ((1 << indexBits) - 1)
+
 	// Get tag bits based on total bits needed for mem address
-	memSize := c.LowerLevel.SizeWords()
-	totalBits := int(math.Log2(float64(memSize)))
-	tagBits := totalBits - int(math.Log2(float64(c.Sets)))
+	//memSize := c.LowerLevel.SizeWords()
+	totalBits := 32 //int(math.Log2(float64(memSize)))
+	tagBits := totalBits - indexBits - int(offsetBits)
 
 	// Get tag using the address
 	bin := uint(0b1)
@@ -98,8 +109,9 @@ func (c *CacheType) FindIndexAndTag(addr uint) IdxTag {
 	tag := (addr >> uint(totalBits-tagBits)) & bin
 
 	return IdxTag{
-		index: index,
-		tag:   tag,
+		index:  index,
+		tag:    tag,
+		offset: offset,
 	}
 }
 
@@ -114,19 +126,19 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 
 	// Given the address, find the index of the set and tag
 	idxTag := c.FindIndexAndTag(addr)
-	index, tag := idxTag.index, idxTag.tag
+	index, tag, offset := idxTag.index, idxTag.tag, idxTag.offset
 
 	// If tag exists, check valid bit (false -> miss, true -> hit) cache hit: return the data, update lru
 	set := c.Contents[index]
 	for i := range c.Ways {
 		if (set[i].Tag == tag) && (set[i].Valid) {
 			c.UpdateLRU(index, i)
-			return ReadResult{SUCCESS, set[i].Data}
+			return ReadResult{SUCCESS, set[i].Data[offset]}
 		}
 	}
 
-	// Else, cache miss: read memory, load into cache, return data (no need to write back to mem)
-	read := c.LowerLevel.Read(addr, LAST_LEVEL_CACHE)
+	// Else, cache miss: read LINE from memory, load into cache, return data (no need to write back to mem)
+	read := c.LowerLevel.ReadMulti(addr, c.wordsPerLine, offset, LAST_LEVEL_CACHE) // TODO: this is readMulti
 	switch read.State {
 	case WAIT:
 		fmt.Println("Cache read, waiting for ram")
@@ -141,10 +153,10 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	}
 
 	lruIdx := c.GetLRU(index)
-	c.Contents[index][lruIdx] = CacheLine{Valid: true, Tag: tag, Data: read.Value, LRU: 0}
+	c.Contents[index][lruIdx] = &CacheLine{Valid: true, Tag: tag, Data: read.Value, LRU: c.Contents[index][lruIdx].LRU}
 	c.UpdateLRU(index, lruIdx)
 
-	return read
+	return ReadResult{SUCCESS, read.Value[offset]}
 }
 
 // Write through, no allocate policy
@@ -154,7 +166,7 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	}
 	// Given address find the set index and tag
 	idxTag := c.FindIndexAndTag(addr)
-	index, tag := idxTag.index, idxTag.tag
+	index, tag, offset := idxTag.index, idxTag.tag, idxTag.offset
 	valid := false
 	set := c.Contents[index]
 	for i := range c.Ways - 1 {
@@ -168,7 +180,7 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 				return SUCCESS
 			}*/
 			// if data is different, write-through to memory
-			c.Contents[index][i].Data = val
+			c.Contents[index][i].Data[offset] = val
 			c.UpdateLRU(index, i)
 			valid = true
 		}
@@ -177,7 +189,9 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	if !valid {
 		// Find next empty line or LRU (empty line will be lru!), write-through to memory
 		lruIdx := c.GetLRU(index)
-		c.Contents[index][lruIdx] = CacheLine{Valid: true, Tag: tag, Data: val, LRU: 0}
+		d := c.Contents[index][lruIdx].Data
+		d[offset] = val
+		c.Contents[index][lruIdx] = &CacheLine{Valid: true, Tag: tag, Data: d, LRU: 0}
 		c.UpdateLRU(index, lruIdx)
 	}
 
@@ -188,9 +202,8 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	case SUCCESS:
 		return WriteResult{SUCCESS, written.Written} // Successfully wrote to memory (write-through)
 	default:
-		return WriteResult{FAILURE, 0} // Failure to write to memory, return failure
+		return WriteResult{FAILURE_INVALID_STATE, 0} // Failure to write to memory, return failure
 	}
-	return WriteResult{FAILURE_INVALID_STATE, 0}
 }
 
 func (c *CacheType) UpdateLRU(setIndex uint, line uint) {
@@ -208,16 +221,18 @@ func (c *CacheType) UpdateLRU(setIndex uint, line uint) {
 func (c *CacheType) GetLRU(setIndex uint) uint {
 	set := c.Contents[setIndex]
 	lru := -1
+	lruIdx := -1
 
 	for i := range c.Ways {
 		if set[i].LRU > lru {
-			lru = int(i)
+			lru = set[i].LRU
+			lruIdx = int(i)
 		}
 	}
 	if lru < 0 {
 		panic("GetLRU: No valid LRU found in set index " + fmt.Sprint(setIndex))
 	}
-	return uint(lru)
+	return uint(lruIdx)
 }
 
 func (cache *CacheType) PrintCache() {

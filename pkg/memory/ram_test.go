@@ -99,15 +99,15 @@ func TestDifferentStageAccess(t *testing.T) {
 	for range 3 {
 		mem.Write(1, LAST_LEVEL_CACHE, 0xfeebdaed)
 	}
-	
+
 	read1 := mem.Read(1, LAST_LEVEL_CACHE)
 	write := mem.Write(9, LAST_LEVEL_CACHE, 123)
 
-	if read1.State != SUCCESS {
+	if read1.State != WAIT {
 		t.Errorf("is reading from RAM while it is servicing a different stage %d", read1)
 	}
 
-	if write != WAIT {
+	if write.State != WAIT {
 		t.Errorf("ram should return wait %d", write)
 	}
 
@@ -124,25 +124,25 @@ func TestStagingFiveDelayWrite(t *testing.T) {
 	call6 := mem.Write(1, LAST_LEVEL_CACHE, 0x122122)
 	call7 := mem.Write(1, LAST_LEVEL_CACHE, 0x122122)
 
-	if call1 != WAIT {
+	if call1.State != WAIT {
 		t.Errorf("ram should return wait, got %d", call1)
 	}
-	if call2 != WAIT {
+	if call2.State != WAIT {
 		t.Errorf("ram should return wait %d", call2)
 	}
-	if call3 != WAIT {
+	if call3.State != WAIT {
 		t.Errorf("ram should return wait %d", call3)
 	}
-	if call4 != WAIT {
+	if call4.State != WAIT {
 		t.Errorf("ram should return wait %d", call4)
 	}
-	if call5 != WAIT {
+	if call5.State != WAIT {
 		t.Errorf("ram should return wait %d", call5)
 	}
-	if call6 != SUCCESS {
+	if call6.State != SUCCESS {
 		t.Errorf("ram should return success, got %d", call6)
 	}
-	if call7 != WAIT {
+	if call7.State != WAIT {
 		t.Errorf("ram should return success, got %d", call7)
 	}
 
