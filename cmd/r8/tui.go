@@ -31,6 +31,7 @@ var (
 	}
 	disableCache    bool
 	disablePipeline bool
+	NumInstructions = 0
 )
 
 func init() {
@@ -55,6 +56,7 @@ func runTui(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("input file is empty: %v", err)
 	}
 	program := make([]uint32, len(buffer)/4)
+	NumInstructions = len(buffer) / 4
 	err = binary.Read(bytes.NewReader(buffer), binary.LittleEndian, &program)
 	if err != nil {
 		return fmt.Errorf("failed to read input file: %v", err)
@@ -75,7 +77,7 @@ type model struct {
 	lastInstr string
 
 	system *simulator.System
-	msg   string
+	msg    string
 }
 
 func initialModel() model {
@@ -88,7 +90,7 @@ func initialModel() model {
 	return model{
 		instr:     ti,
 		lastInstr: "",
-		system:   nil,
+		system:    nil,
 		msg:       "none",
 	}
 }
@@ -141,8 +143,13 @@ func getRegVals(control *cpu.CPU) [][]string {
 func (m model) ExecuteCommand() {
 	switch m.lastInstr {
 	case "step", "s":
+		if m.system.CPU.ProgramCounter >= uint32(NumInstructions) {
+			m.system.CPU.Halted = true
+			m.msg = "Program finished"
+			return
+		}
 		if !m.system.CPU.Halted {
-		m.system.CPU.Pipeline.RunOneClock()
+			m.system.CPU.Pipeline.RunOneClock()
 		} else {
 			m.system.CPU.Halted = false
 		}
@@ -258,8 +265,8 @@ func (m model) drawClock() string {
 }
 
 func (m model) drawPC() string {
-	header := []string{"PC"}
-	row := []string{fmt.Sprintf("%d", m.system.CPU.ProgramCounter)}
+	header := []string{"PC","Total"}
+	row := []string{fmt.Sprintf("%d", m.system.CPU.ProgramCounter), fmt.Sprintf("%d",NumInstructions)}
 	clockTable := table.New().Border(lipgloss.NormalBorder()).Headers(header...).Rows(row)
 	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render(clockTable.Render())
 }
