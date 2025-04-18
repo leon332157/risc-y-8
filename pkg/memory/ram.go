@@ -40,7 +40,7 @@ func CreateRAM(numLines uint, wordsPerLine uint, delay uint) RAM {
 }
 
 func (mem *RAM) IsBusy() bool {
-	return mem.MemoryRequestState.CyclesLeft >= 0 
+	return mem.MemoryRequestState.CyclesLeft >= 0
 }
 
 func (mem *RAM) service(who Requester) bool {
@@ -50,7 +50,7 @@ func (mem *RAM) service(who Requester) bool {
 			mem.MemoryRequestState.CyclesLeft--
 		} else {
 			// different requester, cannot service
-			if (mem.MemoryRequestState.requester == NONE)  {
+			if mem.MemoryRequestState.requester == NONE {
 				// If the memory is idle, we can service the new request
 				mem.MemoryRequestState.CyclesLeft--
 			}
@@ -84,6 +84,29 @@ func (mem *RAM) Read(addr uint, who Requester) ReadResult {
 	return ReadResult{SUCCESS, mem.Contents[addr]}
 }
 
+func (mem *RAM) ReadMulti(addr, numWords, offset uint, who Requester) ReadLineResult {
+	if who <= 0 {
+		// if not cache
+		panic("Ram can not accept request from non-cache")
+	}
+
+	if !mem.service(who) {
+		return ReadLineResult{WAIT, []uint32{}}
+	}
+
+	if addr > uint(len(mem.Contents)-1) {
+		fmt.Println("Address cannot be read. Not a valid address.")
+		return ReadLineResult{FAILURE_OUT_OF_RANGE, []uint32{}}
+	}
+
+	a := addr - offset
+	line := []uint32{}
+	for i := range numWords {
+		line = append(line, mem.Contents[a+i])
+	}
+	return ReadLineResult{SUCCESS, line}
+}
+
 // Writes a value to memory
 func (mem *RAM) Write(addr uint, who Requester, val uint32) WriteResult {
 	if who <= 0 {
@@ -92,12 +115,12 @@ func (mem *RAM) Write(addr uint, who Requester, val uint32) WriteResult {
 	}
 
 	if !mem.service(who) { // if memory is busy, return WAIT
-		return WriteResult{WAIT, 0}// Indicate that we are waiting
+		return WriteResult{WAIT, 0} // Indicate that we are waiting
 	}
 
 	if addr > uint(len(mem.Contents)-1) {
-		//fmt.Println("Address cannot be read. Not a valid address.")
-		return WriteResult{FAILURE_OUT_OF_RANGE,0}
+		fmt.Println("Address cannot be read. Not a valid address.")
+		return WriteResult{FAILURE_OUT_OF_RANGE, 0}
 	}
 
 	mem.Contents[addr] = val
@@ -105,7 +128,7 @@ func (mem *RAM) Write(addr uint, who Requester, val uint32) WriteResult {
 
 }
 
-func (mem *RAM) SizeBytes() uint {	
+func (mem *RAM) SizeBytes() uint {
 	return mem.NumLines * mem.WordsPerLine * 4 // 4 bytes per uint32
 }
 
