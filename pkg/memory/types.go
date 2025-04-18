@@ -7,6 +7,11 @@ type ReadResult struct {
 	Value uint32
 }
 
+type ReadLineResult struct {
+	State MemoryResult
+	Value []uint32
+}
+
 type WriteResult struct {
 	State   MemoryResult
 	Written uint32 // The value that was written, this may be different than the input value if there was an error or a delay in writing
@@ -58,6 +63,7 @@ type Memory interface {
 	IsBusy() bool               // returns if memory is busy
 	service(who Requester) bool // returns if memory can service a new request, but also update state
 	Read(addr uint, who Requester) ReadResult
+	ReadMulti(addr, numWords, offset uint, who Requester) ReadLineResult
 	Write(addr uint, who Requester, val uint32) WriteResult
 	SizeBytes() uint                  // Returns the size of the memory in bytes
 	SizeWords() uint                  // Returns the number of words in memory

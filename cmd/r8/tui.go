@@ -61,6 +61,7 @@ func getCacheRows() [][]string {
 	for i := range cache.Contents {
 		for j := range cache.Ways {
 			data := cache.Contents[i][j]
+			
 			row := []string{
 				fmt.Sprintf("%05b", data.Tag),
 				fmt.Sprintf("%03b", i),

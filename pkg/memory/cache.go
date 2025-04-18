@@ -6,7 +6,7 @@ import (
 )
 
 type CacheType struct {
-	Contents     [][]CacheLine
+	Contents     [][]*CacheLine
 	Sets         uint
 	Ways         uint
 	wordsPerLine uint
@@ -28,20 +28,16 @@ type IdxTag struct {
 }
 
 func CreateCache(numSets, numWays, wordsPerLine, delay uint, lower Memory) CacheType {
-	contents := make([][]CacheLine, numSets)
-	data := make([]uint32, wordsPerLine)
-
-	for i := range wordsPerLine {
-		data[i] = 0
-	}
+	contents := make([][]*CacheLine, numSets)
 
 	// initialize cache contents to zero
 	for i := range numSets {
-		contents[i] = make([]CacheLine, numWays)
+		contents[i] = make([]*CacheLine, numWays)
 		lru := int(numWays - 1)
 		for j := range numWays {
+			data := make([]uint32, wordsPerLine)
 
-			contents[i][j] = CacheLine{Valid: false, Tag: 0, Data: data, LRU: lru}
+			contents[i][j] = &CacheLine{Valid: false, Tag: 0, Data: data, LRU: lru}
 			lru -= 1
 		}
 	}
@@ -92,12 +88,12 @@ func (c *CacheType) service(who Requester) bool {
 
 func (c *CacheType) FindIndexAndTag(addr uint) IdxTag {
 	// get lowest order 2 bit for data offset (reps 4 words)
-	offsetBits := uint(bits.Len32(uint32(c.wordsPerLine)))
-	offset := addr & offsetBits
+	offsetBits := bits.Len32(uint32(c.wordsPerLine)) - 1
+	offset := addr & ((1 << offsetBits) - 1)
 
 	// Get set index from address
-	indexBits := bits.Len32(uint32(c.Sets * c.Ways))
-	index := (addr >> offsetBits) & uint(indexBits)
+	indexBits := bits.Len32(uint32(c.Sets)) - 1
+	index := (addr >> offsetBits) & ((1 << indexBits) - 1)
 
 	// Get tag bits based on total bits needed for mem address
 	//memSize := c.LowerLevel.SizeWords()
@@ -142,38 +138,25 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	}
 
 	// Else, cache miss: read LINE from memory, load into cache, return data (no need to write back to mem)
-	reads := c.ReadMulti(addr, offset) // TODO: this is readMulti
-	data := []uint32{}
-	for i := range reads {
-		switch reads[i].State {
-		case WAIT:
-			fmt.Println("Cache read, waiting for ram")
-			return ReadResult{WAIT_NEXT_LEVEL, 0}
-		case WAIT_NEXT_LEVEL:
-			fmt.Println("Cache read, waiting for next level memory")
-			return ReadResult{WAIT_NEXT_LEVEL, 0}
-		case SUCCESS:
-		default:
-			data = append(data, reads[i].Value)
-			return ReadResult{reads[i].State, 0}
-			// do nothing
-		}
+	read := c.LowerLevel.ReadMulti(addr, c.wordsPerLine, offset, LAST_LEVEL_CACHE) // TODO: this is readMulti
+	switch read.State {
+	case WAIT:
+		fmt.Println("Cache read, waiting for ram")
+		return ReadResult{WAIT_NEXT_LEVEL, 0}
+	case WAIT_NEXT_LEVEL:
+		fmt.Println("Cache read, waiting for next level memory")
+		return ReadResult{WAIT_NEXT_LEVEL, 0}
+	case SUCCESS:
+	default:
+		return ReadResult{read.State, 0}
+		// do nothing
 	}
 
 	lruIdx := c.GetLRU(index)
-	c.Contents[index][lruIdx] = CacheLine{Valid: true, Tag: tag, Data: data, LRU: 0}
+	c.Contents[index][lruIdx] = &CacheLine{Valid: true, Tag: tag, Data: read.Value, LRU: c.Contents[index][lruIdx].LRU}
 	c.UpdateLRU(index, lruIdx)
 
-	return ReadResult{SUCCESS, data[offset]}
-}
-
-func (c *CacheType) ReadMulti(addr, offset uint) []ReadResult {
-	addr = addr - offset
-	line := []ReadResult{}
-	for i := range c.wordsPerLine {
-		line = append(line, c.LowerLevel.Read(addr+i, LAST_LEVEL_CACHE))
-	}
-	return line
+	return ReadResult{SUCCESS, read.Value[offset]}
 }
 
 // Write through, no allocate policy
@@ -206,9 +189,9 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	if !valid {
 		// Find next empty line or LRU (empty line will be lru!), write-through to memory
 		lruIdx := c.GetLRU(index)
-		data := c.Contents[index][lruIdx].Data
-		data[offset] = val
-		c.Contents[index][lruIdx] = CacheLine{Valid: true, Tag: tag, Data: data, LRU: 0}
+		d := c.Contents[index][lruIdx].Data
+		d[offset] = val
+		c.Contents[index][lruIdx] = &CacheLine{Valid: true, Tag: tag, Data: d, LRU: 0}
 		c.UpdateLRU(index, lruIdx)
 	}
 
@@ -219,9 +202,8 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	case SUCCESS:
 		return WriteResult{SUCCESS, written.Written} // Successfully wrote to memory (write-through)
 	default:
-		return WriteResult{FAILURE, 0} // Failure to write to memory, return failure
+		return WriteResult{FAILURE_INVALID_STATE, 0} // Failure to write to memory, return failure
 	}
-	return WriteResult{FAILURE_INVALID_STATE, 0}
 }
 
 func (c *CacheType) UpdateLRU(setIndex uint, line uint) {
@@ -239,16 +221,18 @@ func (c *CacheType) UpdateLRU(setIndex uint, line uint) {
 func (c *CacheType) GetLRU(setIndex uint) uint {
 	set := c.Contents[setIndex]
 	lru := -1
+	lruIdx := -1
 
 	for i := range c.Ways {
 		if set[i].LRU > lru {
-			lru = int(i)
+			lru = set[i].LRU
+			lruIdx = int(i)
 		}
 	}
 	if lru < 0 {
 		panic("GetLRU: No valid LRU found in set index " + fmt.Sprint(setIndex))
 	}
-	return uint(lru)
+	return uint(lruIdx)
 }
 
 func (cache *CacheType) PrintCache() {
