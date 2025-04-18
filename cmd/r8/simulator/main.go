@@ -16,17 +16,19 @@ type System struct {
 
 type readStateHook func(sys *System) bool
 
-func NewSystem(initRamContent []uint32) System {
+func NewSystem(initRamContent []uint32, disableCache, disablePipeline bool) System {
 	sys := System{}
 	ram := memory.CreateRAM(32, 8, 3)
 	sys.RAM = &ram
 	sys.CPU = new(CPUpkg.CPU)
 	copy(sys.RAM.Contents, initRamContent)
-
 	cache := memory.CreateCacheDefault(sys.RAM) // Create a cache with default settings, 8 sets, 2 ways, no delay                  // Create a new ALU instance
+	if disableCache {
+		cache = memory.CreateCache(8, 2, 1, 0, sys.RAM) // make one word per line if cache disable
+	}
 	sys.Cache = &cache
-	pipeline := CPUpkg.NewPipeline(sys.CPU, false)  // scalar is false
-	sys.CPU.Init(sys.Cache, sys.RAM, pipeline, nil) // Initialize the CPU with the cache and no pipeline yet
+	pipeline := CPUpkg.NewPipeline(sys.CPU, disablePipeline) // scalar is false
+	sys.CPU.Init(sys.Cache, sys.RAM, pipeline, nil)          // Initialize the CPU with the cache and no pipeline yet
 	fs := new(CPUpkg.FetchStage)
 	ds := new(CPUpkg.DecodeStage)
 	es := new(CPUpkg.ExecuteStage)

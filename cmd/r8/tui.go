@@ -29,9 +29,13 @@ var (
 		Args:    cobra.ExactArgs(1),
 		Example: "r8 tui input.bin",
 	}
+	disableCache    bool
+	disablePipeline bool
 )
 
 func init() {
+	tuiCmd.Flags().BoolVar(&disableCache, "disable-cache", false, "Disable cache")
+	tuiCmd.Flags().BoolVar(&disablePipeline, "disable-pipeline", false, "Disable pipeline")
 	rootCmd.AddCommand(tuiCmd)
 }
 
@@ -56,7 +60,7 @@ func runTui(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read input file: %v", err)
 	}
 	model := initialModel()
-	system := simulator.NewSystem(program)
+	system := simulator.NewSystem(program, disableCache, disablePipeline)
 	model.system = &system
 	p := tea.NewProgram(model)
 	if _, err := p.Run(); err != nil {
@@ -71,6 +75,7 @@ type model struct {
 	lastInstr string
 
 	system *simulator.System
+	msg   string
 }
 
 func initialModel() model {
@@ -83,6 +88,8 @@ func initialModel() model {
 	return model{
 		instr:     ti,
 		lastInstr: "",
+		system:   nil,
+		msg:       "none",
 	}
 }
 
@@ -134,10 +141,11 @@ func getRegVals(control *cpu.CPU) [][]string {
 func (m model) ExecuteCommand() {
 	switch m.lastInstr {
 	case "step", "s":
-		if m.system.CPU.Halted {
-			return
-		}
+		if !m.system.CPU.Halted {
 		m.system.CPU.Pipeline.RunOneClock()
+		} else {
+			m.system.CPU.Halted = false
+		}
 	}
 }
 
@@ -174,13 +182,14 @@ func (m model) View() string {
 	registerView := m.drawRegisters()
 	clock := m.drawClock()
 	pc := m.drawPC()
+	msg := m.drawMsg()
 	lastInstr := m.drawLastInstruction()
 	cmdLine := m.instr.View() + "\n"
 	whitespace := lipgloss.Place(3, 3, lipgloss.Right, lipgloss.Bottom, "")
 
 	// TODO: Show PC??
 
-	clockAndInstr := lipgloss.JoinHorizontal(lipgloss.Center, clock, pc, whitespace, lastInstr)
+	clockAndInstr := lipgloss.JoinHorizontal(lipgloss.Center, clock, pc, whitespace, lastInstr, msg)
 	column1 := lipgloss.JoinVertical(lipgloss.Top, pipeline, clockAndInstr)
 	regsCol := lipgloss.JoinHorizontal(lipgloss.Left, registerView, whitespace, column1)
 	together := lipgloss.JoinHorizontal(lipgloss.Top, regsCol, whitespace, cache, ram)
@@ -227,6 +236,18 @@ func (m model) drawLastInstruction() string {
 	row := []string{m.lastInstr}
 	instrTable := table.New().Border(lipgloss.NormalBorder()).Headers(headers...).Rows(row)
 	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render(instrTable.Render())
+}
+
+func (m model) drawMsg() string {
+	if m.system.CPU.Halted {
+		m.msg = "CPU is halted"
+	} else {
+		m.msg = "CPU is running"
+	}
+	headers := []string{"Message"}
+	row := []string{m.msg}
+	msgTable := table.New().Border(lipgloss.NormalBorder()).Headers(headers...).Rows(row)
+	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render(msgTable.Render())
 }
 
 func (m model) drawClock() string {
