@@ -79,10 +79,14 @@ func TestCacheHit(t *testing.T) {
 		c.Write(32, LAST_LEVEL_CACHE, 0xDEADBEEF)
 	}
 
+	for range c.MemoryRequestState.Delay + 1{
+		c.Write(33, LAST_LEVEL_CACHE, 0xCAFEBABE)
+	}
+
 	// if 0 cycle read, it was a hit
 	read := c.Read(32, FETCH_STAGE)
 
-	if read.State != SUCCESS {
+	if read.State != SUCCESS || c.Contents[0][0].Data[0] != 0xDEADBEEF || c.Contents[0][0].Data[1] != 0xCAFEBABE {
 		t.Errorf("read 1 resulted in %08x; want 0xDEADBEEF", read.Value)
 	}
 
