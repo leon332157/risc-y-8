@@ -191,3 +191,7 @@ func (d *DecodeStage) Squash() bool {
 func (d *DecodeStage) CanAdvance() bool {
 	return d.state == DEC_free
 }
+
+func (d *DecodeStage) FormatInstruction() string {
+	return d.currInst.FormatLines()
+}

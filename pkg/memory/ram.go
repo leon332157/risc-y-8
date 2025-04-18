@@ -77,7 +77,7 @@ func (mem *RAM) Read(addr uint, who Requester) ReadResult {
 	}
 
 	if addr > uint(len(mem.Contents)-1) {
-		fmt.Println("Address cannot be read. Not a valid address.")
+		//fmt.Println("Address cannot be read. Not a valid address.")
 		return ReadResult{FAILURE_OUT_OF_RANGE, 0}
 	}
 
@@ -96,7 +96,7 @@ func (mem *RAM) Write(addr uint, who Requester, val uint32) WriteResult {
 	}
 
 	if addr > uint(len(mem.Contents)-1) {
-		fmt.Println("Address cannot be read. Not a valid address.")
+		//fmt.Println("Address cannot be read. Not a valid address.")
 		return WriteResult{FAILURE_OUT_OF_RANGE,0}
 	}
 

@@ -1,9 +1,6 @@
 package r8
 
 import (
-	"fmt"
-
-	"github.com/leon332157/risc-y-8/cmd/r8/internal/assembler"
 	"github.com/spf13/cobra"
 )
 
@@ -20,5 +17,4 @@ func Execute() error {
 }
 
 func Main() {
-	TUImain()
 }

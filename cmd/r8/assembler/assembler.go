@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/leon332157/risc-y-8/cmd/r8/internal/assembler/grammar"
+	"github.com/leon332157/risc-y-8/cmd/r8/assembler/grammar"
 	. "github.com/leon332157/risc-y-8/pkg/types"
 )
 

@@ -136,3 +136,10 @@ func (m *MemoryStage) Squash() bool {
 func (m *MemoryStage) CanAdvance() bool {
 	return !m.waiting
 }
+
+func (m *MemoryStage) FormatInstruction() string {
+	if m.currentInstruction == nil {
+		return "<bubble>"
+	}
+	return m.currentInstruction.FormatLines()
+}

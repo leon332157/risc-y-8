@@ -1,7 +1,9 @@
 package cpu
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/leon332157/risc-y-8/pkg/types"
 	"github.com/rs/zerolog"
@@ -32,11 +34,11 @@ func LookUpStageResult(s StageResult) string {
 }
 
 type Pipeline struct {
-	log    *zerolog.Logger // This logger is for stages
-	pLog   *zerolog.Logger // This logger is for the pipeline itself
-	Stages []Stage         // List of pipeline stages
-	cpu    *CPU            // Reference to the CPU instance
-	canFetch bool
+	log        *zerolog.Logger // This logger is for stages
+	pLog       *zerolog.Logger // This logger is for the pipeline itself
+	Stages     []Stage         // List of pipeline stages
+	cpu        *CPU            // Reference to the CPU instance
+	canFetch   bool
 	scalarMode bool // Flag to indicate if the pipeline is in scalar mode
 }
 
@@ -62,14 +64,14 @@ func (p *Pipeline) RunOneClock() {
 	for i := 0; i < len(p.Stages); i++ {
 		p.Stages[i].Execute()
 	}
-	p.pLog.Info().Msgf("canFetch: %v\n", p.canFetch)
+	p.pLog.Trace().Msgf("canFetch: %v\n", p.canFetch)
 	p.Stages[len(p.Stages)-1].Advance(nil, p.canFetch) // Ensure the last stage can advance even if no instruction was passed to it, this is for the last stage in the pipeline (like WriteBack)
 	p.cpu.Clock++
 }
 
 func (p *Pipeline) WriteBackHook() {
 	p.pLog.Info().Msg("WriteBackHook called")
-	p.canFetch = true 
+	p.canFetch = true
 }
 
 func (p *Pipeline) SquashALL() {
@@ -100,11 +102,11 @@ func NewPipeline(cpu *CPU, scalar bool) *Pipeline {
 	log := zerolog.New(zerolog.NewConsoleWriter(option)).Level(zerolog.TraceLevel).With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 1).Logger()
 	pLog := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Caller().Logger()
 	p := Pipeline{
-		Stages: make([]Stage, 0),
-		cpu:    cpu,
-		log:    &log,
-		pLog:  &pLog,
-		canFetch: true,
+		Stages:     make([]Stage, 0),
+		cpu:        cpu,
+		log:        &log,
+		pLog:       &pLog,
+		canFetch:   true,
 		scalarMode: scalar,
 	}
 	return &p
@@ -117,6 +119,7 @@ type Stage interface {
 	Advance(i *InstructionIR, stalled bool) bool           // Advance the stage with the current instruction and stalled status, return true if the stage advanced, false if it was stalled
 	Squash() bool                                          // Squash the instruction in the stage, return true if the stage was squashed
 	CanAdvance() bool                                      // Check if the stage can take in new instruction
+	FormatInstruction() string                             // for TUI
 }
 
 type AssembledInst interface {
@@ -132,4 +135,32 @@ type InstructionIR struct {
 	DestMemAddr uint32 // Memory address for load/store operations, and branch destination
 	BranchTaken bool
 	WriteBack   bool
+}
+
+func (i *InstructionIR) FormatLines() string {
+	if i == nil {
+		return "<bubble>"
+	}
+	s := fmt.Sprintf("raw: %x\n", i.rawInstruction)
+	s += fmt.Sprintf("OpType: %x\n", i.BaseInstruction.OpType)
+	switch i.BaseInstruction.OpType {
+	case types.RegReg, types.RegImm:
+		s += fmt.Sprintf("Rd: %x\n", i.BaseInstruction.Rd)
+		s += fmt.Sprintf("ALU: %x\n", i.BaseInstruction.ALU)
+		s += fmt.Sprintf("Rs: %x\n", i.BaseInstruction.Rs)
+	case types.Control:
+		s += fmt.Sprintf("RMem: %x\n", i.BaseInstruction.RMem)
+		s += fmt.Sprintf("DestMemAddr: %x\n", i.DestMemAddr)
+		s += fmt.Sprintf("RDestAux: %x\n", i.RDestAux)
+		s += fmt.Sprintf("BranchTaken: %v\n", i.BranchTaken)
+		s += fmt.Sprintf("BranchModeFlag: %x\n", i.BaseInstruction.CtrlMode<<4|i.BaseInstruction.CtrlFlag)
+	case types.LoadStore:
+		s += fmt.Sprintf("Rd: %x\n", i.BaseInstruction.Rd)
+		s += fmt.Sprintf("RMem: %x\n", i.BaseInstruction.RMem)
+		s += fmt.Sprintf("DestMemAddr: %x\n", i.DestMemAddr)
+		s += fmt.Sprintf("MemMode: %x\n", i.BaseInstruction.MemMode)
+	default:
+	}
+
+	return strings.Join([]string{s}, "\n")
 }

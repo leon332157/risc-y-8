@@ -6,10 +6,7 @@ import (
 
 	"github.com/leon332157/risc-y-8/pkg/alu"
 	"github.com/leon332157/risc-y-8/pkg/memory"
-	"github.com/leon332157/risc-y-8/pkg/types"
 	"github.com/rs/zerolog"
-
-	"github.com/leon332157/risc-y-8/cmd/r8"
 )
 
 const (
@@ -43,7 +40,7 @@ type VectorRegister struct {
 
 type CPU struct {
 	log            *zerolog.Logger
-	halted         bool
+	Halted         bool
 	Clock          uint32
 	ProgramCounter uint32
 	ALU            *alu.ALU
@@ -91,10 +88,33 @@ func (c *CPU) ReadIntR(r uint8) (uint32, int32) {
 	return c.IntRegisters[r].value, SUCCESS
 }
 
+func (c *CPU) ReadIntRNoBlock(r uint8) uint32 {
+	if r == 0 {
+		c.log.Info().Msg("attempted to read from r0, returning 0")
+		return 0
+	}
+	if r >= uint8(len(c.IntRegisters)) {
+		c.log.Panic().Msgf("attempted to read an out of bounds register: %v", r)
+	}
+	return c.IntRegisters[r].value
+}
+
+func (c *CPU) WriteIntRNoBlock(r uint8, v uint32) uint32 {
+	if r == 0 {
+		c.log.Info().Msg("attempted to write to r0, ignoring write")
+		return 0 // r0 is always 0, ignore write
+	}
+	if r >= uint8(len(c.IntRegisters)) {
+		c.log.Panic().Msgf("attempted to write an out of bounds register: %v", r)
+	}
+	c.IntRegisters[r].value = v
+	return c.IntRegisters[r].value
+}
+
 func (c *CPU) WriteIntR(r uint8, value uint32) (uint32, int32) {
 	if r == 0 {
 		c.log.Info().Msg("attempted to write to r0, ignoring write")
-		return SUCCESS, 0 // r0 is always 0, ignore write
+		return 0,SUCCESS // r0 is always 0, ignore write
 	}
 	if r >= uint8(len(c.IntRegisters)) {
 		c.log.Panic().Msgf("attempted to write an out of bounds register: %v", r)
@@ -119,6 +139,10 @@ func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logg
 		reg.readEnable = true       // Allow reading by default
 		reg.writeEnable = true      // Allow writing by default
 	}
+	l := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Caller().Logger()
+	if logger == nil {
+		logger = &l
+	}
 	cpu.log = logger
 	cpu.log.Trace().Msgf("cpu initialized: %+v", &cpu)
 }
@@ -136,12 +160,17 @@ func (cpu *CPU) PrintReg() {
 }
 
 func (cpu *CPU) Halt() {
-	cpu.halted = true
+	cpu.Halted = true
 	cpu.log.Info().Msg("CPU halted")
 }
 
 const INIT_VECTOR = 0
 
+func CreateCPU() CPU {
+	return CPU{}
+}
+
+/*
 func Main() {
 
 	inst_array := []uint32{
@@ -337,3 +366,4 @@ func Main() {
 		}
 	}
 }
+*/

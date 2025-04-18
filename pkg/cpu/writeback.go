@@ -95,3 +95,11 @@ func (w *WriteBackStage) Squash() bool {
 func (w *WriteBackStage) CanAdvance() bool {
 	return w.currentInstruction == nil
 }
+
+func (w *WriteBackStage) FormatInstruction() string {
+	if w.currentInstruction == nil {
+		return "<bubble>"
+	}
+	//format := fmt.Sprintf("%+v", w.currentInstruction)
+	return w.currentInstruction.FormatLines()
+}

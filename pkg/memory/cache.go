@@ -129,10 +129,10 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	read := c.LowerLevel.Read(addr, LAST_LEVEL_CACHE)
 	switch read.State {
 	case WAIT:
-		fmt.Println("Cache read, waiting for ram")
+		//fmt.Println("Cache read, waiting for ram")
 		return ReadResult{WAIT_NEXT_LEVEL, 0}
 	case WAIT_NEXT_LEVEL:
-		fmt.Println("Cache read, waiting for next level memory")
+		//fmt.Println("Cache read, waiting for next level memory")
 		return ReadResult{WAIT_NEXT_LEVEL, 0}
 	case SUCCESS:
 	default:

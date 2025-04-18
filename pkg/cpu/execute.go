@@ -314,3 +314,11 @@ func (e *ExecuteStage) Squash() bool {
 func (e *ExecuteStage) CanAdvance() bool {
 	return e.state == EXEC_free
 }
+
+func (e *ExecuteStage) FormatInstruction() string {
+	if e.currentInstruction == nil {
+		return "<bubble>"
+	}
+	//format := fmt.Sprintf("%+v", e.currentInstruction)
+	return e.currentInstruction.FormatLines()
+}

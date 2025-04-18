@@ -1,6 +1,8 @@
 package cpu
 
 import (
+	"fmt"
+
 	"github.com/leon332157/risc-y-8/pkg/memory"
 )
 
@@ -8,6 +10,8 @@ type FetchStage struct {
 	pipe               *Pipeline // Reference to the pipeline instance
 	next               *DecodeStage
 	currentInstruction *InstructionIR
+
+	formatCache string
 }
 
 func (f *FetchStage) Init(p *Pipeline, next Stage, _ Stage) error {
@@ -21,6 +25,7 @@ func (f *FetchStage) Init(p *Pipeline, next Stage, _ Stage) error {
 	}
 	f.next = n
 	f.currentInstruction = nil
+	f.formatCache = "<bubble>"
 	return nil
 }
 
@@ -29,6 +34,7 @@ func (f *FetchStage) Name() string {
 }
 
 func (f *FetchStage) Execute() {
+	f.formatCache = "<bubble>"
 	if f.pipe.scalarMode && f.pipe.canFetch == false {
 		f.pipe.sTrace(f, "Cannot fetch instruction right now, write has not completed yet")
 		return
@@ -50,9 +56,10 @@ func (f *FetchStage) Execute() {
 		f.pipe.sTracef(f, "Fetched instruction: 0x%08x\n", read.Value)
 		f.currentInstruction = new(InstructionIR) // Store the fetched instruction
 		f.currentInstruction.rawInstruction = read.Value
+		f.formatCache = fmt.Sprintf("0x%08x\n", f.currentInstruction.rawInstruction)
 		f.pipe.cpu.ProgramCounter++
 		f.pipe.sTracef(f, "Increasing ProgramCounter to: %v", f.pipe.cpu.ProgramCounter)
-		if f.pipe.scalarMode { 
+		if f.pipe.scalarMode {
 			// if in scalar mode, we can only fetch one instruction at a time
 			f.pipe.canFetch = false
 		}
@@ -93,4 +100,9 @@ func (f *FetchStage) Squash() bool {
 // Returns returns if this stage can take in a new instruction
 func (f *FetchStage) CanAdvance() bool {
 	return f.currentInstruction != nil
+}
+
+// returns curr instruction
+func (f *FetchStage) FormatInstruction() string {
+	return f.formatCache
 }

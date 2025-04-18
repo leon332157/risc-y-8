@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"encoding/binary"
-	"github.com/leon332157/risc-y-8/cmd/r8/internal/assembler"
-	"github.com/leon332157/risc-y-8/cmd/r8/internal/assembler/grammar"
+	"github.com/leon332157/risc-y-8/cmd/r8/assembler"
+	"github.com/leon332157/risc-y-8/cmd/r8/assembler/grammar"
 	"github.com/spf13/cobra"
 )
 
@@ -16,13 +16,13 @@ var (
 		Aliases: []string{"as", "as"},
 		Short:   "Assemble RISC-Y-8 assembly code",
 		Long:    "Assemble RISC-Y-8 assembly code into machine code",
-		RunE:    run,
+		RunE:    runAssemble,
 		Args:    cobra.ExactArgs(1),
 		Example: "r8 assemble -o a.out -f bin input.asm",
 	}
 )
 
-func run(cmd *cobra.Command, args []string) error {
+func runAssemble(cmd *cobra.Command, args []string) error {
 	infile := args[0]
 	outfile := cmd.Flag("output").Value.String()
 	//format := cmd.Flag("format").Value.String()
@@ -56,18 +56,6 @@ func run(cmd *cobra.Command, args []string) error {
 		binary.Write(os.Stdout, binary.LittleEndian, encoded)
 	}
 	return nil
-}
-
-func ParseString(name,s string) ([]uint32, error) {
-	prog, err := grammar.ParseString(name,s)
-	if err != nil {
-		return nil, err
-	}
-	insts,err := assembler.ParseLines(prog.Lines); // changes state in assembler package
-	if err != nil {
-		return nil, err
-	}
-	return assembler.EncInstructions(insts), nil
 }
 
 func init() {
