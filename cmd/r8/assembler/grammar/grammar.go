@@ -1,9 +1,10 @@
 package grammar
 
 import (
+	"strings"
+
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
-	"strings"
 )
 
 // Define the lexer for extended assembly
@@ -19,15 +20,15 @@ var asmLexerDyn = lexer.MustStateful(lexer.Rules{
 		//{"Number", `[-+]?(\d*\.)?\d+`, nil},
 		{"MemoryStart", `\[`, lexer.Push("Memory")},
 		{"Comma", `,`, nil},
-		{"Mnemonic", `(?i)[a-z]{1,}\.?[a-z]+`, nil},
-		{"Ident", `(?i)[a-z0-9]\w*`, nil},
+		//{"Mnemonic", `[a-z]{1,}`, nil},
+		{"Ident", `[a-z0-9]\w*`, nil},
 		{"EOL", `[\n\r]+`, nil},
-		{"whitespace", `[ \t]+`, nil},
+		{"Whitespace", `[ \t]+`, nil},
 	}, "Memory": {
 		{"Operation", `\+|-`, nil},
 		{"Hex", `(?i)0x[0-9a-f]+`, nil},
 		{"Decimal", `\d+`, nil},
-		{"Ident", `(?i)[a-z0-9]\w*`, nil},
+		{"Ident", `[a-z0-9]\w*`, nil},
 		{"whitespace", `[ \t]+`, nil},
 		{"MemoryEnd", `]`, lexer.Pop()},
 		//{"Displacement",`0x[0-9a-f]+|[-+]?\d+`,nil},
@@ -70,7 +71,7 @@ type Label struct {
 type Instruction struct {
 	Pos *lexer.Position
 
-	Mnemonic string    `@Mnemonic`
+	Mnemonic string    `@Ident " "?`
 	Operands []Operand `@@*`
 }
 
@@ -91,9 +92,9 @@ type Displacement struct {
 type Memory struct {
 	//Pos *lexer.Position
 
-	Base         string       `"[" @Ident `
-	Operation    string       `@Operation? `
-	Displacement Displacement `@@? "]"`
+	Base         string       `"[" @Ident " "? `
+	Operation    string       `@Operation? " "? `
+	Displacement Displacement `@@? " "? "]"`
 }
 
 type Operand interface {
@@ -102,12 +103,12 @@ type Operand interface {
 type OperandRegister struct {
 	//Pos *lexer.Position
 
-	Value string `@Ident ","?`
+	Value string `@Ident ","? " "?`
 }
 type OperandImmediate struct {
 	//Pos *lexer.Position
 
-	Value string ` (@Number|@Hex) ","? `
+	Value string ` (@Number|@Hex) ","?" "? `
 }
 type OperandMemory struct {
 	//Pos *lexer.Position
@@ -123,9 +124,9 @@ func toLower(token lexer.Token) (lexer.Token, error) {
 var Parser = participle.MustBuild[Program](
 	participle.Lexer(asmLexerDyn),
 	participle.Elide("Comment"),
-	participle.UseLookahead(2),
+	participle.UseLookahead(3),
 	participle.Union[Operand](OperandRegister{}, OperandImmediate{}, OperandMemory{}),
-	participle.Map(toLower, "Mnemonic", "Ident"), // lowercase all mnemonics and identifiers such as register names
+	participle.Map(toLower, "Ident"), // lowercase all mnemonics and identifiers such as register names
 )
 
 func ParseString(name, input string) (*Program, error) {

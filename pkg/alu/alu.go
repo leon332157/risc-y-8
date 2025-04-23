@@ -5,7 +5,7 @@ import (
 )
 
 type ALU struct {
-	Registers    [31]uint32
+	//Registers    [31]uint32
 	FlagRegister uint32
 }
 

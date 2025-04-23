@@ -39,10 +39,9 @@ type VectorRegister struct {
 }
 
 type CPU struct {
-	log            *zerolog.Logger
-	Halted         bool
 	Clock          uint32
 	ProgramCounter uint32
+	Halted         bool
 	ALU            *alu.ALU
 	//FPU            *FPU
 	//VPU            *VPU
@@ -50,8 +49,10 @@ type CPU struct {
 	RAM          *memory.RAM // Reference to RAM, if needed for direct access (optional)
 	Pipeline     *Pipeline
 	IntRegisters [INT_REG_COUNT]IntRegister
+
 	//FloatRegisters  []FloatRegister
 	//VectorRegisters []VectorRegister
+	log *zerolog.Logger
 }
 
 func (cpu *CPU) blockIntR(r uint8) {
@@ -114,7 +115,7 @@ func (c *CPU) WriteIntRNoBlock(r uint8, v uint32) uint32 {
 func (c *CPU) WriteIntR(r uint8, value uint32) (uint32, int32) {
 	if r == 0 {
 		c.log.Info().Msg("attempted to write to r0, ignoring write")
-		return 0,SUCCESS // r0 is always 0, ignore write
+		return 0, SUCCESS // r0 is always 0, ignore write
 	}
 	if r >= uint8(len(c.IntRegisters)) {
 		c.log.Panic().Msgf("attempted to write an out of bounds register: %v", r)
@@ -318,7 +319,7 @@ func Main() {
 	ldi r2, 10
 	add r4, 2
 	sub r2, 1
-	cmp r2, 0 
+	cmp r2, 0
 	beq [r6]
 	bne [r5]
 	or r1, 0xbeef

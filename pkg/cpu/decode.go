@@ -128,6 +128,7 @@ func (d *DecodeStage) Execute() {
 		SP := types.IntegerRegisters["sp"]
 		d.pipe.cpu.blockIntR(SP)
 		if (baseInstruction.MemMode == types.PUSH) || (baseInstruction.MemMode == types.POP) {
+			// If push or pop
 			sp, err := d.pipe.cpu.ReadIntR(SP)
 			if err != SUCCESS {
 				d.pipe.sTracef(d, "Failed to read stack pointer r%v %v", SP, err)

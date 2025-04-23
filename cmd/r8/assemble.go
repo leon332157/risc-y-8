@@ -37,11 +37,11 @@ func runAssemble(cmd *cobra.Command, args []string) error {
 
 	prog, err := grammar.Parser.Parse(infile, f)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse file %v %+v",err,prog);
 	}
 	res,err := assembler.ParseLines(prog.Lines); // changes state in assembler package
 	if err != nil {
-		return err
+		return fmt.Errorf("parse lines: %v %+v", err, res)
 	}
 	encoded := assembler.EncInstructions(res)
 	if outfile != "" {

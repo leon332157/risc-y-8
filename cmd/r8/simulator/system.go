@@ -50,7 +50,7 @@ func (s *System) RunForever(rHook *readStateHook) {
 			cpu.Pipeline.RunOneClock()
 			//time.Sleep(time.Millisecond * 100) // Sleep for 100 milliseconds to simulate clock cycles
 		}
-		if true == false {
+		if false == false {
 			fmt.Println("Clock:", cpu.Clock) // Print the clock cycle for debugging purposes
 			fmt.Println("PC:", cpu.ProgramCounter)
 			fmt.Println("Cache")
