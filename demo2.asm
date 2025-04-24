@@ -1,5 +1,5 @@
-ldi r5, 3
-ldi r6, 7
+ldi r5, 4
+ldi r6, 9
 ldi r2, 10
 add sp, 20
 add r4, 2

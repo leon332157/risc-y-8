@@ -22,18 +22,18 @@ const (
 
 type IntRegister struct {
 	value       uint32 // Register value
-	readEnable  bool   // Read enable flag
-	writeEnable bool   // Write enable flag
+	ReadEnable  bool   // Read enable flag
+	WriteEnable bool   // Write enable flag
 }
 
 type FloatRegister struct {
 	value       float32 // Register value
-	readEnable  bool    // Read enable flag
-	writeEnable bool    // Write enable flag
+	ReadEnable  bool    // Read enable flag
+	WriteEnable bool    // Write enable flag
 }
 
 type VectorRegister struct {
-	Value       [4]uint32 // Register value (4x 32-bit values)
+	value       [4]uint32 // Register value (4x 32-bit values)
 	ReadEnable  bool      // Read enable flag
 	WriteEnable bool      // Write enable flag
 }
@@ -61,8 +61,8 @@ func (cpu *CPU) blockIntR(r uint8) {
 		cpu.log.Panic().Msgf("attempted to block an out of bounds register: %v", r)
 	}
 	cpu.log.Trace().Msgf("Blocking register r%v for reading and writing", r)
-	cpu.IntRegisters[r].readEnable = false
-	cpu.IntRegisters[r].writeEnable = false
+	cpu.IntRegisters[r].ReadEnable = false
+	cpu.IntRegisters[r].WriteEnable = false
 }
 
 func (cpu *CPU) unblockIntR(r uint8) {
@@ -71,11 +71,11 @@ func (cpu *CPU) unblockIntR(r uint8) {
 		cpu.log.Panic().Msgf("attempted to unblock an out of bounds register: %v", r)
 	}
 	cpu.log.Trace().Msgf("Unblocking register r%v for reading and writing", r)
-	cpu.IntRegisters[r].readEnable = true
-	cpu.IntRegisters[r].writeEnable = true
+	cpu.IntRegisters[r].ReadEnable = true
+	cpu.IntRegisters[r].WriteEnable = true
 }
 
-func (c *CPU) ReadIntR(r uint8) (uint32, int32) {
+func (c *CPU) ReadIntR(r uint8) (v uint32, status int32) {
 	if r == 0 {
 		c.log.Info().Msg("attempted to read from r0, returning 0")
 		return 0, SUCCESS // r0 is always 0
@@ -83,7 +83,7 @@ func (c *CPU) ReadIntR(r uint8) (uint32, int32) {
 	if r >= uint8(len(c.IntRegisters)) {
 		c.log.Panic().Msgf("attempted to read an out of bounds register: %v", r)
 	}
-	if !c.IntRegisters[r].readEnable {
+	if !c.IntRegisters[r].ReadEnable {
 		return 0, READ_BLOCKED // Register is not readable
 	}
 	return c.IntRegisters[r].value, SUCCESS
@@ -91,7 +91,7 @@ func (c *CPU) ReadIntR(r uint8) (uint32, int32) {
 
 func (c *CPU) ReadIntRNoBlock(r uint8) uint32 {
 	if r == 0 {
-		c.log.Info().Msg("attempted to read from r0, returning 0")
+		//c.log.Info().Msg("attempted to read from r0, returning 0")
 		return 0
 	}
 	if r >= uint8(len(c.IntRegisters)) {
@@ -112,7 +112,7 @@ func (c *CPU) WriteIntRNoBlock(r uint8, v uint32) uint32 {
 	return c.IntRegisters[r].value
 }
 
-func (c *CPU) WriteIntR(r uint8, value uint32) (uint32, int32) {
+func (c *CPU) WriteIntR(r uint8, value uint32) (v uint32, status int32) {
 	if r == 0 {
 		c.log.Info().Msg("attempted to write to r0, ignoring write")
 		return 0, SUCCESS // r0 is always 0, ignore write
@@ -120,7 +120,7 @@ func (c *CPU) WriteIntR(r uint8, value uint32) (uint32, int32) {
 	if r >= uint8(len(c.IntRegisters)) {
 		c.log.Panic().Msgf("attempted to write an out of bounds register: %v", r)
 	}
-	if !c.IntRegisters[r].writeEnable {
+	if !c.IntRegisters[r].WriteEnable {
 		return 0, WRITE_BLOCKED // Register is not writable
 	}
 	c.IntRegisters[r].value = value
@@ -137,10 +137,14 @@ func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logg
 	for i := 0; i < INT_REG_COUNT; i++ {
 		reg := &cpu.IntRegisters[i] // Get the pointer to the integer register
 		reg.value = 0               // Initialize all integer registers to 0
-		reg.readEnable = true       // Allow reading by default
-		reg.writeEnable = true      // Allow writing by default
+		reg.ReadEnable = true       // Allow reading by default
+		reg.WriteEnable = true      // Allow writing by default
 	}
-	l := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Caller().Logger()
+	log, err := os.OpenFile("log.txt",os.O_WRONLY|os.O_CREATE,0o644)
+	if err != nil {
+		panic(err)
+	}
+	l := zerolog.New(zerolog.ConsoleWriter{Out: log, NoColor: true}).With().Caller().Logger()
 	if logger == nil {
 		logger = &l
 	}

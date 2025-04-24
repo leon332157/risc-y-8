@@ -41,7 +41,7 @@ func init() {
 }
 
 func runTui(cmd *cobra.Command, args []string) error {
-	zerolog.SetGlobalLevel(zerolog.Disabled)
+	zerolog.SetGlobalLevel(zerolog.TraceLevel)
 	infile := args[0]
 	f, err := os.Open(infile)
 	if err != nil {
@@ -133,8 +133,15 @@ func getRAMRows(ram *memory.RAM) [][]string {
 
 func getRegVals(control *cpu.CPU) [][]string {
 	regVals := [][]string{}
+
 	for i := range len(control.IntRegisters) {
-		row := []string{fmt.Sprintf("R%d", i), fmt.Sprintf("%08X", control.ReadIntRNoBlock(uint8(i)))}
+		var style = lipgloss.NewStyle()
+		if !control.IntRegisters[i].ReadEnable {
+			style = style.Foreground(lipgloss.Color("#FF0000"))
+		} else {
+			style = style.Foreground(lipgloss.Color("#04B575"))
+		}
+		row := []string{style.Render(fmt.Sprintf("R%d", i)), fmt.Sprintf("%08X", control.ReadIntRNoBlock(uint8(i)))}
 		regVals = append(regVals, row)
 	}
 	return regVals
@@ -265,8 +272,8 @@ func (m model) drawClock() string {
 }
 
 func (m model) drawPC() string {
-	header := []string{"PC","Total"}
-	row := []string{fmt.Sprintf("%d", m.system.CPU.ProgramCounter), fmt.Sprintf("%d",NumInstructions)}
+	header := []string{"PC", "Total"}
+	row := []string{fmt.Sprintf("%d", m.system.CPU.ProgramCounter), fmt.Sprintf("%d", NumInstructions)}
 	clockTable := table.New().Border(lipgloss.NormalBorder()).Headers(header...).Rows(row)
 	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render(clockTable.Render())
 }

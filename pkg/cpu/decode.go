@@ -126,15 +126,17 @@ func (d *DecodeStage) Execute() {
 
 		d.pipe.cpu.blockIntR(baseInstruction.Rd)
 		SP := types.IntegerRegisters["sp"]
-		d.pipe.cpu.blockIntR(SP)
 		if (baseInstruction.MemMode == types.PUSH) || (baseInstruction.MemMode == types.POP) {
 			// If push or pop
+			d.currInst.BaseInstruction.RMem  = types.IntegerRegisters["sp"]
+			// set memory source to be stack pointer so squash can work properlyq
 			sp, err := d.pipe.cpu.ReadIntR(SP)
 			if err != SUCCESS {
 				d.pipe.sTracef(d, "Failed to read stack pointer r%v %v", SP, err)
 				d.state = DEC_reg_read
 				return
 			}
+			d.pipe.cpu.blockIntR(baseInstruction.RMem)
 			d.currInst.DestMemAddr = sp
 		} else {
 			d.pipe.cpu.blockIntR(baseInstruction.RMem)

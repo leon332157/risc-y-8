@@ -96,11 +96,13 @@ func (p *Pipeline) sTracef(stage Stage, format string, args ...interface{}) {
 }
 
 func NewPipeline(cpu *CPU, scalar bool) *Pipeline {
-	option := func(w *zerolog.ConsoleWriter) {
-		w.Out = os.Stderr
+	file, err := os.OpenFile("pipeline.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
+	if err != nil {
+		panic(err)
 	}
-	log := zerolog.New(zerolog.NewConsoleWriter(option)).Level(zerolog.TraceLevel).With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 1).Logger()
-	pLog := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Caller().Logger()
+	logWriter := zerolog.ConsoleWriter{Out: file, NoColor: true} // Create a console writer for the log file
+	log := zerolog.New(logWriter).Level(zerolog.TraceLevel).With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 1).Logger()
+	pLog := zerolog.New(logWriter).With().Caller().Logger()
 	p := Pipeline{
 		Stages:     make([]Stage, 0),
 		cpu:        cpu,

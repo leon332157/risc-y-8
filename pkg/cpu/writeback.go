@@ -39,7 +39,7 @@ func (w *WriteBackStage) Execute() {
 		w.pipeline.sTrace(w, "No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
 		return
 	}
-	inst:= w.currentInstruction
+	inst := w.currentInstruction
 	w.pipeline.sTracef(w, "Processing instruction: %+v\n", w.currentInstruction) // For debugging purposes
 	if w.pipeline.scalarMode {
 		w.pipeline.canFetch = true // In scalar mode, we can fetch the next instruction after write back
@@ -48,7 +48,7 @@ func (w *WriteBackStage) Execute() {
 		if w.currentInstruction.BaseInstruction.OpType == types.Control {
 			// Control instruction, write back to the Program Counter and RDestAUX
 			w.pipeline.sTrace(w, "Control instruction detected")
-			if (!inst.BranchTaken) {
+			if !inst.BranchTaken {
 				w.pipeline.sTrace(w, "Branch not taken, no write back to Program Counter required")
 				//w.pipeline.cpu.unblockIntR(w.currentInstruction.BaseInstruction.Rd)
 				w.currentInstruction = nil
@@ -64,12 +64,17 @@ func (w *WriteBackStage) Execute() {
 		}
 		w.pipeline.sTracef(w, "Writing back result: %v to r%v\n", w.currentInstruction.Result, w.currentInstruction.BaseInstruction.Rd)
 		w.pipeline.cpu.unblockIntR(w.currentInstruction.BaseInstruction.Rd)                            // Unblock the destination register if applicable
-		w.pipeline.cpu.WriteIntR(w.currentInstruction.BaseInstruction.Rd, w.currentInstruction.Result) // Write the result to the destination register
-		w.pipeline.sTracef(w, "Written back to raux%v: %v\n", w.currentInstruction.RDestAux, w.currentInstruction.Result)
+		w.pipeline.sTracef(w, "Unblocked register r%v for write back\n", w.currentInstruction.BaseInstruction.Rd) // For debugging purposes
+		_,status := w.pipeline.cpu.WriteIntR(w.currentInstruction.BaseInstruction.Rd, w.currentInstruction.Result) // Write the result to the destination register
+		if status != SUCCESS {
+			w.pipeline.sTracef(w, "Failed to write back to register r%v: %v\n", w.currentInstruction.BaseInstruction.Rd, status)
+			return 
+		}
+		//w.pipeline.sTracef(w, "Written back to rdestaux%v: %v\n", w.currentInstruction.RDestAux, w.currentInstruction.Result)
 		w.pipeline.cpu.WriteIntR(w.currentInstruction.RDestAux, w.currentInstruction.DestMemAddr)
 		w.pipeline.sTracef(w, "Written back to rdestaux: %v %v\n", w.currentInstruction.RDestAux, w.currentInstruction.DestMemAddr)
 	} else {
-		w.pipeline.sTrace(w,"No write-back required for this instruction")
+		w.pipeline.sTrace(w, "No write-back required for this instruction")
 	}
 	w.pipeline.sTracef(w, "Write back completed for instruction: %+v\n", w.currentInstruction) // For debugging purposes
 	w.currentInstruction = nil
@@ -101,5 +106,16 @@ func (w *WriteBackStage) FormatInstruction() string {
 		return "<bubble>"
 	}
 	//format := fmt.Sprintf("%+v", w.currentInstruction)
-	return w.currentInstruction.FormatLines()
+	s := fmt.Sprintf("OpType: %x\n", w.currentInstruction.BaseInstruction.OpType)
+	s += fmt.Sprintf("Rd: %x\n", w.currentInstruction.BaseInstruction.Rd)
+	s += fmt.Sprintf("Writeback: %v\n", w.currentInstruction.WriteBack)
+	s += fmt.Sprintf("Result: %x\n", w.currentInstruction.Result)
+	s += fmt.Sprintf("RDestAux: %x\n", w.currentInstruction.RDestAux)
+	if w.currentInstruction.BaseInstruction.OpType == types.Control {
+		s += fmt.Sprintf("BranchTaken: %v\n", w.currentInstruction.BranchTaken)
+		s += fmt.Sprintf("DestMemAddr: %x\n", w.currentInstruction.DestMemAddr)
+		s += fmt.Sprintf("RMem: %x\n", w.currentInstruction.BaseInstruction.RMem)
+		s += fmt.Sprintf("CtrlModeFlag: %x\n", w.currentInstruction.BaseInstruction.CtrlMode<<4|w.currentInstruction.BaseInstruction.CtrlFlag)
+	}
+	return s
 }
