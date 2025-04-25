@@ -7,11 +7,12 @@ import (
 )
 
 type FetchStage struct {
-	pipe               *Pipeline // Reference to the pipeline instance
-	next               *DecodeStage
 	currentInstruction *InstructionIR
 
-	formatCache string
+	pipe *Pipeline
+	next *DecodeStage
+
+	InstStr string
 }
 
 func (f *FetchStage) Init(p *Pipeline, next Stage, _ Stage) error {
@@ -25,7 +26,7 @@ func (f *FetchStage) Init(p *Pipeline, next Stage, _ Stage) error {
 	}
 	f.next = n
 	f.currentInstruction = nil
-	f.formatCache = "<bubble>"
+	f.InstStr = "<bubble>"
 	return nil
 }
 
@@ -34,9 +35,9 @@ func (f *FetchStage) Name() string {
 }
 
 func (f *FetchStage) Execute() {
-	f.formatCache = "<bubble>"
+	f.InstStr = "<bubble>"
 	if f.pipe.scalarMode && f.pipe.canFetch == false {
-		f.pipe.sTrace(f, "Cannot fetch instruction right now, write has not completed yet")
+		f.pipe.sTrace(f, "Cannot fetch instruction right now, writeback has not completed yet")
 		return
 	}
 
@@ -56,7 +57,7 @@ func (f *FetchStage) Execute() {
 		f.pipe.sTracef(f, "Fetched instruction: 0x%08x\n", read.Value)
 		f.currentInstruction = new(InstructionIR) // Store the fetched instruction
 		f.currentInstruction.rawInstruction = read.Value
-		f.formatCache = fmt.Sprintf("0x%08x\n", f.currentInstruction.rawInstruction)
+		f.InstStr = fmt.Sprintf("raw: 0x%08x\n", f.currentInstruction.rawInstruction)
 		f.pipe.cpu.ProgramCounter++
 		f.pipe.sTracef(f, "Increasing ProgramCounter to: %v", f.pipe.cpu.ProgramCounter)
 		if f.pipe.scalarMode {
@@ -65,6 +66,7 @@ func (f *FetchStage) Execute() {
 		}
 	} else {
 		f.pipe.sTrace(f, "Fetched instruction is zero, no valid instruction found")
+		f.InstStr = "raw: 0x0\n"
 		return
 	}
 }
@@ -102,7 +104,7 @@ func (f *FetchStage) CanAdvance() bool {
 	return f.currentInstruction != nil
 }
 
-// returns curr instruction
+// returns current instruction formatted
 func (f *FetchStage) FormatInstruction() string {
-	return f.formatCache
+	return f.InstStr
 }
