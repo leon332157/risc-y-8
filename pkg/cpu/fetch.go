@@ -7,7 +7,7 @@ import (
 )
 
 type FetchStage struct {
-	currentInstruction *InstructionIR
+	currInst *InstructionIR
 
 	pipe *Pipeline
 	next *DecodeStage
@@ -25,7 +25,7 @@ func (f *FetchStage) Init(p *Pipeline, next Stage, _ Stage) error {
 		f.pipe.log.Fatal().Msg("[Fetch Init] next stage is not decode stage")
 	}
 	f.next = n
-	f.currentInstruction = nil
+	f.currInst = nil
 	f.InstStr = "<bubble>"
 	return nil
 }
@@ -41,8 +41,8 @@ func (f *FetchStage) Execute() {
 		return
 	}
 
-	if f.currentInstruction != nil {
-		f.pipe.sTracef(f, "Currently have an instruction %+v, skipping fetch", f.currentInstruction)
+	if f.currInst != nil {
+		f.pipe.sTracef(f, "Currently have an instruction %+v, skipping fetch", f.currInst)
 		return
 	}
 	//f.pipe.sTrace(f, "Fetching instruction from memory")
@@ -55,9 +55,9 @@ func (f *FetchStage) Execute() {
 
 	if read.Value != 0 {
 		f.pipe.sTracef(f, "Fetched instruction: 0x%08x\n", read.Value)
-		f.currentInstruction = new(InstructionIR) // Store the fetched instruction
-		f.currentInstruction.rawInstruction = read.Value
-		f.InstStr = fmt.Sprintf("raw: 0x%08x\n", f.currentInstruction.rawInstruction)
+		f.currInst = new(InstructionIR) // Store the fetched instruction
+		f.currInst.rawInstruction = read.Value
+		f.InstStr = fmt.Sprintf("raw: 0x%08x\n", f.currInst.rawInstruction)
 		f.pipe.cpu.ProgramCounter++
 		f.pipe.sTracef(f, "Increasing ProgramCounter to: %v", f.pipe.cpu.ProgramCounter)
 		if f.pipe.scalarMode {
@@ -76,15 +76,15 @@ func (f *FetchStage) Advance(_ *InstructionIR, canFetch bool) bool {
 	if !canFetch {
 		f.pipe.sTrace(f, "Stalling due to cpu stall condition")
 	}
-	if f.currentInstruction == nil {
+	if f.currInst == nil {
 		f.pipe.sTrace(f, "No instruction fetched, cannot advance")
 		f.next.Advance(nil, true) // pass bubble and say we are stalled
 		return false
 	}
 	if f.next.CanAdvance() {
-		f.pipe.sTracef(f, "Advancing to next stage with instruction: 0x%08x", f.currentInstruction.rawInstruction)
-		f.next.Advance(f.currentInstruction, false)
-		f.currentInstruction = nil // clear out curr inst after advancing
+		f.pipe.sTracef(f, "Advancing to next stage with instruction: 0x%08x", f.currInst.rawInstruction)
+		f.next.Advance(f.currInst, false)
+		f.currInst = nil // clear out curr inst after advancing
 		return true
 	} else {
 		f.pipe.sTrace(f, "Next stage cannot advance, stalling")
@@ -94,14 +94,14 @@ func (f *FetchStage) Advance(_ *InstructionIR, canFetch bool) bool {
 }
 
 func (f *FetchStage) Squash() bool {
-	f.pipe.sTracef(f, "Squashing instruction: %+v\n", f.currentInstruction) // For debugging purposes
-	f.currentInstruction = nil
+	f.pipe.sTracef(f, "Squashing instruction: %+v\n", f.currInst) // For debugging purposes
+	f.currInst = nil
 	return true
 }
 
 // Returns returns if this stage can take in a new instruction
 func (f *FetchStage) CanAdvance() bool {
-	return f.currentInstruction != nil
+	return f.currInst != nil
 }
 
 // returns current instruction formatted
