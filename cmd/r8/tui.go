@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/leon332157/risc-y-8/cmd/r8/simulator"
 	"github.com/rs/zerolog"
@@ -18,6 +19,8 @@ import (
 	"github.com/leon332157/risc-y-8/pkg/cpu"
 	"github.com/leon332157/risc-y-8/pkg/memory"
 )
+
+var desiredHeight = 9
 
 var (
 	tuiCmd = &cobra.Command{
@@ -119,7 +122,7 @@ func getCacheRows(ca *memory.CacheType) [][]string {
 func getRAMRows(ram *memory.RAM) [][]string {
 	rRows := [][]string{}
 	addr := 0
-	for i := 0; i < int(ram.NumLines); i++ {
+	for i := range int(ram.NumLines) {
 		row := []string{}
 		row = append(row, fmt.Sprintf("%d", i))
 		for range ram.WordsPerLine {
@@ -203,26 +206,63 @@ func (m model) View() string {
 
 	// TODO: Show PC??
 
-	clockAndInstr := lipgloss.JoinHorizontal(lipgloss.Center, clock, pc, whitespace, lastInstr, msg)
-	column1 := lipgloss.JoinVertical(lipgloss.Top, pipeline, clockAndInstr)
-	regsCol := lipgloss.JoinHorizontal(lipgloss.Left, registerView, whitespace, column1)
-	together := lipgloss.JoinHorizontal(lipgloss.Top, regsCol, whitespace, cache, ram)
+	SimAndCPU := lipgloss.JoinHorizontal(lipgloss.Center, clock, pc, whitespace, lastInstr, msg)
+	pipelineAndCPU := lipgloss.JoinHorizontal(lipgloss.Top, pipeline, whitespace, SimAndCPU)
+	regsCol := lipgloss.JoinHorizontal(lipgloss.Left, registerView, whitespace, ram, whitespace, cache)
+	together := lipgloss.JoinVertical(lipgloss.Top, pipelineAndCPU, regsCol)
 	ui := lipgloss.JoinVertical(lipgloss.Left, together, cmdLine)
 
 	return "\n" + ui //+ "\n" + "---- ctrl+c or q to quit ----" + "\n"
 }
 
 func (m model) drawRAM() string {
+
 	rows := getRAMRows(m.system.RAM)
-	ramTable := table.New().Border(lipgloss.NormalBorder()).Rows(rows...)
-	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("63")).Render("RAM\n" + ramTable.Render())
+
+	ramTable := table.New().
+		Border(lipgloss.NormalBorder()).
+		Rows(rows...)
+
+	return lipgloss.NewStyle().
+		BorderForeground(lipgloss.Color("63")).
+		Render("RAM\n" + ramTable.Render())
 }
 
 func (m model) drawCache() string {
 	headers := []string{"Tag", "Index", "Data", "Valid", "LRU"}
+
 	rows := getCacheRows(m.system.Cache)
-	cacheTable := table.New().Border(lipgloss.NormalBorder()).Headers(headers...).Rows(rows...)
-	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("129")).Render("Cache\n" + cacheTable.Render())
+
+	cacheTable := table.New().
+		Border(lipgloss.NormalBorder()).
+		Headers(headers...).
+		Rows(rows...)
+
+	return lipgloss.NewStyle().
+		BorderForeground(lipgloss.Color("129")).
+		Render("Cache\n" + cacheTable.Render())
+}
+
+// desiredHeight := 5 // or however many stages you want to display
+// row := make([]string, 0, desiredHeight)
+
+// for i := range m.system.CPU.Pipeline.Stages {
+// 	row = append(row, m.system.CPU.Pipeline.Stages[i].FormatInstruction())
+// }
+
+// // Pad with "<bubble>" or empty instructions if needed
+// for len(row) < desiredHeight {
+// 	row = append(row, "<bubble>")
+// }
+
+func (m model) checkNewlines(instr string, height int, i int) int {
+
+	if strings.Count(m.system.CPU.Pipeline.Stages[i].FormatInstruction(), "\n") > height {
+		return 0
+	}
+
+	return height - strings.Count(m.system.CPU.Pipeline.Stages[i].FormatInstruction(), "\n")
+
 }
 
 func (m model) drawPipeline() string {
@@ -230,26 +270,50 @@ func (m model) drawPipeline() string {
 	//labels := []string{" Fetch ", " Decode ", " Execute ", " Memory ", " Writeback "}
 	labels := []string{" WB ", " MEM ", " EXE ", " DEC ", " FET "}
 	row := make([]string, 0)
+
 	for i := range m.system.CPU.Pipeline.Stages {
-		row = append(row, m.system.CPU.Pipeline.Stages[i].FormatInstruction())
+		row = append(row, m.system.CPU.Pipeline.Stages[i].FormatInstruction() + strings.Repeat("\n", m.checkNewlines(m.system.CPU.Pipeline.Stages[i].FormatInstruction(), desiredHeight, i)))
 	}
+
 	// TODO: show stage result in row?? SUCCESS, STALL, FAILURE, NOOP, etc.
-	pipelineTable := table.New().Border(lipgloss.NormalBorder()).Headers(labels...).Rows(row)
-	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("33")).Render("Pipeline\n" + pipelineTable.Render())
+	pipelineTable := table.New().
+		Width(100).
+		Border(lipgloss.NormalBorder()).
+		Headers(labels...).
+		Rows(row)
+
+	return lipgloss.NewStyle().
+		// Padding(10, 10).
+		BorderForeground(lipgloss.Color("33")).
+		Render("Pipeline\n" + pipelineTable.Render())
 }
 
 func (m model) drawRegisters() string {
 	// TODO: create a cpu instance and make int registers
 	rows := getRegVals(m.system.CPU)
-	regTable := table.New().Border(lipgloss.NormalBorder()).Rows(rows...)
-	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render("IntRegisters\n" + regTable.Render() + "\n")
+
+	regTable := table.New().
+		Border(lipgloss.NormalBorder()).
+		Rows(rows...)
+
+	return lipgloss.NewStyle().
+		BorderForeground(lipgloss.Color("207")).
+		Render("IntRegisters\n" + regTable.Render() + "\n")
 }
 
 func (m model) drawLastInstruction() string {
+
 	headers := []string{"Last Input"}
 	row := []string{m.lastInstr}
-	instrTable := table.New().Border(lipgloss.NormalBorder()).Headers(headers...).Rows(row)
-	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render(instrTable.Render())
+
+	instrTable := table.New().
+		Border(lipgloss.NormalBorder()).
+		Headers(headers...).
+		Rows(row)
+
+	return lipgloss.NewStyle().
+		BorderForeground(lipgloss.Color("207")).
+		Render(instrTable.Render())
 }
 
 func (m model) drawMsg() string {
@@ -260,20 +324,42 @@ func (m model) drawMsg() string {
 	}
 	headers := []string{"Message"}
 	row := []string{m.msg}
-	msgTable := table.New().Border(lipgloss.NormalBorder()).Headers(headers...).Rows(row)
-	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render(msgTable.Render())
+
+	msgTable := table.New().
+		Border(lipgloss.NormalBorder()).
+		Headers(headers...).Rows(row)
+
+	return lipgloss.NewStyle().
+		BorderForeground(lipgloss.Color("207")).
+		Render(msgTable.Render())
 }
 
 func (m model) drawClock() string {
 	header := []string{"Clock"}
 	row := []string{fmt.Sprintf("%d", m.system.CPU.Clock)}
-	clockTable := table.New().Border(lipgloss.NormalBorder()).Headers(header...).Rows(row)
-	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render(clockTable.Render())
+
+	clockTable := table.New().
+		Border(lipgloss.NormalBorder()).
+		Headers(header...).
+		Rows(row)
+
+	return lipgloss.NewStyle().
+		Padding(desiredHeight / 2, 0).
+		BorderForeground(lipgloss.Color("207")).
+		Render("CPU\n" + clockTable.Render())
 }
 
 func (m model) drawPC() string {
+
 	header := []string{"PC", "Total"}
 	row := []string{fmt.Sprintf("%d", m.system.CPU.ProgramCounter), fmt.Sprintf("%d", NumInstructions)}
-	clockTable := table.New().Border(lipgloss.NormalBorder()).Headers(header...).Rows(row)
-	return lipgloss.NewStyle().BorderForeground(lipgloss.Color("207")).Render(clockTable.Render())
+
+	clockTable := table.New().
+		Border(lipgloss.NormalBorder()).
+		Headers(header...).
+		Rows(row)
+
+	return lipgloss.NewStyle().
+		BorderForeground(lipgloss.Color("207")).
+		Render(clockTable.Render())
 }
