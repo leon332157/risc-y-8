@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/viewport"
 	table "github.com/charmbracelet/lipgloss/table"
 	"github.com/leon332157/risc-y-8/pkg/cpu"
 	"github.com/leon332157/risc-y-8/pkg/memory"
@@ -81,6 +82,7 @@ type model struct {
 
 	system *simulator.System
 	msg    string
+	ramViewport viewport.Model
 }
 
 func initialModel() model {
@@ -89,12 +91,14 @@ func initialModel() model {
 	ti.Focus()
 	ti.CharLimit = 100
 	ti.Width = 50
+	ramVP := viewport.New(77, 34)
 
 	return model{
 		instr:     ti,
 		lastInstr: "",
 		system:    nil,
 		msg:       "none",
+		ramViewport: ramVP,
 	}
 }
 
@@ -178,10 +182,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.lastInstr = m.instr.Value()
 			}
 			m.ExecuteCommand()
+			m.ramViewport.SetContent(m.drawRAMTable())
 			// Send instruction to be computed
 			//cache.Write(0x0, memory.FETCH_STAGE, 0xdeadbeef)
 			m.instr.Reset()
 			return m, nil
+		case "j":
+			m.ramViewport.ScrollDown(16)
+		case "k":
+			m.ramViewport.ScrollUp(16)
 		}
 	case tea.WindowSizeMsg:
 		// handle resize if needed
@@ -217,15 +226,33 @@ func (m model) View() string {
 
 func (m model) drawRAM() string {
 
+	// rows := getRAMRows(m.system.RAM)
+
+	// ramTable := table.New().
+	// 	Border(lipgloss.NormalBorder()).
+	// 	Rows(rows...)
+
+	// return lipgloss.NewStyle().
+	// 	BorderForeground(lipgloss.Color("63")).
+	// 	Render("RAM\n" + ramTable.Render())
+
+	content := m.ramViewport.View()
+
+	return lipgloss.NewStyle().
+		// BorderForeground(lipgloss.Color("15")).
+		// Border(lipgloss.NormalBorder()).
+		Render("RAM\n" + content)
+}
+
+func (m model) drawRAMTable() string {
+
 	rows := getRAMRows(m.system.RAM)
 
 	ramTable := table.New().
 		Border(lipgloss.NormalBorder()).
 		Rows(rows...)
 
-	return lipgloss.NewStyle().
-		BorderForeground(lipgloss.Color("63")).
-		Render("RAM\n" + ramTable.Render())
+	return ramTable.Render()
 }
 
 func (m model) drawCache() string {

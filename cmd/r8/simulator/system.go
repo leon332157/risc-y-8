@@ -18,7 +18,7 @@ type readStateHook func(sys *System) bool
 
 func NewSystem(initRamContent []uint32, disableCache, disablePipeline bool) System {
 	sys := System{}
-	ram := memory.CreateRAM(32, 8, 3)
+	ram := memory.CreateRAM(1000, 8, 3)
 	sys.RAM = &ram
 	sys.CPU = new(CPUpkg.CPU)
 	copy(sys.RAM.Contents, initRamContent)

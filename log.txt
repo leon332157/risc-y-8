@@ -1,4 +1,4 @@
-<nil> TRC pkg/cpu/cpu.go:152 > cpu initialized: 0xc00005c080
+<nil> TRC pkg/cpu/cpu.go:152 > cpu initialized: 0xc00009a210
 <nil> TRC pkg/cpu/cpu.go:63 > Blocking register r5 for reading and writing
 <nil> TRC pkg/cpu/cpu.go:63 > Blocking register r6 for reading and writing
 <nil> TRC pkg/cpu/cpu.go:63 > Blocking register r2 for reading and writing
