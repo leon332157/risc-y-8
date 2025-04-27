@@ -140,12 +140,12 @@ func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logg
 		reg.ReadEnable = true       // Allow reading by default
 		reg.WriteEnable = true      // Allow writing by default
 	}
-	log, err := os.OpenFile("log.txt",os.O_WRONLY|os.O_CREATE|os.O_TRUNC,0o644)
-	if err != nil {
-		panic(err)
-	}
-	l := zerolog.New(zerolog.ConsoleWriter{Out: log, NoColor: true}).With().Caller().Logger()
 	if logger == nil {
+		log, err := os.OpenFile("cpu.log", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+		if err != nil {
+			panic(err)
+		}
+		l := zerolog.New(zerolog.ConsoleWriter{Out: log, NoColor: true}).With().Caller().Logger()
 		logger = &l
 	}
 	cpu.log = logger
