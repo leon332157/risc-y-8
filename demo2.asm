@@ -1,6 +1,6 @@
 ldi r5, 4
 ldi r6, 9
-ldi r2, 10
+ldi r2, 1
 add sp, 20
 add r4, 2
 sub r2, 1
@@ -16,4 +16,3 @@ nop
 nop
 nop
 meow
-nop

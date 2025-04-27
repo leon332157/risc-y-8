@@ -1,0 +1,896 @@
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:65 > No current instruction to process, returning early Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: <nil>
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:65 > No current instruction to process, returning early Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: <nil>
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:65 > No current instruction to process, returning early Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: <nil>
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:65 > No current instruction to process, returning early Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0x00041851
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 1 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:88 > Advancing to next stage with instruction: 0x00041851 Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: <nil>
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc001480160 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:268369}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:166 > Decoded filled instruction: &{BaseInstruction:0xc001480160 Operand:4 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:268369} {OpType:0 Rd:5 ALU:12 Rs:0 RMem:0 CtrlFlag:0 CtrlMode:0 MemMode:0 Imm:4}
+ Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0x00091861
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 2 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:88 > Advancing to next stage with instruction: 0x00091861 Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: &{BaseInstruction:0xc001480160 Operand:4 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:268369}
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:277 > Executing instruction: &{BaseInstruction:0xc001480160 Operand:4 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:268369}
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:106 > ALURI operation result: 4 Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc00138c960 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:596065}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:166 > Decoded filled instruction: &{BaseInstruction:0xc00138c960 Operand:9 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:596065} {OpType:0 Rd:6 ALU:12 Rs:0 RMem:0 CtrlFlag:0 CtrlMode:0 MemMode:0 Imm:9}
+ Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0x00011821
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 3 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:88 > Advancing to next stage with instruction: 0x00011821 Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: &{BaseInstruction:0xc00138c960 Operand:9 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:596065}
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: &{BaseInstruction:0xc001480160 Operand:4 Result:4 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:268369}
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:62 > Current instruction is not a load/store type, skipping memory stage execution &{BaseInstruction:0xc001480160 Operand:4 Result:4 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:268369}
+ Stage=Memory
+<nil> TRC pkg\cpu\execute.go:277 > Executing instruction: &{BaseInstruction:0xc00138c960 Operand:9 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:596065}
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:106 > ALURI operation result: 9 Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc000200950 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:71713}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:166 > Decoded filled instruction: &{BaseInstruction:0xc000200950 Operand:1 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:71713} {OpType:0 Rd:2 ALU:12 Rs:0 RMem:0 CtrlFlag:0 CtrlMode:0 MemMode:0 Imm:1}
+ Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0x001401e1
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 4 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:88 > Advancing to next stage with instruction: 0x001401e1 Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: &{BaseInstruction:0xc000200950 Operand:1 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:71713}
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: &{BaseInstruction:0xc00138c960 Operand:9 Result:9 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:596065}
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: &{BaseInstruction:0xc001480160 Operand:4 Result:4 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:268369}
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: &{BaseInstruction:0xc001480160 Operand:4 Result:4 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:268369}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:59 > Processing instruction: &{BaseInstruction:0xc001480160 Operand:4 Result:4 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:268369}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:81 > Writing back result: 4 to r5
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:83 > Unblocked register r5 for write back
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:90 > Written back to rdestaux: 0 0
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:94 > Write back completed for instruction: &{BaseInstruction:0xc001480160 Operand:4 Result:4 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:268369}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:62 > Current instruction is not a load/store type, skipping memory stage execution &{BaseInstruction:0xc00138c960 Operand:9 Result:9 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:596065}
+ Stage=Memory
+<nil> TRC pkg\cpu\execute.go:277 > Executing instruction: &{BaseInstruction:0xc000200950 Operand:1 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:71713}
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:106 > ALURI operation result: 1 Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc0003acb90 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1311201}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:166 > Decoded filled instruction: &{BaseInstruction:0xc0003acb90 Operand:20 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:1311201} {OpType:0 Rd:30 ALU:0 Rs:0 RMem:0 CtrlFlag:0 CtrlMode:0 MemMode:0 Imm:20}
+ Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: &{BaseInstruction:0xc0003acb90 Operand:20 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:1311201}
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: &{BaseInstruction:0xc000200950 Operand:1 Result:1 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:71713}
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: &{BaseInstruction:0xc00138c960 Operand:9 Result:9 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:596065}
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: &{BaseInstruction:0xc00138c960 Operand:9 Result:9 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:596065}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:59 > Processing instruction: &{BaseInstruction:0xc00138c960 Operand:9 Result:9 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:596065}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:81 > Writing back result: 9 to r6
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:83 > Unblocked register r6 for write back
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:90 > Written back to rdestaux: 0 0
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:94 > Write back completed for instruction: &{BaseInstruction:0xc00138c960 Operand:9 Result:9 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:596065}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:62 > Current instruction is not a load/store type, skipping memory stage execution &{BaseInstruction:0xc000200950 Operand:1 Result:1 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:71713}
+ Stage=Memory
+<nil> TRC pkg\cpu\execute.go:277 > Executing instruction: &{BaseInstruction:0xc0003acb90 Operand:20 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:1311201}
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:106 > ALURI operation result: 20 Stage=Execute
+<nil> TRC pkg\cpu\decode.go:65 > No current instruction to process, returning early Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: <nil>
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: &{BaseInstruction:0xc0003acb90 Operand:20 Result:20 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:1311201}
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: &{BaseInstruction:0xc000200950 Operand:1 Result:1 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:71713}
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: &{BaseInstruction:0xc000200950 Operand:1 Result:1 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:71713}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:59 > Processing instruction: &{BaseInstruction:0xc000200950 Operand:1 Result:1 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:71713}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:81 > Writing back result: 1 to r2
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:83 > Unblocked register r2 for write back
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:90 > Written back to rdestaux: 0 0
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:94 > Write back completed for instruction: &{BaseInstruction:0xc000200950 Operand:1 Result:1 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:71713}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:62 > Current instruction is not a load/store type, skipping memory stage execution &{BaseInstruction:0xc0003acb90 Operand:20 Result:20 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:1311201}
+ Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:65 > No current instruction to process, returning early Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: <nil>
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: &{BaseInstruction:0xc0003acb90 Operand:20 Result:20 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:1311201}
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: &{BaseInstruction:0xc0003acb90 Operand:20 Result:20 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:1311201}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:59 > Processing instruction: &{BaseInstruction:0xc0003acb90 Operand:20 Result:20 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:1311201}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:81 > Writing back result: 20 to r30
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:83 > Unblocked register r30 for write back
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:90 > Written back to rdestaux: 0 0
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:94 > Write back completed for instruction: &{BaseInstruction:0xc0003acb90 Operand:20 Result:20 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:1311201}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:65 > No current instruction to process, returning early Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0x00020041
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 5 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:88 > Advancing to next stage with instruction: 0x00020041 Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: <nil>
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc000fecf90 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:131137}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:166 > Decoded filled instruction: &{BaseInstruction:0xc000fecf90 Operand:2 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:131137} {OpType:0 Rd:4 ALU:0 Rs:0 RMem:0 CtrlFlag:0 CtrlMode:0 MemMode:0 Imm:2}
+ Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0x00010221
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 6 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:88 > Advancing to next stage with instruction: 0x00010221 Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: &{BaseInstruction:0xc000fecf90 Operand:2 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:131137}
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:277 > Executing instruction: &{BaseInstruction:0xc000fecf90 Operand:2 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:131137}
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:106 > ALURI operation result: 2 Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc001130df0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:66081}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:166 > Decoded filled instruction: &{BaseInstruction:0xc001130df0 Operand:1 Result:1 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:66081} {OpType:0 Rd:2 ALU:1 Rs:0 RMem:0 CtrlFlag:0 CtrlMode:0 MemMode:0 Imm:1}
+ Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0x00001c21
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 7 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:88 > Advancing to next stage with instruction: 0x00001c21 Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: &{BaseInstruction:0xc001130df0 Operand:1 Result:1 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:66081}
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: &{BaseInstruction:0xc000fecf90 Operand:2 Result:2 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:131137}
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:62 > Current instruction is not a load/store type, skipping memory stage execution &{BaseInstruction:0xc000fecf90 Operand:2 Result:2 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:131137}
+ Stage=Memory
+<nil> TRC pkg\cpu\execute.go:277 > Executing instruction: &{BaseInstruction:0xc001130df0 Operand:1 Result:1 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:66081}
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:106 > ALURI operation result: 0 Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc0006acaa0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:7201}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:86 > Failed to read register r2 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0x0000026d
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 8 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 1 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: &{BaseInstruction:0xc001130df0 Operand:1 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:66081}
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: &{BaseInstruction:0xc000fecf90 Operand:2 Result:2 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:131137}
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: &{BaseInstruction:0xc000fecf90 Operand:2 Result:2 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:131137}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:59 > Processing instruction: &{BaseInstruction:0xc000fecf90 Operand:2 Result:2 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:131137}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:81 > Writing back result: 2 to r4
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:83 > Unblocked register r4 for write back
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:90 > Written back to rdestaux: 0 0
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:94 > Write back completed for instruction: &{BaseInstruction:0xc000fecf90 Operand:2 Result:2 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:131137}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:62 > Current instruction is not a load/store type, skipping memory stage execution &{BaseInstruction:0xc001130df0 Operand:1 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:66081}
+ Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc0012bf2c0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:7201}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:86 > Failed to read register r2 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:621}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 1 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: &{BaseInstruction:0xc001130df0 Operand:1 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:66081}
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: &{BaseInstruction:0xc001130df0 Operand:1 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:66081}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:59 > Processing instruction: &{BaseInstruction:0xc001130df0 Operand:1 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:66081}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:81 > Writing back result: 0 to r2
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:83 > Unblocked register r2 for write back
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:90 > Written back to rdestaux: 0 0
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:94 > Write back completed for instruction: &{BaseInstruction:0xc001130df0 Operand:1 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:66081}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc001436bc0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:7201}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:166 > Decoded filled instruction: &{BaseInstruction:0xc001436bc0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:7201} {OpType:0 Rd:2 ALU:14 Rs:0 RMem:0 CtrlFlag:0 CtrlMode:0 MemMode:0 Imm:0}
+ Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:621}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:88 > Advancing to next stage with instruction: 0x0000026d Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: &{BaseInstruction:0xc001436bc0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:7201}
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:277 > Executing instruction: &{BaseInstruction:0xc001436bc0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:7201}
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:106 > ALURI operation result: 0 Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc001131e70 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:621}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:166 > Decoded filled instruction: &{BaseInstruction:0xc001131e70 Operand:0 Result:0 RDestAux:0 DestMemAddr:9 BranchTaken:false WriteBack:true rawInstruction:621} {OpType:3 Rd:0 ALU:0 Rs:0 RMem:6 CtrlFlag:1 CtrlMode:0 MemMode:0 Imm:0}
+ Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: &{BaseInstruction:0xc001131e70 Operand:0 Result:0 RDestAux:0 DestMemAddr:9 BranchTaken:false WriteBack:true rawInstruction:621}
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: &{BaseInstruction:0xc001436bc0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:7201}
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:62 > Current instruction is not a load/store type, skipping memory stage execution &{BaseInstruction:0xc001436bc0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:7201}
+ Stage=Memory
+<nil> TRC pkg\cpu\execute.go:277 > Executing instruction: &{BaseInstruction:0xc001131e70 Operand:0 Result:0 RDestAux:0 DestMemAddr:9 BranchTaken:false WriteBack:true rawInstruction:621}
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:173 > calculated memory address: 9 Stage=Execute
+<nil> TRC pkg\cpu\decode.go:65 > No current instruction to process, returning early Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: <nil>
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: &{BaseInstruction:0xc001131e70 Operand:0 Result:0 RDestAux:0 DestMemAddr:9 BranchTaken:true WriteBack:true rawInstruction:621}
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: &{BaseInstruction:0xc001436bc0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:7201}
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: &{BaseInstruction:0xc001436bc0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:7201}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:59 > Processing instruction: &{BaseInstruction:0xc001436bc0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:7201}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:92 > No write-back required for this instruction Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:94 > Write back completed for instruction: &{BaseInstruction:0xc001436bc0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:7201}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:62 > Current instruction is not a load/store type, skipping memory stage execution &{BaseInstruction:0xc001131e70 Operand:0 Result:0 RDestAux:0 DestMemAddr:9 BranchTaken:true WriteBack:true rawInstruction:621}
+ Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:65 > No current instruction to process, returning early Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: <nil>
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: &{BaseInstruction:0xc001131e70 Operand:0 Result:0 RDestAux:0 DestMemAddr:9 BranchTaken:true WriteBack:true rawInstruction:621}
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: &{BaseInstruction:0xc001131e70 Operand:0 Result:0 RDestAux:0 DestMemAddr:9 BranchTaken:true WriteBack:true rawInstruction:621}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:59 > Processing instruction: &{BaseInstruction:0xc001131e70 Operand:0 Result:0 RDestAux:0 DestMemAddr:9 BranchTaken:true WriteBack:true rawInstruction:621}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:66 > Control instruction detected Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:75 > Writing to Program Counter directly from control instruction to 9
+ Stage=WriteBack
+<nil> TRC pkg\cpu\fetch.go:100 > Squashing instruction: <nil>
+ Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:208 > Squashing instruction: <nil>
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:315 > Squashing instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:139 > Squashing instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:110 > Squashing instruction: &{BaseInstruction:0xc001131e70 Operand:0 Result:0 RDestAux:0 DestMemAddr:9 BranchTaken:true WriteBack:true rawInstruction:621}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:65 > No current instruction to process, returning early Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0xbeef0a11
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 10 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:88 > Advancing to next stage with instruction: 0xbeef0a11 Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: <nil>
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc001694170 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:3203336721}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:166 > Decoded filled instruction: &{BaseInstruction:0xc001694170 Operand:4294950639 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:3203336721} {OpType:0 Rd:1 ALU:5 Rs:0 RMem:0 CtrlFlag:0 CtrlMode:0 MemMode:0 Imm:-16657}
+ Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0x00000419
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 11 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:88 > Advancing to next stage with instruction: 0x00000419 Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: &{BaseInstruction:0xc001694170 Operand:4294950639 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:3203336721}
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:277 > Executing instruction: &{BaseInstruction:0xc001694170 Operand:4294950639 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:3203336721}
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:106 > ALURI operation result: 4294950639 Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc0015841f4 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0x00000419
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 12 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: &{BaseInstruction:0xc001694170 Operand:4294950639 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:3203336721}
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:62 > Current instruction is not a load/store type, skipping memory stage execution &{BaseInstruction:0xc001694170 Operand:4294950639 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:3203336721}
+ Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc00126e150 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: &{BaseInstruction:0xc001694170 Operand:4294950639 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:3203336721}
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: &{BaseInstruction:0xc001694170 Operand:4294950639 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:3203336721}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:59 > Processing instruction: &{BaseInstruction:0xc001694170 Operand:4294950639 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:3203336721}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:81 > Writing back result: 4294950639 to r1
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:83 > Unblocked register r1 for write back
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:90 > Written back to rdestaux: 0 0
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:94 > Write back completed for instruction: &{BaseInstruction:0xc001694170 Operand:4294950639 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:true rawInstruction:3203336721}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc000744a90 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:149 > PUSH/POP instruction detected, setting RMem to SP (r30) Stage=Decode
+<nil> TRC pkg\cpu\decode.go:159 > Read memory source r30 value 20 Stage=Decode
+<nil> TRC pkg\cpu\decode.go:166 > Decoded filled instruction: &{BaseInstruction:0xc000744a90 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:20 BranchTaken:false WriteBack:false rawInstruction:1049} {OpType:2 Rd:1 ALU:0 Rs:0 RMem:30 CtrlFlag:0 CtrlMode:0 MemMode:2 Imm:0}
+ Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:88 > Advancing to next stage with instruction: 0x00000419 Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:196 > Advancing to next stage with instruction: &{BaseInstruction:0xc000744a90 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:20 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:277 > Executing instruction: &{BaseInstruction:0xc000744a90 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:20 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:186 > pop/push Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc000788210 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: &{BaseInstruction:0xc000744a90 Operand:0 Result:4294950639 RDestAux:30 DestMemAddr:20 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:65 > [MemoryStage Execute] Processing instruction: &{BaseInstruction:0xc000744a90 Operand:0 Result:4294950639 RDestAux:30 DestMemAddr:20 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Memory
+<nil> TRC pkg\cpu\memory.go:91 > Attempting to store value 4294950639 to cache at address 0x14
+ Stage=Memory
+<nil> TRC pkg\cpu\memory.go:95 > Failed to store to cache at address 0x14, state: WAIT_NEXT_LEVEL
+ Stage=Memory
+<nil> TRC pkg\cpu\memory.go:99 > Waiting for cache write at address 0x14
+ Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc0006f4290 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:308 > Can not advance to Memory, CanAdvance returned false Stage=Execute
+<nil> TRC pkg\cpu\memory.go:121 > still waiting for operation, can not advance
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:100 > previous stage Memory returned is stalled
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:65 > [MemoryStage Execute] Processing instruction: &{BaseInstruction:0xc000744a90 Operand:0 Result:4294950639 RDestAux:30 DestMemAddr:20 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Memory
+<nil> TRC pkg\cpu\memory.go:91 > Attempting to store value 4294950639 to cache at address 0x14
+ Stage=Memory
+<nil> TRC pkg\cpu\memory.go:106 > Successfully stored to cache at address 0x15
+ Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc0005da2b0 Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:149 > PUSH/POP instruction detected, setting RMem to SP (r30) Stage=Decode
+<nil> TRC pkg\cpu\decode.go:154 > Failed to read load/store instruction memory source r30 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: &{BaseInstruction:0xc000744a90 Operand:0 Result:4294950639 RDestAux:30 DestMemAddr:21 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: &{BaseInstruction:0xc000744a90 Operand:0 Result:4294950639 RDestAux:30 DestMemAddr:21 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:59 > Processing instruction: &{BaseInstruction:0xc000744a90 Operand:0 Result:4294950639 RDestAux:30 DestMemAddr:21 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:92 > No write-back required for this instruction Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:94 > Write back completed for instruction: &{BaseInstruction:0xc000744a90 Operand:0 Result:4294950639 RDestAux:30 DestMemAddr:21 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc0002001d0 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc00000a320 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:55 > Fetch failed: WAIT_NEXT_LEVEL Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:83 > No instruction fetched, cannot advance Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:188 > previous stage Fetch is stalled Stage=Decode
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc00013bfa0 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:60 > Fetched instruction: 0x00000419
+ Stage=Fetch
+<nil> TRC pkg\cpu\fetch.go:65 > Increasing ProgramCounter to: 13 Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc000788770 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc000580160 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc0005f1f70 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc00092fc80 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc000652180 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc000881c50 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc001009970 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc000a239d0 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc00076e4a0 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack
+<nil> TRC pkg\cpu\writeback.go:43 > No current instruction to process, returning early Stage=WriteBack
+<nil> TRC pkg\cpu\memory.go:56 > No current instruction to process, returning early Stage=Memory
+<nil> TRC pkg\cpu\execute.go:264 > No current instruction to process, returning early Stage=Execute
+<nil> TRC pkg\cpu\decode.go:72 > Decoded instruction: &{BaseInstruction:0xc0011f56f0 Operand:0 Result:4294950639 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}
+ Stage=Decode
+<nil> TRC pkg\cpu\decode.go:139 > Failed to read load/store instruction destination register r1 -1 Stage=Decode
+<nil> TRC pkg\cpu\fetch.go:48 > Currently have an instruction &{BaseInstruction:<nil> Operand:0 Result:0 RDestAux:0 DestMemAddr:0 BranchTaken:false WriteBack:false rawInstruction:1049}, skipping fetch Stage=Fetch
+<nil> TRC pkg\cpu\pipeline.go:72 > canFetch: true
+
+<nil> TRC pkg\cpu\fetch.go:93 > Next stage cannot advance, stalling Stage=Fetch
+<nil> TRC pkg\cpu\decode.go:191 > Decode is busy, cannot advance: 2 Stage=Decode
+<nil> TRC pkg\cpu\execute.go:295 > previous stage Decode returned stall
+ Stage=Execute
+<nil> TRC pkg\cpu\execute.go:303 > Advancing to next stage with instruction: <nil>
+ Stage=Execute
+<nil> TRC pkg\cpu\memory.go:127 > Advancing to next stage with instruction: <nil>
+ Stage=Memory
+<nil> TRC pkg\cpu\writeback.go:103 > Got with instruction: <nil>
+ Stage=WriteBack

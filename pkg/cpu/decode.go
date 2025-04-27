@@ -63,16 +63,21 @@ func (d *DecodeStage) Name() string {
 func (d *DecodeStage) Execute() {
 	if d.currInst == nil {
 		d.pipe.sTrace(d, "No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
+		d.instStr = "<bubble>"
 		return
 	}
 	d.state = DEC_busy
 	d.currInst.BaseInstruction = new(types.BaseInstruction)      // Create a new BaseInstruction to decode the instruction
 	d.currInst.BaseInstruction.Decode(d.currInst.rawInstruction) // Decode the raw instruction into a BaseInstruction
 	d.pipe.sTracef(d, "Decoded instruction: %+v\n", d.currInst)  // For debugging purposes
-	go func() {
+	baseInstruction := d.currInst.BaseInstruction                // For convenience
+	//go func() {
 		d.instStr = fmt.Sprintf("raw: 0x%08x\n", d.currInst.rawInstruction)
-	}()
-	baseInstruction := d.currInst.BaseInstruction // For convenience
+		d.instStr += fmt.Sprintf(
+			"OpType: %x\nRd: %x\nDestMemAddr: %x\nRDAux: %x\n",
+			baseInstruction.OpType, baseInstruction.Rd, d.currInst.DestMemAddr, d.currInst.RDestAux)
+	//}()
+
 	switch baseInstruction.OpType {
 	case types.RegImm:
 
@@ -85,7 +90,7 @@ func (d *DecodeStage) Execute() {
 		d.pipe.cpu.blockIntR(baseInstruction.Rd)
 		d.currInst.Result = v
 		d.currInst.Operand = signExtend(baseInstruction.Imm) // sign extend immediate value
-		d.currInst.WriteBack = baseInstruction.Rd != 0 // Only write back if Rd is not zero
+		d.currInst.WriteBack = baseInstruction.Rd != 0       // Only write back if Rd is not zero
 
 	case types.RegReg:
 
@@ -125,7 +130,7 @@ func (d *DecodeStage) Execute() {
 			d.currInst.DestMemAddr = d.pipe.cpu.ProgramCounter // use PC as destination address if RMem is 0
 		}
 		d.currInst.Operand = signExtend(baseInstruction.Imm) // sign extend immediate value
-		d.currInst.WriteBack = true // Always write back for control instructions
+		d.currInst.WriteBack = true                          // Always write back for control instructions
 
 	case types.LoadStore:
 
@@ -158,11 +163,8 @@ func (d *DecodeStage) Execute() {
 		d.currInst.WriteBack = d.currInst.BaseInstruction.MemMode <= 1 // If LDW or POP
 	}
 	d.state = DEC_free
-	d.pipe.sTracef(d, "Decoded filled instruction: %+v\n", d.currInst) // For debugging purposes
-	go func() {
-		d.instStr += fmt.Sprintf(
-			"OpType: %x\nRd: %x\nDestMemAddr %x\nRDAux: %x\n",
-			baseInstruction.OpType, baseInstruction.Rd, d.currInst.DestMemAddr, d.currInst.RDestAux)
+	d.pipe.sTracef(d, "Decoded filled instruction: %+v %+v\n", d.currInst, *d.currInst.BaseInstruction)
+	//go func() {
 		switch baseInstruction.OpType {
 		case types.RegReg:
 			d.instStr += fmt.Sprintf("Rs: %x\n", baseInstruction.Rs)
@@ -176,7 +178,8 @@ func (d *DecodeStage) Execute() {
 			d.instStr += fmt.Sprintf("CtrlMode: %x\n", baseInstruction.CtrlMode)
 			d.instStr += fmt.Sprintf("CtrlFlag: %x\n", baseInstruction.CtrlFlag)
 		}
-	}()
+		d.instStr += fmt.Sprintf("Result: %x\n", d.currInst.Result)
+	//}()
 }
 
 // Returns if this stage passed the instruction to the next stage

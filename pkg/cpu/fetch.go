@@ -35,12 +35,15 @@ func (f *FetchStage) Name() string {
 }
 
 func (f *FetchStage) Execute() {
-	f.InstStr = "<bubble>"
+	if f.currInst != nil {
+		f.InstStr = fmt.Sprintf("<blocked>\nraw: 0x%08x\n", f.currInst.rawInstruction)
+	} else {
+		f.InstStr = "<bubble>"
+	}
 	if f.pipe.scalarMode && f.pipe.canFetch == false {
 		f.pipe.sTrace(f, "Cannot fetch instruction right now, writeback has not completed yet")
 		return
 	}
-
 	if f.currInst != nil {
 		f.pipe.sTracef(f, "Currently have an instruction %+v, skipping fetch", f.currInst)
 		return

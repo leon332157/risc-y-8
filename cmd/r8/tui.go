@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/cursor"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	table "github.com/charmbracelet/lipgloss/table"
@@ -72,11 +73,13 @@ func runTui(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+var ADVANCE = false
 type model struct {
 	instr     textinput.Model
 	lastInstr string
 
 	system *simulator.System
+	pipelineState string
 	msg    string
 }
 
@@ -86,6 +89,7 @@ func initialModel() model {
 	ti.Focus()
 	ti.CharLimit = 100
 	ti.Width = 50
+	ti.Cursor.SetMode(cursor.CursorStatic)
 
 	return model{
 		instr:     ti,
@@ -96,7 +100,7 @@ func initialModel() model {
 }
 
 func (m model) Init() tea.Cmd {
-	return textinput.Blink
+	return nil
 }
 
 func getCacheRows(ca *memory.CacheType) [][]string {
@@ -147,9 +151,9 @@ func getRegVals(control *cpu.CPU) [][]string {
 	return regVals
 }
 
-func (m model) ExecuteCommand() {
+func (m *model) ExecuteCommand() {
 	switch m.lastInstr {
-	case "step", "s":
+	case "step", "s","next", "n":
 		if m.system.CPU.ProgramCounter >= uint32(NumInstructions) {
 			m.system.CPU.Halted = true
 			m.msg = "Program finished"
@@ -157,6 +161,7 @@ func (m model) ExecuteCommand() {
 		}
 		if !m.system.CPU.Halted {
 			m.system.CPU.Pipeline.RunOneClock()
+			ADVANCE = true
 		} else {
 			m.system.CPU.Halted = false
 		}
@@ -175,15 +180,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.lastInstr = m.instr.Value()
 			}
 			m.ExecuteCommand()
-			// Send instruction to be computed
-			//cache.Write(0x0, memory.FETCH_STAGE, 0xdeadbeef)
 			m.instr.Reset()
 			return m, nil
 		}
 	case tea.WindowSizeMsg:
 		// handle resize if needed
 	}
-
 	var cmd tea.Cmd
 	m.instr, cmd = m.instr.Update(msg)
 	return m, cmd
@@ -200,9 +202,6 @@ func (m model) View() string {
 	lastInstr := m.drawLastInstruction()
 	cmdLine := m.instr.View() + "\n"
 	whitespace := lipgloss.Place(3, 3, lipgloss.Right, lipgloss.Bottom, "")
-
-	// TODO: Show PC??
-
 	clockAndInstr := lipgloss.JoinHorizontal(lipgloss.Center, clock, pc, whitespace, lastInstr, msg)
 	column1 := lipgloss.JoinVertical(lipgloss.Top, pipeline, clockAndInstr)
 	regsCol := lipgloss.JoinHorizontal(lipgloss.Left, registerView, whitespace, column1)

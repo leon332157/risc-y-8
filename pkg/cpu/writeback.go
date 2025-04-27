@@ -7,14 +7,17 @@ import (
 )
 
 type WriteBackStage struct {
-	pipeline           *Pipeline      // Reference to the pipeline instance
-	prev               *MemoryStage   // Previous stage in the pipeline
 	currentInstruction *InstructionIR // Pointer to the InstructionIR being processed in this stage
-	//currentRawInstruction uint32 // For tracking the current instruction being processed, if needed
+
+	pipeline *Pipeline    // Reference to the pipeline instance
+	prev     *MemoryStage // Previous stage in the pipeline
+
+	instStr string
 }
 
 func (w *WriteBackStage) Init(pipeline *Pipeline, _ Stage, prev Stage) error {
 	if pipeline == nil {
+		w.instStr = "<bubble>"
 		return fmt.Errorf("[WriteBackStage Init] pipeline is null")
 	}
 	w.pipeline = pipeline
@@ -26,6 +29,7 @@ func (w *WriteBackStage) Init(pipeline *Pipeline, _ Stage, prev Stage) error {
 		return fmt.Errorf("[fetch Init] prev is null")
 	}
 	w.prev = p
+	w.instStr = "<bubble>"
 	return nil
 }
 
@@ -37,7 +41,19 @@ func (w *WriteBackStage) Execute() {
 	if w.currentInstruction == nil {
 		// No instruction to write back, return early
 		w.pipeline.sTrace(w, "No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
+		w.instStr = "<bubble>"
 		return
+	}
+	w.instStr = fmt.Sprintf("OpType: %x\n", w.currentInstruction.BaseInstruction.OpType)
+	w.instStr += fmt.Sprintf("Rd: %x\n", w.currentInstruction.BaseInstruction.Rd)
+	w.instStr += fmt.Sprintf("Writeback: %v\n", w.currentInstruction.WriteBack)
+	w.instStr += fmt.Sprintf("Result: %x\n", w.currentInstruction.Result)
+	w.instStr += fmt.Sprintf("RDestAux: %x\n", w.currentInstruction.RDestAux)
+	if w.currentInstruction.BaseInstruction.OpType == types.Control {
+		w.instStr += fmt.Sprintf("BranchTaken: %v\n", w.currentInstruction.BranchTaken)
+		w.instStr += fmt.Sprintf("DestMemAddr: %x\n", w.currentInstruction.DestMemAddr)
+		w.instStr += fmt.Sprintf("RMem: %x\n", w.currentInstruction.BaseInstruction.RMem)
+		w.instStr += fmt.Sprintf("CtrlModeFlag: %x\n", w.currentInstruction.BaseInstruction.CtrlMode<<4|w.currentInstruction.BaseInstruction.CtrlFlag)
 	}
 	inst := w.currentInstruction
 	w.pipeline.sTracef(w, "Processing instruction: %+v\n", w.currentInstruction) // For debugging purposes
@@ -63,14 +79,13 @@ func (w *WriteBackStage) Execute() {
 			}
 		}
 		w.pipeline.sTracef(w, "Writing back result: %v to r%v\n", w.currentInstruction.Result, w.currentInstruction.BaseInstruction.Rd)
-		w.pipeline.cpu.unblockIntR(w.currentInstruction.BaseInstruction.Rd)                            // Unblock the destination register if applicable
-		w.pipeline.sTracef(w, "Unblocked register r%v for write back\n", w.currentInstruction.BaseInstruction.Rd) // For debugging purposes
-		_,status := w.pipeline.cpu.WriteIntR(w.currentInstruction.BaseInstruction.Rd, w.currentInstruction.Result) // Write the result to the destination register
+		w.pipeline.cpu.unblockIntR(w.currentInstruction.BaseInstruction.Rd)                                         // Unblock the destination register if applicable
+		w.pipeline.sTracef(w, "Unblocked register r%v for write back\n", w.currentInstruction.BaseInstruction.Rd)   // For debugging purposes
+		_, status := w.pipeline.cpu.WriteIntR(w.currentInstruction.BaseInstruction.Rd, w.currentInstruction.Result) // Write the result to the destination register
 		if status != SUCCESS {
 			w.pipeline.sTracef(w, "Failed to write back to register r%v: %v\n", w.currentInstruction.BaseInstruction.Rd, status)
-			return 
+			return
 		}
-		//w.pipeline.sTracef(w, "Written back to rdestaux%v: %v\n", w.currentInstruction.RDestAux, w.currentInstruction.Result)
 		w.pipeline.cpu.WriteIntR(w.currentInstruction.RDestAux, w.currentInstruction.DestMemAddr)
 		w.pipeline.sTracef(w, "Written back to rdestaux: %v %v\n", w.currentInstruction.RDestAux, w.currentInstruction.DestMemAddr)
 	} else {
@@ -102,20 +117,5 @@ func (w *WriteBackStage) CanAdvance() bool {
 }
 
 func (w *WriteBackStage) FormatInstruction() string {
-	if w.currentInstruction == nil {
-		return "<bubble>"
-	}
-	//format := fmt.Sprintf("%+v", w.currentInstruction)
-	s := fmt.Sprintf("OpType: %x\n", w.currentInstruction.BaseInstruction.OpType)
-	s += fmt.Sprintf("Rd: %x\n", w.currentInstruction.BaseInstruction.Rd)
-	s += fmt.Sprintf("Writeback: %v\n", w.currentInstruction.WriteBack)
-	s += fmt.Sprintf("Result: %x\n", w.currentInstruction.Result)
-	s += fmt.Sprintf("RDestAux: %x\n", w.currentInstruction.RDestAux)
-	if w.currentInstruction.BaseInstruction.OpType == types.Control {
-		s += fmt.Sprintf("BranchTaken: %v\n", w.currentInstruction.BranchTaken)
-		s += fmt.Sprintf("DestMemAddr: %x\n", w.currentInstruction.DestMemAddr)
-		s += fmt.Sprintf("RMem: %x\n", w.currentInstruction.BaseInstruction.RMem)
-		s += fmt.Sprintf("CtrlModeFlag: %x\n", w.currentInstruction.BaseInstruction.CtrlMode<<4|w.currentInstruction.BaseInstruction.CtrlFlag)
-	}
-	return s
+	return w.instStr
 }

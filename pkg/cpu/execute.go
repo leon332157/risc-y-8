@@ -8,13 +8,15 @@ import (
 )
 
 type ExecuteStage struct {
-	pipeline *Pipeline    // Reference to the pipeline instance
-	next     *MemoryStage // Next stage in the pipeline
-	prev     *DecodeStage // Previous stage in the pipeline
-	//currentRawInstruction  uint32       // Instruction to be executed
-	currentInstruction *InstructionIR
-	state              int
-	cyclesLeft         uint
+	currInst   *InstructionIR
+	state      int
+	cyclesLeft uint
+	pipeline   *Pipeline // Reference to the pipeline instance
+
+	next *MemoryStage // Next stage in the pipeline
+	prev *DecodeStage // Previous stage in the pipeline
+
+	instStr string
 }
 
 const (
@@ -48,6 +50,7 @@ func (e *ExecuteStage) Init(pipeline *Pipeline, next Stage, prev Stage) error {
 		e.pipeline.log.Fatal().Msg("[Execute Init] prev is null")
 	}
 	e.prev = p
+	e.instStr = "<bubble>"
 	return nil
 }
 
@@ -57,7 +60,7 @@ func (e *ExecuteStage) Name() string {
 
 func (e *ExecuteStage) ALURI() {
 	// Perform ALU operation for RegImm type instruction
-	inst := e.currentInstruction
+	inst := e.currInst
 	op1 := inst.Result  // First operand (from a register)
 	op2 := inst.Operand // Second operand (immediate value)
 
@@ -101,10 +104,11 @@ func (e *ExecuteStage) ALURI() {
 		// Handle other ALU operations as needed
 	}
 	e.pipeline.sTracef(e, "ALURI operation result: %v", inst.Result) // For debugging purposes, log the result of the ALU operation
+	e.instStr += fmt.Sprintf("ALU: %v\nRd: %x\nResult: %x\nWB: %v", types.ImmALUInverse[e.currInst.BaseInstruction.ALU], e.currInst.BaseInstruction.Rd, e.currInst.Result, e.currInst.WriteBack)
 }
 
 func (e *ExecuteStage) ALURR() {
-	inst := e.currentInstruction
+	inst := e.currInst
 	op1 := inst.Result
 	op2 := inst.Operand
 	inst.WriteBack = true
@@ -161,6 +165,7 @@ func (e *ExecuteStage) ALURR() {
 		e.pipeline.log.Panic().Msg("unsupported ALU operation for RegReg type instruction") // Handle unsupported ALU operations
 	}
 	e.pipeline.sTracef(e, "ALURR operation result: %v", inst.Result) // For debugging purposes, log the result of the ALU operation
+	e.instStr += fmt.Sprintf("ALU: %v\nRd: %x\nResult: %x\nWB: %v", types.RegALUInverse[e.currInst.BaseInstruction.ALU], e.currInst.BaseInstruction.Rd, e.currInst.Result, e.currInst.WriteBack)
 }
 
 func (e *ExecuteStage) calculateMemAddr(base uint32, displacement int32) uint32 {
@@ -170,7 +175,7 @@ func (e *ExecuteStage) calculateMemAddr(base uint32, displacement int32) uint32 
 }
 
 func (e *ExecuteStage) LoadStore() {
-	inst := e.currentInstruction
+	inst := e.currInst
 
 	switch inst.BaseInstruction.MemMode {
 	case types.LDW:
@@ -187,6 +192,7 @@ func (e *ExecuteStage) LoadStore() {
 	default:
 		e.pipeline.log.Panic().Msg("unsupported memory operation for LoadStore type instruction")
 	}
+	e.instStr += fmt.Sprintf("MemMode: %v\nRd: %x\nRMem: %x\nDestMemAddr: %x\nRdAux %x\n", inst.BaseInstruction.MemMode, inst.BaseInstruction.Rd, inst.BaseInstruction.RMem, inst.DestMemAddr, inst.RDestAux)
 }
 
 func combineFlags(ctrlMode, ctrlFlag uint8) uint8 {
@@ -194,7 +200,7 @@ func combineFlags(ctrlMode, ctrlFlag uint8) uint8 {
 }
 
 func (e *ExecuteStage) Control() {
-	inst := e.currentInstruction
+	inst := e.currInst
 	combiFlag := combineFlags(inst.BaseInstruction.CtrlMode, inst.BaseInstruction.CtrlFlag)
 	inst.DestMemAddr = e.calculateMemAddr(inst.DestMemAddr, int32(inst.Operand))
 	alu := e.pipeline.cpu.ALU
@@ -249,23 +255,28 @@ func (e *ExecuteStage) Control() {
 			inst.BranchTaken = true
 		}
 	}
-
+	e.instStr += fmt.Sprintf("CtrlMode: %x\nCtrlFlag: %x\nDestMemAddr: %x\nRDestAux: %x\nBranchTaken: %v\n", inst.BaseInstruction.CtrlMode, inst.BaseInstruction.CtrlFlag, inst.DestMemAddr, inst.RDestAux, inst.BranchTaken)
 }
 
 func (e *ExecuteStage) Execute() {
-	if e.currentInstruction == nil {
+	if e.currInst == nil {
 		// If there is no instructionIR to execute, return early
 		e.pipeline.sTrace(e, "No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
+		e.instStr = "<bubble>"
 		return
 	}
+	e.instStr = ""
 	if e.state != EXEC_free {
 		e.cyclesLeft--
+		e.instStr += fmt.Sprintf("Cyl Left: %v", e.cyclesLeft)
 		e.pipeline.sTracef(e, "busy %v cycles left %v", e.state, e.cyclesLeft)
 		if e.cyclesLeft == 0 {
 			e.state = EXEC_free
 		}
 	}
-	switch e.currentInstruction.BaseInstruction.OpType {
+	e.pipeline.sTracef(e, "Executing instruction: %+v\n", e.currInst) // For debugging purposes, log the current instruction
+	e.instStr += fmt.Sprintf("OpType: %x\n", e.currInst.BaseInstruction.OpType)
+	switch e.currInst.BaseInstruction.OpType {
 	case types.RegImm:
 		e.ALURI()
 	case types.RegReg:
@@ -275,7 +286,7 @@ func (e *ExecuteStage) Execute() {
 	case types.Control:
 		e.Control() // Handle Control operations, this function should be implemented in the memory stage or similar
 	default:
-		fmt.Println(e.currentInstruction.BaseInstruction.OpType)
+		fmt.Println(e.currInst.BaseInstruction.OpType)
 		panic("unsupported instruction type in Execute stage") // Handle unsupported instruction types
 	}
 }
@@ -289,9 +300,9 @@ func (e *ExecuteStage) Advance(i *InstructionIR, prevstalled bool) bool {
 		return false
 	}
 	if e.next.CanAdvance() {
-		e.pipeline.sTracef(e, "Advancing to next stage with instruction: %+v\n", e.currentInstruction)
-		e.next.Advance(e.currentInstruction, false) // Pass the instruction to the next stage
-		e.currentInstruction = i
+		e.pipeline.sTracef(e, "Advancing to next stage with instruction: %+v\n", e.currInst)
+		e.next.Advance(e.currInst, false) // Pass the instruction to the next stage
+		e.currInst = i
 		return true
 	} else {
 		e.pipeline.sTracef(e, "Can not advance to %v, CanAdvance returned false", e.next.Name())
@@ -301,11 +312,11 @@ func (e *ExecuteStage) Advance(i *InstructionIR, prevstalled bool) bool {
 }
 
 func (e *ExecuteStage) Squash() bool {
-	e.pipeline.sTracef(e, "Squashing instruction: %+v\n", e.currentInstruction)
-	if e.currentInstruction != nil {
-		e.pipeline.cpu.unblockIntR(e.currentInstruction.BaseInstruction.Rd)
-		e.pipeline.cpu.unblockIntR(e.currentInstruction.BaseInstruction.RMem)
-		e.currentInstruction = nil
+	e.pipeline.sTracef(e, "Squashing instruction: %+v\n", e.currInst)
+	if e.currInst != nil {
+		e.pipeline.cpu.unblockIntR(e.currInst.BaseInstruction.Rd)
+		e.pipeline.cpu.unblockIntR(e.currInst.BaseInstruction.RMem)
+		e.currInst = nil
 	}
 	e.state = EXEC_free
 	return true
@@ -316,9 +327,5 @@ func (e *ExecuteStage) CanAdvance() bool {
 }
 
 func (e *ExecuteStage) FormatInstruction() string {
-	if e.currentInstruction == nil {
-		return "<bubble>"
-	}
-	//format := fmt.Sprintf("%+v", e.currentInstruction)
-	return e.currentInstruction.FormatLines()
+	return e.instStr
 }

@@ -81,6 +81,8 @@ var ImmALU = map[string]uint8{
 	"cmp": IMM_CMP,
 }
 
+var ImmALUInverse = map[uint8]string{}
+
 const (
 	REG_ADD = iota
 	REG_SUB
@@ -119,6 +121,17 @@ var RegALU = map[string]uint8{
 	"cpy": REG_CPY,
 	"mov": REG_CPY,
 	"nsa": REG_NSA,
+}
+
+var RegALUInverse = map[uint8]string{}
+
+func init() {
+	for k, v := range ImmALU {
+		ImmALUInverse[v] = k
+	}
+	for k, v := range RegALU {
+		RegALUInverse[v] = k
+	}
 }
 
 const (
