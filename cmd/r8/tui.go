@@ -191,8 +191,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "j":
 			m.ramViewport.ScrollDown(16)
+			m.instr.Reset()
 		case "k":
 			m.ramViewport.ScrollUp(16)
+			m.instr.Reset()
 		}
 	case tea.WindowSizeMsg:
 		// handle resize if needed
