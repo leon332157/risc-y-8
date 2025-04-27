@@ -60,6 +60,10 @@ func (cpu *CPU) blockIntR(r uint8) {
 		// Handle out of bounds access, if necessary
 		cpu.log.Panic().Msgf("attempted to block an out of bounds register: %v", r)
 	}
+	if r == 0 {
+		cpu.log.Info().Msg("attempted to block r0, ignoring")
+		return // r0 is always 0, ignore blocking
+	}
 	cpu.log.Trace().Msgf("Blocking register r%v for reading and writing", r)
 	cpu.IntRegisters[r].ReadEnable = false
 	cpu.IntRegisters[r].WriteEnable = false
@@ -69,6 +73,10 @@ func (cpu *CPU) unblockIntR(r uint8) {
 	// Unblock the register for reading and writing
 	if r >= uint8(len(cpu.IntRegisters)) {
 		cpu.log.Panic().Msgf("attempted to unblock an out of bounds register: %v", r)
+	}
+	if r == 0 {
+		cpu.log.Info().Msg("attempted to unblock r0, ignoring")
+		return // r0 is always 0, ignore unblocking
 	}
 	cpu.log.Trace().Msgf("Unblocking register r%v for reading and writing", r)
 	cpu.IntRegisters[r].ReadEnable = true

@@ -64,8 +64,6 @@ func (e *ExecuteStage) ALURI() {
 	op1 := inst.Result  // First operand (from a register)
 	op2 := inst.Operand // Second operand (immediate value)
 
-	// operations are done
-	inst.WriteBack = true
 	switch inst.BaseInstruction.ALU {
 	case types.IMM_ADD:
 		inst.Result = e.pipeline.cpu.ALU.Add(op1, op2)
@@ -97,21 +95,20 @@ func (e *ExecuteStage) ALURI() {
 		inst.Result = uint32(int32(op2))
 	case types.IMM_CMP:
 		e.pipeline.cpu.unblockIntR(inst.BaseInstruction.Rd)
-		inst.WriteBack = false
+		inst.BaseInstruction.Rd = 0 // Set Rd to 0 for comparison operations
 		e.pipeline.cpu.ALU.Sub(op1, op2)
 	default:
 		e.pipeline.log.Panic().Msg("unsupported ALU operation for RegImm type instruction") // Handle unsupported ALU operations
 		// Handle other ALU operations as needed
 	}
 	e.pipeline.sTracef(e, "ALURI operation result: %v", inst.Result) // For debugging purposes, log the result of the ALU operation
-	e.instStr += fmt.Sprintf("ALU: %v\nRd: %x\nResult: %x\nWB: %v", types.ImmALUInverse[e.currInst.BaseInstruction.ALU], e.currInst.BaseInstruction.Rd, e.currInst.Result, e.currInst.WriteBack)
+	e.instStr += fmt.Sprintf("ALU: %v\nRd: %x\nResult: %x", types.ImmALUInverse[e.currInst.BaseInstruction.ALU], e.currInst.BaseInstruction.Rd, e.currInst.Result)
 }
 
 func (e *ExecuteStage) ALURR() {
 	inst := e.currInst
 	op1 := inst.Result
 	op2 := inst.Operand
-	inst.WriteBack = true
 	if (inst.BaseInstruction.ALU == types.REG_DIV) || (inst.BaseInstruction.ALU == types.REG_REM) {
 		if op2 == 0 {
 			e.pipeline.log.Panic().Msg("division by zero") // Handle division by zero error
@@ -155,7 +152,6 @@ func (e *ExecuteStage) ALURR() {
 		inst.Result = e.pipeline.cpu.ALU.RotateLeft(op1, int32(op2))
 	case types.REG_CMP:
 		e.pipeline.cpu.unblockIntR(inst.BaseInstruction.Rd)
-		inst.WriteBack = false
 		e.pipeline.cpu.ALU.Sub(op1, op2)
 	case types.REG_CPY:
 		inst.Result = op2
@@ -165,7 +161,7 @@ func (e *ExecuteStage) ALURR() {
 		e.pipeline.log.Panic().Msg("unsupported ALU operation for RegReg type instruction") // Handle unsupported ALU operations
 	}
 	e.pipeline.sTracef(e, "ALURR operation result: %v", inst.Result) // For debugging purposes, log the result of the ALU operation
-	e.instStr += fmt.Sprintf("ALU: %v\nRd: %x\nResult: %x\nWB: %v", types.RegALUInverse[e.currInst.BaseInstruction.ALU], e.currInst.BaseInstruction.Rd, e.currInst.Result, e.currInst.WriteBack)
+	e.instStr += fmt.Sprintf("ALU: %v\nRd: %x\nResult: %x", types.RegALUInverse[e.currInst.BaseInstruction.ALU], e.currInst.BaseInstruction.Rd, e.currInst.Result)
 }
 
 func (e *ExecuteStage) calculateMemAddr(base uint32, displacement int32) uint32 {
@@ -181,18 +177,23 @@ func (e *ExecuteStage) LoadStore() {
 	case types.LDW:
 		e.pipeline.sTracef(e, "ldw, calculating memory addr from %v + %v", inst.Result, int32(inst.Operand))
 		inst.DestMemAddr = e.calculateMemAddr(inst.Result, int32(inst.Operand))
-		inst.WriteBack = true
 	case types.POP, types.PUSH:
 		e.pipeline.sTrace(e, "pop/push")
 		inst.RDestAux = types.IntegerRegisters["sp"]
 	case types.STW:
 		e.pipeline.sTracef(e, "stw, calculating memory addr from %v + %v", inst.Result, int32(inst.Operand))
 		inst.DestMemAddr = e.calculateMemAddr(inst.Result, int32(inst.Operand))
-		inst.WriteBack = false
 	default:
 		e.pipeline.log.Panic().Msg("unsupported memory operation for LoadStore type instruction")
 	}
-	e.instStr += fmt.Sprintf("MemMode: %v\nRd: %x\nRMem: %x\nDestMemAddr: %x\nRdAux %x\n", inst.BaseInstruction.MemMode, inst.BaseInstruction.Rd, inst.BaseInstruction.RMem, inst.DestMemAddr, inst.RDestAux)
+	if inst.BaseInstruction.MemMode == types.PUSH {
+		inst.ResultAux = inst.DestMemAddr + 1
+	}
+	if inst.BaseInstruction.MemMode == types.POP {
+		inst.DestMemAddr--
+		inst.ResultAux = inst.DestMemAddr
+	}
+	e.instStr += fmt.Sprintf("MemMode: %v\nRd: %x\nRMem: %x\nDestMemAddr: %x\nRdAux %x\nAuxVal: %x", inst.BaseInstruction.MemMode, inst.BaseInstruction.Rd, inst.BaseInstruction.RMem, inst.DestMemAddr, inst.RDestAux, inst.ResultAux)
 }
 
 func combineFlags(ctrlMode, ctrlFlag uint8) uint8 {
@@ -210,6 +211,7 @@ func (e *ExecuteStage) Control() {
 	case types.GetModeFlag(types.CALL): // call
 		inst.BranchTaken = true
 		inst.RDestAux = types.IntegerRegisters["lr"]
+		inst.ResultAux = inst.DestMemAddr + 1
 	case types.GetModeFlag(types.NE):
 		if false == alu.GetZF() {
 			// if zero flag is zero, branch
@@ -255,7 +257,7 @@ func (e *ExecuteStage) Control() {
 			inst.BranchTaken = true
 		}
 	}
-	e.instStr += fmt.Sprintf("CtrlMode: %x\nCtrlFlag: %x\nDestMemAddr: %x\nRDestAux: %x\nBranchTaken: %v\n", inst.BaseInstruction.CtrlMode, inst.BaseInstruction.CtrlFlag, inst.DestMemAddr, inst.RDestAux, inst.BranchTaken)
+	e.instStr += fmt.Sprintf("CtrlMode: %x\nCtrlFlag: %x\nDestMemAddr: %x\nRDestAux: %x\nAuxVal: %x\nBranchTaken: %v\n", inst.BaseInstruction.CtrlMode, inst.BaseInstruction.CtrlFlag, inst.DestMemAddr, inst.RDestAux, inst.ResultAux, inst.BranchTaken)
 }
 
 func (e *ExecuteStage) Execute() {

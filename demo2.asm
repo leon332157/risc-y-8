@@ -12,6 +12,7 @@ or r1, 0xbeef
 push r1
 push r1
 push r1
+pop r8
 nop
 nop
 nop

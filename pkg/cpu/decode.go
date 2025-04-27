@@ -69,13 +69,14 @@ func (d *DecodeStage) Execute() {
 	d.state = DEC_busy
 	d.currInst.BaseInstruction = new(types.BaseInstruction)      // Create a new BaseInstruction to decode the instruction
 	d.currInst.BaseInstruction.Decode(d.currInst.rawInstruction) // Decode the raw instruction into a BaseInstruction
-	d.pipe.sTracef(d, "Decoded instruction: %+v\n", d.currInst)  // For debugging purposes
-	baseInstruction := d.currInst.BaseInstruction                // For convenience
+	d.pipe.sTracef(d, "Decoded instruction: %+v", d.currInst)
+	d.pipe.sTracef(d, "Decoded instruction base: %+v", *d.currInst.BaseInstruction)
+	baseInstruction := d.currInst.BaseInstruction // For convenience
 	//go func() {
-		d.instStr = fmt.Sprintf("raw: 0x%08x\n", d.currInst.rawInstruction)
-		d.instStr += fmt.Sprintf(
-			"OpType: %x\nRd: %x\nDestMemAddr: %x\nRDAux: %x\n",
-			baseInstruction.OpType, baseInstruction.Rd, d.currInst.DestMemAddr, d.currInst.RDestAux)
+	d.instStr = fmt.Sprintf("raw: 0x%08x\n", d.currInst.rawInstruction)
+	d.instStr += fmt.Sprintf(
+		"OpType: %x\nRd: %x\nDestMemAddr: %x\nRDAux: %x\n",
+		baseInstruction.OpType, baseInstruction.Rd, d.currInst.DestMemAddr, d.currInst.RDestAux)
 	//}()
 
 	switch baseInstruction.OpType {
@@ -90,7 +91,6 @@ func (d *DecodeStage) Execute() {
 		d.pipe.cpu.blockIntR(baseInstruction.Rd)
 		d.currInst.Result = v
 		d.currInst.Operand = signExtend(baseInstruction.Imm) // sign extend immediate value
-		d.currInst.WriteBack = baseInstruction.Rd != 0       // Only write back if Rd is not zero
 
 	case types.RegReg:
 
@@ -110,7 +110,6 @@ func (d *DecodeStage) Execute() {
 		d.pipe.cpu.blockIntR(baseInstruction.Rs)
 		d.currInst.Result = rdv
 		d.currInst.Operand = rsv
-		d.currInst.WriteBack = baseInstruction.Rd != 0 // Only write back if Rd is not zero, otherwise it might be a nop operation
 
 	case types.Control:
 
@@ -130,18 +129,9 @@ func (d *DecodeStage) Execute() {
 			d.currInst.DestMemAddr = d.pipe.cpu.ProgramCounter // use PC as destination address if RMem is 0
 		}
 		d.currInst.Operand = signExtend(baseInstruction.Imm) // sign extend immediate value
-		d.currInst.WriteBack = true                          // Always write back for control instructions
 
 	case types.LoadStore:
 
-		v, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
-		if st != SUCCESS {
-			d.pipe.sTracef(d, "Failed to read load/store instruction destination register r%v %v", baseInstruction.Rd, st)
-			d.state = DEC_reg_read
-			return
-		}
-		d.currInst.Result = v
-		d.pipe.cpu.blockIntR(baseInstruction.Rd)
 		var SP = types.IntegerRegisters["sp"]
 		if (baseInstruction.MemMode == types.PUSH) || (baseInstruction.MemMode == types.POP) {
 			// If push or pop
@@ -155,30 +145,38 @@ func (d *DecodeStage) Execute() {
 			d.state = DEC_reg_read
 			return
 		}
-		d.pipe.cpu.blockIntR(baseInstruction.RMem)
 		d.pipe.sTracef(d, "Read memory source r%v value %v", baseInstruction.RMem, rmemv) // For debugging purposes
 		d.currInst.DestMemAddr = rmemv
 
 		d.currInst.Operand = signExtend(d.currInst.BaseInstruction.Imm)
-		d.currInst.WriteBack = d.currInst.BaseInstruction.MemMode <= 1 // If LDW or POP
+		
+		v, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
+		if st != SUCCESS {
+			d.pipe.sTracef(d, "Failed to read load/store instruction destination register r%v %v", baseInstruction.Rd, st)
+			d.state = DEC_reg_read
+			return
+		}
+		d.currInst.Result = v
+		d.pipe.cpu.blockIntR(baseInstruction.RMem)
+		d.pipe.cpu.blockIntR(baseInstruction.Rd)
 	}
 	d.state = DEC_free
 	d.pipe.sTracef(d, "Decoded filled instruction: %+v %+v\n", d.currInst, *d.currInst.BaseInstruction)
 	//go func() {
-		switch baseInstruction.OpType {
-		case types.RegReg:
-			d.instStr += fmt.Sprintf("Rs: %x\n", baseInstruction.Rs)
-			d.instStr += fmt.Sprintf("ALU: %s\n", types.RegALUInverse[baseInstruction.ALU])
-		case types.RegImm:
-			d.instStr += fmt.Sprintf("ALU: %s\n", types.ImmALUInverse[baseInstruction.ALU])
-			d.instStr += fmt.Sprintf("Imm: %x\n", baseInstruction.Imm)
-		case types.LoadStore:
-			d.instStr += fmt.Sprintf("MemMode: %v\n", baseInstruction.MemMode)
-		case types.Control:
-			d.instStr += fmt.Sprintf("CtrlMode: %x\n", baseInstruction.CtrlMode)
-			d.instStr += fmt.Sprintf("CtrlFlag: %x\n", baseInstruction.CtrlFlag)
-		}
-		d.instStr += fmt.Sprintf("Result: %x\n", d.currInst.Result)
+	switch baseInstruction.OpType {
+	case types.RegReg:
+		d.instStr += fmt.Sprintf("Rs: %x\n", baseInstruction.Rs)
+		d.instStr += fmt.Sprintf("ALU: %s\n", types.RegALUInverse[baseInstruction.ALU])
+	case types.RegImm:
+		d.instStr += fmt.Sprintf("ALU: %s\n", types.ImmALUInverse[baseInstruction.ALU])
+		d.instStr += fmt.Sprintf("Imm: %x\n", baseInstruction.Imm)
+	case types.LoadStore:
+		d.instStr += fmt.Sprintf("MemMode: %v\n", baseInstruction.MemMode)
+	case types.Control:
+		d.instStr += fmt.Sprintf("CtrlMode: %x\n", baseInstruction.CtrlMode)
+		d.instStr += fmt.Sprintf("CtrlFlag: %x\n", baseInstruction.CtrlFlag)
+	}
+	d.instStr += fmt.Sprintf("Result: %x\n", d.currInst.Result)
 	//}()
 }
 
