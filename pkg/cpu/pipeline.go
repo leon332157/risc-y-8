@@ -61,10 +61,18 @@ func (p *Pipeline) Run() {
 
 func (p *Pipeline) RunOneClock() {
 	// wb -> mem -> exec -> dec -> fet
+	p.RunBackPass()    // Run the backpass to execute the stages
+	p.RunForwardPass() // Run the forward pass to advance the pipeline stages
+}
+
+func (p *Pipeline) RunBackPass() {
 	for i := 0; i < len(p.Stages); i++ {
 		p.Stages[i].Execute()
 	}
 	p.pLog.Trace().Msgf("canFetch: %v\n", p.canFetch)
+}
+
+func (p *Pipeline) RunForwardPass() {
 	p.Stages[len(p.Stages)-1].Advance(nil, p.canFetch) // Ensure the last stage can advance even if no instruction was passed to it, this is for the last stage in the pipeline (like WriteBack)
 	p.cpu.Clock++
 }
@@ -96,7 +104,7 @@ func (p *Pipeline) sTracef(stage Stage, format string, args ...interface{}) {
 }
 
 func NewPipeline(cpu *CPU, scalar bool) *Pipeline {
-	file, err := os.OpenFile("pipeline.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
+	file, err := os.OpenFile("pipeline.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0o644)
 	if err != nil {
 		panic(err)
 	}
@@ -127,16 +135,16 @@ type Stage interface {
 type AssembledInst interface {
 }
 type InstructionIR struct {
-	rawInstruction  uint32                // The instruction to be executed
-	BaseInstruction types.BaseInstruction // base instruction structure, if applicable
+	BaseInstruction *types.BaseInstruction // base instruction structure, if applicable
 	//FloatInstruction types.FloatInstruction
 	//VecInstruction types.VecInstruction
-	Operand     uint32
-	Result      uint32 // Calculated as "result = Rd op Rs/imm"
-	RDestAux    uint8  // Auxiliary register destination, used in some instructions (like PUSH, POP, CALL)
-	DestMemAddr uint32 // Memory address for load/store operations, and branch destination
-	BranchTaken bool
-	WriteBack   bool
+	Operand        uint32
+	Result         uint32 // Calculated as "result = Rd op Rs/imm"
+	RDestAux       uint8  // Auxiliary register destination, used in some instructions (like PUSH, POP, CALL)
+	DestMemAddr    uint32 // Memory address for load/store operations, and branch destination
+	BranchTaken    bool
+	WriteBack      bool
+	rawInstruction uint32 // The instruction to be executed
 }
 
 func (i *InstructionIR) FormatLines() string {
@@ -144,6 +152,10 @@ func (i *InstructionIR) FormatLines() string {
 		return "<bubble>"
 	}
 	s := fmt.Sprintf("raw: %x\n", i.rawInstruction)
+	if i.BaseInstruction == nil {
+		s += "BaseInstruction: <nil>\n"
+		return s
+	}
 	s += fmt.Sprintf("OpType: %x\n", i.BaseInstruction.OpType)
 	switch i.BaseInstruction.OpType {
 	case types.RegReg, types.RegImm:
