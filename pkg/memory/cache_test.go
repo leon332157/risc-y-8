@@ -343,3 +343,27 @@ func TestInitLRUMultiWays(t *testing.T) {
 		t.Errorf("empty line 4 should be 3, go %d", line4_lru)
 	}
 }
+
+func TestCacheFilled(t *testing.T) {
+
+	mem := CreateRAM(32, 8, 0)
+	c := CreateCacheDefault(&mem)
+
+	for i := range 64 {
+		for range 6 {
+			c.Write(uint(i), MEMORY_STAGE, uint32(i))
+		}
+	}
+
+	if c.Contents[0][1].Data[1] == 0x0 || c.Contents[0][1].Data[2] == 0x0 || c.Contents[0][1].Data[3] == 0x0 || 
+	   c.Contents[1][1].Data[1] == 0x0 || c.Contents[1][1].Data[2] == 0x0 || c.Contents[1][1].Data[3] == 0x0 ||
+	   c.Contents[2][1].Data[1] == 0x0 || c.Contents[2][1].Data[2] == 0x0 || c.Contents[2][1].Data[3] == 0x0 ||
+	   c.Contents[3][1].Data[1] == 0x0 || c.Contents[3][1].Data[2] == 0x0 || c.Contents[3][1].Data[3] == 0x0 ||
+	   c.Contents[4][1].Data[1] == 0x0 || c.Contents[4][1].Data[2] == 0x0 || c.Contents[4][1].Data[3] == 0x0 ||
+	   c.Contents[5][1].Data[1] == 0x0 || c.Contents[5][1].Data[2] == 0x0 || c.Contents[5][1].Data[3] == 0x0 ||
+	   c.Contents[6][1].Data[1] == 0x0 || c.Contents[6][1].Data[2] == 0x0 || c.Contents[6][1].Data[3] == 0x0 ||
+	   c.Contents[7][1].Data[1] == 0x0 || c.Contents[7][1].Data[2] == 0x0 || c.Contents[7][1].Data[3] == 0x0 {
+		t.Errorf("tags not filled correctly")
+	}
+
+}

@@ -3,13 +3,14 @@ package memory
 import (
 	"fmt"
 	"math/bits"
+	"math"
 )
 
 type CacheType struct {
 	Contents     [][]*CacheLine
 	Sets         uint
 	Ways         uint
-	wordsPerLine uint
+	WordsPerLine uint
 	LowerLevel   Memory
 	MemoryRequestState
 }
@@ -52,7 +53,7 @@ func CreateCache(numSets, numWays, wordsPerLine, delay uint, lower Memory) Cache
 		Contents:           contents,
 		Sets:               numSets,
 		Ways:               numWays,
-		wordsPerLine:       wordsPerLine,
+		WordsPerLine:       wordsPerLine,
 		LowerLevel:         lower,
 		MemoryRequestState: r,
 	}
@@ -88,7 +89,7 @@ func (c *CacheType) service(who Requester) bool {
 
 func (c *CacheType) FindIndexAndTag(addr uint) IdxTag {
 	// get lowest order 2 bit for data offset (reps 4 words)
-	offsetBits := bits.Len32(uint32(c.wordsPerLine)) - 1
+	offsetBits := bits.Len32(uint32(c.WordsPerLine)) - 1
 	offset := addr & ((1 << offsetBits) - 1)
 
 	// Get set index from address
@@ -96,8 +97,9 @@ func (c *CacheType) FindIndexAndTag(addr uint) IdxTag {
 	index := (addr >> offsetBits) & ((1 << indexBits) - 1)
 
 	// Get tag bits based on total bits needed for mem address
-	//memSize := c.LowerLevel.SizeWords()
-	totalBits := 32 //int(math.Log2(float64(memSize)))
+	memSize := c.LowerLevel.SizeWords()
+	// totalBits := 32 <- was originally this
+	totalBits := int(math.Log2(float64(memSize))) // Total bits needed for memory address
 	tagBits := totalBits - indexBits - int(offsetBits)
 
 	// Get tag using the address
@@ -138,7 +140,7 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	}
 
 	// Else, cache miss: read LINE from memory, load into cache, return data (no need to write back to mem)
-	read := c.LowerLevel.ReadMulti(addr, c.wordsPerLine, offset, LAST_LEVEL_CACHE) // TODO: this is readMulti
+	read := c.LowerLevel.ReadMulti(addr, c.WordsPerLine, offset, LAST_LEVEL_CACHE) // TODO: this is readMulti
 	switch read.State {
 	case WAIT:
 		//fmt.Println("Cache read, waiting for ram")
