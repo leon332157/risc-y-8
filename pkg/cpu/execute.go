@@ -20,7 +20,8 @@ type ExecuteStage struct {
 }
 
 const (
-	EXEC_free        = iota
+	EXEC_free = iota
+	EXEC_blocked
 	EXEC_busy_int    // busy waiting for integer alu to finish
 	EXEC_busy_float  // busy waiting for fpu to finish
 	EXEC_busy_vector // busy waiting for vector unit to finish
@@ -276,21 +277,22 @@ func (e *ExecuteStage) Execute() {
 			e.state = EXEC_free
 		}
 	}
+	e.state = EXEC_busy_int
 	e.pipeline.sTracef(e, "Executing instruction: %+v\n", e.currInst) // For debugging purposes, log the current instruction
 	e.instStr += fmt.Sprintf("OpType: %x\n", e.currInst.BaseInstruction.OpType)
 	switch e.currInst.BaseInstruction.OpType {
 	case types.RegImm:
 		e.ALURI()
 	case types.RegReg:
-		e.ALURR() // Perform ALU operation for RegReg type instruction
+		e.ALURR()
 	case types.LoadStore:
-		e.LoadStore() // Handle Load/Store operations, passed to memory stage for the actual operation
+		e.LoadStore()
 	case types.Control:
-		e.Control() // Handle Control operations, this function should be implemented in the memory stage or similar
+		e.Control()
 	default:
-		fmt.Println(e.currInst.BaseInstruction.OpType)
 		panic("unsupported instruction type in Execute stage") // Handle unsupported instruction types
 	}
+	e.state = EXEC_free
 }
 func (e *ExecuteStage) Advance(i *InstructionIR, prevstalled bool) bool {
 	if prevstalled {
@@ -325,7 +327,8 @@ func (e *ExecuteStage) Squash() bool {
 }
 
 func (e *ExecuteStage) CanAdvance() bool {
-	return e.state == EXEC_free
+	
+	return e.next.CanAdvance() && e.state == EXEC_free 
 }
 
 func (e *ExecuteStage) FormatInstruction() string {

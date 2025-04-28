@@ -5,15 +5,22 @@ import (
 	"github.com/leon332157/risc-y-8/pkg/types"
 )
 
+type decodeState int
+
 const (
-	DEC_free = iota
+	DEC_blocked decodeState = -1
+)
+
+const (
+	DEC_free decodeState = iota
 	DEC_busy
-	DEC_reg_read // busy waiting for register read
+	DEC_base_decoded
+	DEC_reg_read
 )
 
 type DecodeStage struct {
 	currInst *InstructionIR
-	state    int
+	state    decodeState
 	pipe     *Pipeline
 
 	next *ExecuteStage
@@ -67,15 +74,21 @@ func (d *DecodeStage) Execute() {
 		return
 	}
 	d.state = DEC_busy
-	d.currInst.BaseInstruction = new(types.BaseInstruction)      // Create a new BaseInstruction to decode the instruction
-	d.currInst.BaseInstruction.Decode(d.currInst.rawInstruction) // Decode the raw instruction into a BaseInstruction
+	if d.state != DEC_base_decoded {
+		d.pipe.sTrace(d, "decoding")
+		d.currInst.BaseInstruction = new(types.BaseInstruction)      // Create a new BaseInstruction to decode the instruction
+		d.currInst.BaseInstruction.Decode(d.currInst.rawInstruction) // Decode the raw instruction into a BaseInstruction
+		d.state = DEC_base_decoded
+	} else {
+		d.pipe.sTrace(d, "Already decoded instruction, skipping decode")
+	}
 	d.pipe.sTracef(d, "Decoded instruction: %+v", d.currInst)
 	d.pipe.sTracef(d, "Decoded instruction base: %+v", *d.currInst.BaseInstruction)
 	baseInstruction := d.currInst.BaseInstruction // For convenience
 	//go func() {
-	d.instStr = fmt.Sprintf("raw: 0x%08x\n", d.currInst.rawInstruction)
-	d.instStr += fmt.Sprintf(
-		"OpType: %x\nRd: %x\nDestMemAddr: %x\nRDAux: %x\n",
+	d.instStr = fmt.Sprintf(
+		"raw: 0x%08x\nOpType: %x\nRd: %x\nDestMemAddr: %x\nRDAux: %x\n",
+		d.currInst.rawInstruction,
 		baseInstruction.OpType, baseInstruction.Rd, d.currInst.DestMemAddr, d.currInst.RDestAux)
 	//}()
 
@@ -85,7 +98,7 @@ func (d *DecodeStage) Execute() {
 		v, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
 		if st != SUCCESS {
 			d.pipe.sTracef(d, "Failed to read register r%v %v", baseInstruction.Rd, st)
-			d.state = DEC_busy
+			d.state = DEC_reg_read
 			return
 		}
 		d.pipe.cpu.blockIntR(baseInstruction.Rd)
@@ -97,7 +110,7 @@ func (d *DecodeStage) Execute() {
 		rdv, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
 		if st != SUCCESS {
 			d.pipe.sTracef(d, "Failed to read dest register r%v %v", baseInstruction.Rs, st)
-			d.state = DEC_busy
+			d.state = DEC_reg_read
 			return
 		}
 		rsv, st := d.pipe.cpu.ReadIntR(baseInstruction.Rs)
@@ -107,7 +120,6 @@ func (d *DecodeStage) Execute() {
 			return
 		}
 		d.pipe.cpu.blockIntR(baseInstruction.Rd)
-		d.pipe.cpu.blockIntR(baseInstruction.Rs)
 		d.currInst.Result = rdv
 		d.currInst.Operand = rsv
 
@@ -149,7 +161,7 @@ func (d *DecodeStage) Execute() {
 		d.currInst.DestMemAddr = rmemv
 
 		d.currInst.Operand = signExtend(d.currInst.BaseInstruction.Imm)
-		
+
 		v, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
 		if st != SUCCESS {
 			d.pipe.sTracef(d, "Failed to read load/store instruction destination register r%v %v", baseInstruction.Rd, st)
@@ -160,7 +172,6 @@ func (d *DecodeStage) Execute() {
 		d.pipe.cpu.blockIntR(baseInstruction.RMem)
 		d.pipe.cpu.blockIntR(baseInstruction.Rd)
 	}
-	d.state = DEC_free
 	d.pipe.sTracef(d, "Decoded filled instruction: %+v %+v\n", d.currInst, *d.currInst.BaseInstruction)
 	//go func() {
 	switch baseInstruction.OpType {
@@ -178,6 +189,7 @@ func (d *DecodeStage) Execute() {
 	}
 	d.instStr += fmt.Sprintf("Result: %x\n", d.currInst.Result)
 	//}()
+	d.state = DEC_free
 }
 
 // Returns if this stage passed the instruction to the next stage
@@ -185,17 +197,20 @@ func (d *DecodeStage) Advance(i *InstructionIR, prevstalled bool) bool {
 	if prevstalled {
 		d.pipe.sTracef(d, "previous stage %v is stalled", d.prev.Name())
 	}
-	if d.state != DEC_free {
-		d.pipe.sTracef(d, "Decode is busy, cannot advance: %v", d.state)
-		d.next.Advance(nil, true) // tell next stage we are stalled, push bubble
-		return false
-	}
 	if d.next.CanAdvance() {
+		if d.state > DEC_free {
+			// if state is above 0, meaning that decode is busy with it's own work
+			d.pipe.sTracef(d, "Decode is busy, cannot advance: %v", d.state)
+			d.next.Advance(nil, true) // tell next stage we are stalled, push bubble
+			return false
+		}
 		d.pipe.sTracef(d, "Advancing to next stage with instruction: %+v\n", d.currInst)
 		d.next.Advance(d.currInst, false) // Pass the instruction to the next stage
+		d.state = DEC_free
 		d.currInst = i                    // take in our next instruction
 		return true
 	} else {
+		d.state = DEC_blocked
 		d.pipe.sTracef(d, "Can not advance to %v, CanAdvance returned false", d.next.Name())
 		d.next.Advance(nil, false) // pass bubble and say we are not stalled
 		return false
@@ -216,7 +231,7 @@ func (d *DecodeStage) Squash() bool {
 
 // Returns returns if this stage can take in a new instruction
 func (d *DecodeStage) CanAdvance() bool {
-	return d.state == DEC_free
+	return d.state == DEC_free && d.next.CanAdvance()
 }
 
 func (d *DecodeStage) FormatInstruction() string {

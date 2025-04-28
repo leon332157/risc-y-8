@@ -6,17 +6,18 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/leon332157/risc-y-8/cmd/r8/simulator"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/bubbles/viewport"
 	table "github.com/charmbracelet/lipgloss/table"
 	"github.com/leon332157/risc-y-8/pkg/cpu"
 	"github.com/leon332157/risc-y-8/pkg/memory"
@@ -78,17 +79,19 @@ func runTui(cmd *cobra.Command, args []string) error {
 }
 
 var ADVANCE = false
+var Message string
+
 type model struct {
 	instr     textinput.Model
 	lastInstr string
 
-	system *simulator.System
-	pipelineState string
-	msg    string
+	system      *simulator.System
 	ramViewport viewport.Model
 }
 
 func initialModel() model {
+	Message = "none"
+
 	ti := textinput.New()
 	ti.Placeholder = "type an instruction . . ."
 	ti.Focus()
@@ -97,10 +100,9 @@ func initialModel() model {
 	ti.Cursor.SetMode(cursor.CursorStatic)
 	ramVP := viewport.New(77, 34)
 	return model{
-		instr:     ti,
-		lastInstr: "",
-		system:    nil,
-		msg:       "none",
+		instr:       ti,
+		lastInstr:   "",
+		system:      nil,
 		ramViewport: ramVP,
 	}
 }
@@ -151,18 +153,37 @@ func getRegVals(control *cpu.CPU) [][]string {
 		} else {
 			style = style.Foreground(lipgloss.Color("#04B575"))
 		}
-		row := []string{style.Render(fmt.Sprintf("R%d", i)), fmt.Sprintf("%08X", control.ReadIntRNoBlock(uint8(i)))}
+		var row = []string{}
+		if i == 0 {
+			row = []string{style.Render("Rflag")}
+			if control.ALU.GetCF() {
+				row = append(row, style.Foreground(lipgloss.Color("#CC6CE7")).Render("CF"))
+			}
+			if control.ALU.GetOVF() {
+				row = append(row, style.Foreground(lipgloss.Color("#CC6CE7")).Render("OVF"))
+			}
+			if control.ALU.GetSF() {
+				row = append(row, style.Foreground(lipgloss.Color("#CC6CE7")).Render("SF"))
+			}
+			if control.ALU.GetZF() {
+				row = append(row, style.Foreground(lipgloss.Color("#CC6CE7")).Render("ZF"))
+			}
+		} else {
+			row = []string{style.Render(fmt.Sprintf("R%d", i)), fmt.Sprintf("%08X", control.ReadIntRNoBlock(uint8(i)))}
+		}
 		regVals = append(regVals, row)
 	}
 	return regVals
 }
 
 func (m *model) ExecuteCommand() {
-	switch m.lastInstr {
-	case "step", "s","next", "n":
-		if m.system.CPU.ProgramCounter >= uint32(NumInstructions) {
+	args := strings.Split(m.lastInstr, " ")
+
+	switch args[0] {
+	case "step", "s", "next", "n":
+		if m.system.CPU.ProgramCounter >= uint32(NumInstructions)+6 {
 			m.system.CPU.Halted = true
-			m.msg = "Program finished"
+			Message = "Program finished"
 			return
 		}
 		if !m.system.CPU.Halted {
@@ -170,6 +191,30 @@ func (m *model) ExecuteCommand() {
 			ADVANCE = true
 		} else {
 			m.system.CPU.Halted = false
+		}
+	case "run", "r":
+		if len(args) > 1 {
+			cycles, err := strconv.Atoi(args[1])
+			if err != nil {
+				Message = fmt.Sprintf("Invalid number of cycles %v", err)
+				return
+			}
+			Message = fmt.Sprintf("Running for %d cycles", cycles)
+			for _ = range cycles {
+				if m.system.CPU.ProgramCounter >= uint32(NumInstructions)+6 {
+					m.system.CPU.Halted = true
+					Message = "Program finished"
+					return
+				}
+				if !m.system.CPU.Halted {
+					m.system.CPU.Pipeline.RunOneClock()
+					ADVANCE = true
+				} else {
+					m.system.CPU.Halted = false
+				}
+			}
+		} else {
+			Message = "Invalid command, please use 'run <cycles>'"
 		}
 	}
 }
@@ -299,7 +344,7 @@ func (m model) drawPipeline() string {
 	row := make([]string, 0)
 
 	for i := range m.system.CPU.Pipeline.Stages {
-		row = append(row, m.system.CPU.Pipeline.Stages[i].FormatInstruction() + strings.Repeat("\n", m.checkNewlines(m.system.CPU.Pipeline.Stages[i].FormatInstruction(), desiredHeight, i)))
+		row = append(row, m.system.CPU.Pipeline.Stages[i].FormatInstruction()+strings.Repeat("\n", m.checkNewlines(m.system.CPU.Pipeline.Stages[i].FormatInstruction(), desiredHeight, i)))
 	}
 
 	// TODO: show stage result in row?? SUCCESS, STALL, FAILURE, NOOP, etc.
@@ -343,14 +388,14 @@ func (m model) drawLastInstruction() string {
 		Render(instrTable.Render())
 }
 
-func (m model) drawMsg() string {
-	if m.system.CPU.Halted {
-		m.msg = "CPU is halted"
-	} else {
-		m.msg = "CPU is running"
-	}
+func (m *model) drawMsg() string {
+	/* 	if m.system.CPU.Halted {
+	   		m.msg = "CPU is halted"
+	   	} else {
+	   		m.msg = "CPU is running"
+	   	} */
 	headers := []string{"Message"}
-	row := []string{m.msg}
+	row := []string{Message}
 
 	msgTable := table.New().
 		Border(lipgloss.NormalBorder()).
@@ -371,7 +416,7 @@ func (m model) drawClock() string {
 		Rows(row)
 
 	return lipgloss.NewStyle().
-		Padding(desiredHeight / 2, 0).
+		Padding(desiredHeight/2, 0).
 		BorderForeground(lipgloss.Color("207")).
 		Render("CPU\n" + clockTable.Render())
 }

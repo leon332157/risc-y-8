@@ -61,15 +61,16 @@ func (w *WriteBackStage) Execute() {
 	if w.currInst.BaseInstruction.OpType == types.Control {
 		// Control instruction, write back to the Program Counter and RDestAUX
 		w.pipeline.sTrace(w, "Control instruction detected")
-		if !w.currInst.BranchTaken {
+		if w.currInst.BranchTaken {
+			if w.currInst.BaseInstruction.Rd == 0 {
+				// writing to PC
+				w.pipeline.sTracef(w, "Writing to Program Counter directly from control instruction to %v\n", w.currInst.DestMemAddr)
+				w.pipeline.cpu.ProgramCounter = w.currInst.DestMemAddr // Update the Program Counter if this is a control instruction
+				w.pipeline.SquashALL()
+				return
+			}
+		} else {
 			w.pipeline.sTrace(w, "Branch not taken, no write back to Program Counter required")
-		}
-		if w.currInst.BaseInstruction.Rd == 0 {
-			// writing to PC
-			w.pipeline.sTracef(w, "Writing to Program Counter directly from control instruction to %v\n", w.currInst.DestMemAddr)
-			w.pipeline.cpu.ProgramCounter = w.currInst.DestMemAddr // Update the Program Counter if this is a control instruction
-			w.pipeline.SquashALL()
-			return
 		}
 	}
 
@@ -90,6 +91,7 @@ func (w *WriteBackStage) Execute() {
 		return
 	}
 	w.pipeline.sTracef(w, "Write back completed for instruction: %+v\n", w.currInst) // For debugging purposes
+	w.pipeline.sTracef(w, "Write back completed for base instruction: %+v\n", *w.currInst.BaseInstruction) // For debugging purposes
 	w.currInst = nil
 
 	if w.pipeline.scalarMode {
@@ -110,6 +112,9 @@ func (w *WriteBackStage) Advance(i *InstructionIR, prevstalled bool) bool {
 
 func (w *WriteBackStage) Squash() bool {
 	w.pipeline.sTracef(w, "Squashing instruction: %+v\n", w.currInst) // For debugging purposes
+	w.pipeline.cpu.unblockIntR(w.currInst.BaseInstruction.Rd)
+	w.pipeline.cpu.unblockIntR(w.currInst.BaseInstruction.RMem)
+	w.pipeline.cpu.unblockIntR(w.currInst.RDestAux)
 	w.currInst = nil
 	return true
 }
