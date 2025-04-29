@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"strings"
+	"math"
+	"math/bits"
 
 	"github.com/leon332157/risc-y-8/cmd/r8/simulator"
 	"github.com/rs/zerolog"
@@ -66,9 +68,9 @@ func runTui(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read input file: %v", err)
 	}
-	model := initialModel()
 	system := simulator.NewSystem(program, disableCache, disablePipeline)
-	model.system = &system
+	model := initialModel(&system)
+	// model.system = &system
 	p := tea.NewProgram(model)
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program:", err)
@@ -86,22 +88,51 @@ type model struct {
 	pipelineState string
 	msg    string
 	ramViewport viewport.Model
+	cacheViewport viewport.Model
+	cacheHeaderViewport viewport.Model
 }
 
-func initialModel() model {
+func initialModel(s *simulator.System) model {
 	ti := textinput.New()
 	ti.Placeholder = "type an instruction . . ."
 	ti.Focus()
 	ti.CharLimit = 100
 	ti.Width = 50
 	ti.Cursor.SetMode(cursor.CursorStatic)
-	ramVP := viewport.New(77, 34)
+
+	tableHeight := 34
+	headerSize := 3
+
+	// +2 for 0x prefix
+	// +1 for left vertical line
+	ramLinesSize := uint(math.Log(float64(s.RAM.SizeWords())) / math.Log(16)) + 2 + 1 + 1
+	ramDataSize := s.RAM.WordsPerLine * 10 + s.RAM.WordsPerLine + 1
+	ramVPWidth := ramDataSize + ramLinesSize
+	ramVP := viewport.New(int(ramVPWidth), tableHeight)
+
+	offsetBits := bits.Len32(uint32(s.Cache.WordsPerLine)) - 1
+	indexBits := bits.Len32(uint32(s.Cache.Sets)) - 1
+	memSize := s.RAM.SizeWords()
+	totalBits := int(math.Log2(float64(memSize)))
+
+	sizeTag := max(uint(totalBits - indexBits - int(offsetBits)), 3) + 2
+	sizeIndex := max(uint(indexBits), 3) + 1
+	sizeData := (s.Cache.WordsPerLine * 8) + (s.Cache.WordsPerLine - 1) + 2 + 1
+	sizeValid := uint(5 + 1)
+	sizeLRU := uint(max(math.Log2(float64(s.Cache.Ways)), 3)) + 1
+
+	cacheVPWidth := sizeTag + sizeIndex + sizeData + sizeValid + sizeLRU + 5
+
+	cacheHeaderVP := viewport.New(int(cacheVPWidth), headerSize)
+	cacheVP := viewport.New(int(cacheVPWidth), tableHeight - headerSize)
 	return model{
 		instr:     ti,
 		lastInstr: "",
-		system:    nil,
+		system:    s,
 		msg:       "none",
 		ramViewport: ramVP,
+		cacheViewport: cacheVP,
+		cacheHeaderViewport: cacheHeaderVP,
 	}
 }
 
@@ -111,15 +142,34 @@ func (m model) Init() tea.Cmd {
 
 func getCacheRows(ca *memory.CacheType) [][]string {
 	cRows := [][]string{}
+
+	offsetBits := bits.Len32(uint32(ca.WordsPerLine)) - 1
+	indexBits := bits.Len32(uint32(ca.Sets)) - 1
+	memSize := ca.LowerLevel.SizeWords()
+	totalBits := int(math.Log2(float64(memSize)))
+
+	sizeTag := uint(totalBits - indexBits - int(offsetBits)) //+ 1
+	sizeIndex := uint(indexBits) //+ 1
+
+	tagStr := fmt.Sprintf("%%0%db", sizeTag)
+	idxStr := fmt.Sprintf("%%0%db", sizeIndex)
+
+	waysSize := max(math.Log2(float64(ca.Ways)), 3)
+	waysStr := fmt.Sprintf("%%%db", int(waysSize))
+
 	for i := range ca.Contents {
 		for j := range ca.Ways {
 			data := ca.Contents[i][j]
+
+			validStr :="%t"
+			if data.Valid { validStr = validStr + strings.Repeat(" ", 1) }
+
 			row := []string{
-				fmt.Sprintf("%05b", data.Tag),
-				fmt.Sprintf("%03b", i),
+				fmt.Sprintf(tagStr, data.Tag),
+				fmt.Sprintf(idxStr, i),
 				fmt.Sprintf("%08X", data.Data),
-				fmt.Sprintf("%t", data.Valid),
-				fmt.Sprintf("%d", data.LRU)}
+				fmt.Sprintf(validStr, data.Valid),
+				fmt.Sprintf(waysStr, data.LRU)}
 			cRows = append(cRows, row)
 		}
 	}
@@ -131,9 +181,9 @@ func getRAMRows(ram *memory.RAM) [][]string {
 	addr := 0
 	for i := range int(ram.NumLines) {
 		row := []string{}
-		row = append(row, fmt.Sprintf("%d", i))
+		row = append(row, fmt.Sprintf("0x%X", i * int(ram.WordsPerLine)))
 		for range ram.WordsPerLine {
-			row = append(row, fmt.Sprintf("%08X", ram.Contents[addr]))
+			row = append(row, fmt.Sprintf("0x%08X", ram.Contents[addr]))
 			addr++
 		}
 		rRows = append(rRows, row)
@@ -187,15 +237,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.ExecuteCommand()
 			m.ramViewport.SetContent(m.drawRAMTable())
+			m.cacheViewport.SetContent(m.drawCacheBodyTable())
+			// Send instruction to be computed
+			//cache.Write(0x0, memory.FETCH_STAGE, 0xdeadbeef)
 			m.instr.Reset()
 			return m, nil
-		case "j":
+		case "d":
 			m.ramViewport.ScrollDown(16)
-		case "k":
+		case "f":
 			m.ramViewport.ScrollUp(16)
+		case "j":
+			m.cacheViewport.ScrollDown(8)
+		case "k":
+			m.cacheViewport.ScrollUp(8)
 		}
 	case tea.WindowSizeMsg:
 		// handle resize if needed
+		m.ramViewport.SetContent(m.drawRAMTable())
+		m.cacheViewport.SetContent(m.drawCacheBodyTable())
+		m.cacheHeaderViewport.SetContent(m.drawCacheHeaderTable())
 	}
 	var cmd tea.Cmd
 	m.instr, cmd = m.instr.Update(msg)
@@ -224,21 +284,9 @@ func (m model) View() string {
 
 func (m model) drawRAM() string {
 
-	// rows := getRAMRows(m.system.RAM)
-
-	// ramTable := table.New().
-	// 	Border(lipgloss.NormalBorder()).
-	// 	Rows(rows...)
-
-	// return lipgloss.NewStyle().
-	// 	BorderForeground(lipgloss.Color("63")).
-	// 	Render("RAM\n" + ramTable.Render())
-
 	content := m.ramViewport.View()
 
 	return lipgloss.NewStyle().
-		// BorderForeground(lipgloss.Color("15")).
-		// Border(lipgloss.NormalBorder()).
 		Render("RAM\n" + content)
 }
 
@@ -253,19 +301,66 @@ func (m model) drawRAMTable() string {
 	return ramTable.Render()
 }
 
-func (m model) drawCache() string {
-	headers := []string{"Tag", "Index", "Data", "Valid", "LRU"}
+func (m model) getCacheSize() []uint {
 
+	offsetBits := bits.Len32(uint32(m.system.Cache.WordsPerLine)) - 1
+	indexBits := bits.Len32(uint32(m.system.Cache.Sets)) - 1
+	memSize := m.system.RAM.SizeWords()
+	totalBits := int(math.Log2(float64(memSize)))
+
+	sizeTag := max(uint(totalBits - indexBits - int(offsetBits)), 3)
+	sizeIndex := max(uint(indexBits), 3)
+	sizeData := (m.system.Cache.WordsPerLine * 8) + (m.system.Cache.WordsPerLine - 1) + 2
+
+	return []uint{
+		sizeTag,
+		sizeIndex,
+		sizeData,
+	}
+}
+
+func (m model) drawCache() string {
+
+	headerStr := m.cacheHeaderViewport.View()
+	content := m.cacheViewport.View()
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		"Cache",
+		headerStr,
+		content,
+	)
+
+}
+
+func (m model) drawCacheHeaderTable() string {
+
+	sizeInfo := m.getCacheSize()
+	tagSize := sizeInfo[0]
+	indexSize := sizeInfo[1]
+	dataSize := sizeInfo[2]
+
+	tagHeader := "Tag" + strings.Repeat(" ", int(tagSize) - 3)
+	indexHeader := "Idx" + strings.Repeat(" ", int(indexSize) - 3)
+	dataHeader := "Data" + strings.Repeat(" ", int(dataSize) - 4)
+
+	header := table.New().
+		Headers(tagHeader, indexHeader, dataHeader, "Valid", "LRU").
+		Border(lipgloss.NormalBorder())
+
+	return header.Render()	
+
+}
+
+func (m model) drawCacheBodyTable() string {
+	
 	rows := getCacheRows(m.system.Cache)
 
 	cacheTable := table.New().
 		Border(lipgloss.NormalBorder()).
-		Headers(headers...).
 		Rows(rows...)
 
-	return lipgloss.NewStyle().
-		BorderForeground(lipgloss.Color("129")).
-		Render("Cache\n" + cacheTable.Render())
+	return cacheTable.Render()
 }
 
 // desiredHeight := 5 // or however many stages you want to display
