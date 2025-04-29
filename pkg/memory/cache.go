@@ -2,8 +2,8 @@ package memory
 
 import (
 	"fmt"
-	"math/bits"
 	"math"
+	"math/bits"
 )
 
 type CacheType struct {
@@ -171,10 +171,13 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	index, tag, offset := idxTag.index, idxTag.tag, idxTag.offset
 	valid := false
 	set := c.Contents[index]
-	for i := range c.Ways - 1 {
+	for i := range c.Ways {
 
 		// If idx-tag exits, write to cache and write-through to memory
-		if (set[i].Tag == tag) && set[i].Valid {
+		curTag := set[i].Tag
+		curValid := set[i].Valid
+
+		if (curTag == tag) && curValid {
 
 			// if data is the same, update lru, do nothing
 			/*if set[i].Data == val {
@@ -191,9 +194,9 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	if !valid {
 		// Find next empty line or LRU (empty line will be lru!), write-through to memory
 		lruIdx := c.GetLRU(index)
-		d := c.Contents[index][lruIdx].Data
-		d[offset] = val
-		c.Contents[index][lruIdx] = &CacheLine{Valid: true, Tag: tag, Data: d, LRU: 0}
+		d := c.Contents[index][lruIdx]
+		d.Data[offset] = val
+		c.Contents[index][lruIdx] = &CacheLine{Valid: true, Tag: tag, Data: d.Data, LRU: d.LRU} // keep lru the same, then use update function
 		c.UpdateLRU(index, lruIdx)
 	}
 
@@ -210,12 +213,15 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 
 func (c *CacheType) UpdateLRU(setIndex uint, line uint) {
 	set := c.Contents[setIndex]
-	for i := range c.Ways {
 
-		if i == line {
-			c.Contents[setIndex][i].LRU = 0
-		} else if set[i].LRU < int(c.Ways-1) {
-			c.Contents[setIndex][i].LRU += 1
+	// Only update lru if updated line's lru is not already zero
+	if set[line].LRU != 0 {
+		for i := range c.Ways {
+			if i == line {
+				c.Contents[setIndex][i].LRU = 0
+			} else if set[i].LRU < int(c.Ways-1) {
+				c.Contents[setIndex][i].LRU += 1
+			}
 		}
 	}
 }
