@@ -367,3 +367,17 @@ func TestCacheFilled(t *testing.T) {
 	}
 
 }
+
+func TestCacheFilledTwice(t *testing.T) {
+	mem := CreateRAM(32, 8, 5)
+	c := CreateCacheDefault(&mem)
+
+	for i := range 128 {
+		for range 6 {
+			c.Write(uint(i), MEMORY_STAGE, uint32(i))
+		}
+	}
+
+	// Each data item added sequentially, pay attention to second pass
+	// Final cache should show data values 64 to 127
+}

@@ -161,7 +161,7 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	return ReadResult{SUCCESS, read.Value[offset]}
 }
 
-// Write through, no allocate policy
+// Write through, allocate policy
 func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	if !c.service(who) {
 		return WriteResult{WAIT, 0}
@@ -171,10 +171,12 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	index, tag, offset := idxTag.index, idxTag.tag, idxTag.offset
 	valid := false
 	set := c.Contents[index]
-	for i := range c.Ways - 1 {
+	for i := range c.Ways {
 
 		// If idx-tag exits, write to cache and write-through to memory
-		if (set[i].Tag == tag) && set[i].Valid {
+		curTag := set[i].Tag
+		curValid := set[i].Valid
+		if (curTag == tag) && curValid {
 
 			// if data is the same, update lru, do nothing
 			/*if set[i].Data == val {
