@@ -1,10 +1,10 @@
 package r8
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"os"
-	"bytes"
 
 	"github.com/leon332157/risc-y-8/cmd/r8/simulator"
 	"github.com/spf13/cobra"

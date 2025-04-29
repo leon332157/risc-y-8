@@ -157,6 +157,21 @@ const (
 	Control   = 0b11 // control
 )
 
+func LookUpOpType(opType uint8) string {
+	switch opType {
+	case RegImm:
+		return "reg-imm"
+	case RegReg:
+		return "reg-reg"
+	case LoadStore:
+		return "load/store"
+	case Control:
+		return "control"
+	default:
+		return "unknown"
+	}
+}
+
 type BaseInstruction struct {
 	OpType   uint8 // 00 for reg-imm, 01 for reg-reg, 10 for load/store, 11 for control
 	Rd       uint8 // Destination register

@@ -3,7 +3,7 @@ ldi r2, 4096
 ldi r3, 15
 ldi r4, 9
 ldi r1, 0xdead
-shl r1, 16
+shl r1, 15
 ldi r20, 0xbeef
 or r1, r20
 xor r20,r20

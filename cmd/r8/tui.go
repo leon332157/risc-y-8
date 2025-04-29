@@ -24,6 +24,7 @@ import (
 )
 
 var desiredHeight = 9
+var Message string = "none"
 
 var (
 	tuiCmd = &cobra.Command{
@@ -77,9 +78,6 @@ func runTui(cmd *cobra.Command, args []string) error {
 	}
 	return nil
 }
-
-var ADVANCE = false
-var Message string
 
 type model struct {
 	instr     textinput.Model
@@ -186,12 +184,12 @@ func (m *model) ExecuteCommand() {
 			Message = "Program finished"
 			return
 		}
-		if !m.system.CPU.Halted {
+		m.system.RunOneClock(nil)
+		/*if !m.system.CPU.Halted {
 			m.system.CPU.Pipeline.RunOneClock()
-			ADVANCE = true
 		} else {
 			m.system.CPU.Halted = false
-		}
+		}*/
 	case "run", "r":
 		if len(args) > 1 {
 			cycles, err := strconv.Atoi(args[1])
@@ -208,7 +206,6 @@ func (m *model) ExecuteCommand() {
 				}
 				if !m.system.CPU.Halted {
 					m.system.CPU.Pipeline.RunOneClock()
-					ADVANCE = true
 				} else {
 					m.system.CPU.Halted = false
 				}

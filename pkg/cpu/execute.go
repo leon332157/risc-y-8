@@ -9,7 +9,7 @@ import (
 
 type ExecuteStage struct {
 	currInst   *InstructionIR
-	state      int
+	state      ExecState
 	cyclesLeft uint
 	pipeline   *Pipeline // Reference to the pipeline instance
 
@@ -19,13 +19,22 @@ type ExecuteStage struct {
 	instStr string
 }
 
+type ExecState int
+
 const (
-	EXEC_free = iota
-	EXEC_blocked
+	EXEC_blocked ExecState = -1
+)
+
+const (
+	EXEC_free ExecState = iota
+	EXEC_done
 	EXEC_busy_int    // busy waiting for integer alu to finish
 	EXEC_busy_float  // busy waiting for fpu to finish
 	EXEC_busy_vector // busy waiting for vector unit to finish
 )
+
+const DIV_DELAY = 4 
+
 
 func (e *ExecuteStage) Init(pipeline *Pipeline, next Stage, prev Stage) error {
 	if pipeline == nil {
@@ -64,7 +73,6 @@ func (e *ExecuteStage) ALURI() {
 	inst := e.currInst
 	op1 := inst.Result  // First operand (from a register)
 	op2 := inst.Operand // Second operand (immediate value)
-
 	switch inst.BaseInstruction.ALU {
 	case types.IMM_ADD:
 		inst.Result = e.pipeline.cpu.ALU.Add(op1, op2)
@@ -91,39 +99,25 @@ func (e *ExecuteStage) ALURI() {
 	case types.IMM_ROL:
 		inst.Result = e.pipeline.cpu.ALU.RotateLeft(op1, int32(op2))
 	case types.IMM_LDI:
-		inst.Result = uint32(op2)
+		inst.Result = uint32(op2 & 0xFFFF)
 	case types.IMM_LDX:
-		inst.Result = uint32(int32(op2))
+		inst.Result = op2
 	case types.IMM_CMP:
 		e.pipeline.cpu.unblockIntR(inst.BaseInstruction.Rd)
 		inst.BaseInstruction.Rd = 0 // Set Rd to 0 for comparison operations
 		e.pipeline.cpu.ALU.Sub(op1, op2)
 	default:
 		e.pipeline.log.Panic().Msg("unsupported ALU operation for RegImm type instruction") // Handle unsupported ALU operations
-		// Handle other ALU operations as needed
 	}
 	e.pipeline.sTracef(e, "ALURI operation result: %v", inst.Result) // For debugging purposes, log the result of the ALU operation
 	e.instStr += fmt.Sprintf("ALU: %v\nRd: %x\nResult: %x", types.ImmALUInverse[e.currInst.BaseInstruction.ALU], e.currInst.BaseInstruction.Rd, e.currInst.Result)
+	e.state = EXEC_done
 }
 
 func (e *ExecuteStage) ALURR() {
 	inst := e.currInst
 	op1 := inst.Result
 	op2 := inst.Operand
-	if (inst.BaseInstruction.ALU == types.REG_DIV) || (inst.BaseInstruction.ALU == types.REG_REM) {
-		if op2 == 0 {
-			e.pipeline.log.Panic().Msg("division by zero") // Handle division by zero error
-		}
-		if e.state != EXEC_free {
-			e.cyclesLeft--
-			return
-		} else {
-			e.state = EXEC_busy_int
-			e.cyclesLeft = 3                                                       // Set the number of cycles for division operation
-			e.pipeline.sTracef(e, "busy %v cycles left %v", e.state, e.cyclesLeft) // For debugging purposes, log the state and cycles left
-			return
-		}
-	}
 	switch inst.BaseInstruction.ALU {
 	case types.REG_ADD:
 		inst.Result = e.pipeline.cpu.ALU.Add(op1, op2)
@@ -132,9 +126,24 @@ func (e *ExecuteStage) ALURR() {
 	case types.REG_MUL:
 		inst.Result = e.pipeline.cpu.ALU.Mul(op1, op2)
 	case types.REG_DIV:
-		inst.Result = e.pipeline.cpu.ALU.Div(op1, op2)
+		if op2 == 0 {
+			panic("division by zero")
+		}
+		if e.cyclesLeft == 1 {
+			inst.Result = e.pipeline.cpu.ALU.Div(op1, op2)
+		} else {
+			e.cyclesLeft = 4
+		}
 	case types.REG_REM:
-		inst.Result = e.pipeline.cpu.ALU.Rem(op1, op2)
+		if op2 == 0 {
+			panic("division by zero on remainder")
+		}
+		if e.cyclesLeft == 1 {
+			inst.Result = e.pipeline.cpu.ALU.Rem(op1, op2)
+		} else {
+			e.cyclesLeft = 4
+		}
+
 	case types.REG_OR:
 		inst.Result = e.pipeline.cpu.ALU.Or(op1, op2)
 	case types.REG_XOR:
@@ -194,6 +203,7 @@ func (e *ExecuteStage) LoadStore() {
 		inst.DestMemAddr--
 		inst.ResultAux = inst.DestMemAddr
 	}
+	e.state = EXEC_done
 	e.instStr += fmt.Sprintf("MemMode: %v\nRd: %x\nRMem: %x\nDestMemAddr: %x\nRdAux %x\nAuxVal: %x", inst.BaseInstruction.MemMode, inst.BaseInstruction.Rd, inst.BaseInstruction.RMem, inst.DestMemAddr, inst.RDestAux, inst.ResultAux)
 }
 
@@ -259,6 +269,7 @@ func (e *ExecuteStage) Control() {
 		}
 	}
 	e.instStr += fmt.Sprintf("CtrlMode: %x\nCtrlFlag: %x\nDestMemAddr: %x\nRDestAux: %x\nAuxVal: %x\nBranchTaken: %v\n", inst.BaseInstruction.CtrlMode, inst.BaseInstruction.CtrlFlag, inst.DestMemAddr, inst.RDestAux, inst.ResultAux, inst.BranchTaken)
+	e.state = EXEC_done
 }
 
 func (e *ExecuteStage) Execute() {
@@ -269,46 +280,58 @@ func (e *ExecuteStage) Execute() {
 		return
 	}
 	e.instStr = ""
-	if e.state != EXEC_free {
+	/* if e.state != EXEC_free {
 		e.cyclesLeft--
 		e.instStr += fmt.Sprintf("Cyl Left: %v", e.cyclesLeft)
 		e.pipeline.sTracef(e, "busy %v cycles left %v", e.state, e.cyclesLeft)
 		if e.cyclesLeft == 0 {
 			e.state = EXEC_free
 		}
+	} */
+	e.pipeline.sTracef(e, "Executing instruction: %+v\n", e.currInst)
+	e.pipeline.sTracef(e, "Executing instruction base: %+v\n", *e.currInst.BaseInstruction)
+	e.instStr += fmt.Sprintf("OpType: %v\nCyl Left: %v\n", types.LookUpOpType(e.currInst.BaseInstruction.OpType), e.cyclesLeft)
+	if e.state < EXEC_done {
+		if e.cyclesLeft > 0 {
+			e.cyclesLeft--
+			e.pipeline.sTracef(e, "busy %v cycles left %v", e.state, e.cyclesLeft)
+		} else {
+			e.pipeline.sTrace(e, "free, executing")
+			switch e.currInst.BaseInstruction.OpType {
+			case types.RegImm:
+				e.ALURI()
+			case types.RegReg:
+				e.ALURR()
+			case types.LoadStore:
+				e.LoadStore()
+			case types.Control:
+				e.Control()
+			default:
+				panic("unsupported instruction type in Execute stage") // Handle unsupported instruction types
+			}
+		}
+	} else {
+		e.pipeline.sTrace(e, "Already executed instruction, not executing")
 	}
-	e.state = EXEC_busy_int
-	e.pipeline.sTracef(e, "Executing instruction: %+v\n", e.currInst) // For debugging purposes, log the current instruction
-	e.instStr += fmt.Sprintf("OpType: %x\n", e.currInst.BaseInstruction.OpType)
-	switch e.currInst.BaseInstruction.OpType {
-	case types.RegImm:
-		e.ALURI()
-	case types.RegReg:
-		e.ALURR()
-	case types.LoadStore:
-		e.LoadStore()
-	case types.Control:
-		e.Control()
-	default:
-		panic("unsupported instruction type in Execute stage") // Handle unsupported instruction types
-	}
-	e.state = EXEC_free
 }
+
 func (e *ExecuteStage) Advance(i *InstructionIR, prevstalled bool) bool {
 	if prevstalled {
 		e.pipeline.sTracef(e, "previous stage %v returned stall\n", e.prev.Name())
 	}
-	if e.state != EXEC_free {
-		e.pipeline.sTrace(e, "Execute stage is busy, cannot advance")
-		e.next.Advance(nil, true) // pass a bubble and say we are stalled
-		return false
-	}
 	if e.next.CanAdvance() {
+		if e.state > EXEC_done {
+			e.pipeline.sTracef(e, "Execute stage is busy, cannot advance: %v", e.state)
+			e.next.Advance(nil, true) // tell next stage we are stalled
+			return false
+		}
 		e.pipeline.sTracef(e, "Advancing to next stage with instruction: %+v\n", e.currInst)
 		e.next.Advance(e.currInst, false) // Pass the instruction to the next stage
+		e.state = EXEC_free
 		e.currInst = i
 		return true
 	} else {
+		e.state = EXEC_blocked
 		e.pipeline.sTracef(e, "Can not advance to %v, CanAdvance returned false", e.next.Name())
 		e.next.Advance(nil, false) // pass a bubble and say we are not stalled
 		return false
@@ -327,8 +350,8 @@ func (e *ExecuteStage) Squash() bool {
 }
 
 func (e *ExecuteStage) CanAdvance() bool {
-	
-	return e.next.CanAdvance() && e.state == EXEC_free 
+
+	return e.next.CanAdvance() && e.state <= EXEC_done
 }
 
 func (e *ExecuteStage) FormatInstruction() string {

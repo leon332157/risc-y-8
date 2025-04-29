@@ -157,6 +157,7 @@ func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logg
 		logger = &l
 	}
 	cpu.log = logger
+	cpu.Halted = false
 	cpu.log.Trace().Msgf("cpu initialized: %+v", &cpu)
 }
 
