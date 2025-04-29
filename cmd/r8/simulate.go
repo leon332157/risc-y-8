@@ -39,6 +39,6 @@ func runSimulate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read input file: %v", err)
 	}
 	sys := simulator.NewSystem(program, false, false)
-	sys.RunForever(nil)
+	sys.RunToEnd(nil)
 	return nil
 }

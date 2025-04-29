@@ -2,13 +2,9 @@ package simulator
 
 import (
 	"fmt"
-	_ "time"
 
 	CPUpkg "github.com/leon332157/risc-y-8/pkg/cpu"
 	"github.com/leon332157/risc-y-8/pkg/memory"
-
-	"os"
-	"runtime/pprof"
 )
 
 type System struct {
@@ -21,7 +17,7 @@ type readStateHook func(sys *System) bool
 
 func NewSystem(initRamContent []uint32, disableCache, disablePipeline bool) System {
 	sys := System{}
-	ram := memory.CreateRAM(100, 8, 3)
+	ram := memory.CreateRAM(100, 8, 100)
 	sys.RAM = &ram
 	sys.CPU = new(CPUpkg.CPU)
 	copy(sys.RAM.Contents, initRamContent)
@@ -46,41 +42,6 @@ func NewSystem(initRamContent []uint32, disableCache, disablePipeline bool) Syst
 	return sys
 }
 
-func (s *System) RunForever(rHook *readStateHook) {
-	f, _ := os.Create("system.pprof")
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
-	cpu := s.CPU
-	for {
-		if cpu.Halted {
-			fmt.Println("Clock:", cpu.Clock) // Print the clock cycle for debugging purposes
-			fmt.Println("PC:", cpu.ProgramCounter)
-			fmt.Println("Cache")
-			cpu.Cache.PrintCache()
-			fmt.Println("Memory")
-			cpu.RAM.PrintMem()
-			cpu.PrintReg()
-			return
-		}
-		if !cpu.Halted {
-			s.RunOneClock(rHook)
-			//time.Sleep(time.Millisecond * 100) // Sleep for 100 milliseconds to simulate clock cycles
-		}
-		if true {
-			fmt.Println("Clock:", cpu.Clock) // Print the clock cycle for debugging purposes
-			fmt.Println("PC:", cpu.ProgramCounter)
-			fmt.Println("Cache")
-			cpu.Cache.PrintCache()
-			fmt.Println("Memory")
-			cpu.RAM.PrintMem()
-			cpu.PrintReg()
-		}
-		if rHook != nil {
-			(*rHook)(s)
-		}
-	}
-}
-
 func (s *System) RunOneClock(rHook *readStateHook) {
 	cpu := s.CPU
 	if !cpu.Halted {
@@ -91,7 +52,19 @@ func (s *System) RunOneClock(rHook *readStateHook) {
 		(*rHook)(s)
 	}
 	if cpu.Halted {
-		panic("CPU halted")
+		fmt.Println("CPU halted")
 	}
+}
 
+func (s *System) RunToEnd(rHook *readStateHook) {
+	for !s.CPU.Halted {
+		s.RunOneClock(rHook)
+	}
+	s.CPU.PrintReg()
+	s.CPU.RAM.PrintMem()
+	s.CPU.Cache.PrintCache()
+	fmt.Printf("PC: %d Cycles: %d\n", s.CPU.ProgramCounter,s.CPU.Clock)
+	if rHook != nil {
+		(*rHook)(s)
+	}
 }
