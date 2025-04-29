@@ -128,7 +128,6 @@ func initialModel(s *simulator.System) model {
 		instr:     ti,
 		lastInstr: "",
 		system:    s,
-		msg:       "none",
 		ramViewport: ramVP,
 		cacheViewport: cacheVP,
 		cacheHeaderViewport: cacheHeaderVP,
@@ -288,10 +287,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.instr.Reset()
 		case "f":
 			m.ramViewport.ScrollUp(16)
+			m.instr.Reset()
 		case "j":
 			m.cacheViewport.ScrollDown(8)
+			m.instr.Reset()
 		case "k":
 			m.cacheViewport.ScrollUp(8)
+			m.instr.Reset()
 		}
 	case tea.WindowSizeMsg:
 		// handle resize if needed
