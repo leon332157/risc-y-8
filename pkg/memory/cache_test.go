@@ -1,7 +1,9 @@
 package memory
 
 import (
+	"math/rand"
 	"testing"
+	"time"
 )
 
 func TestFindIndexAndTagAndOffset(t *testing.T) {
@@ -380,4 +382,82 @@ func TestCacheFilledTwice(t *testing.T) {
 
 	// Each data item added sequentially, pay attention to second pass
 	// Final cache should show data values 64 to 127
+}
+
+func TestCacheFilledLRU(t *testing.T) {
+	mem := CreateRAM(32, 8, 5)
+	c := CreateCacheDefault(&mem)
+
+	for i := range 128 {
+		for range 6 {
+			c.Write(uint(i), MEMORY_STAGE, uint32(i))
+		}
+	}
+
+	// Last lines added are always the second line in the set, so first line should be LRU 1
+	for set := range c.Sets {
+		if c.Contents[set][0].LRU != 1 || c.Contents[set][1].LRU != 0 {
+			t.Error("lru not update properly with eviction")
+		}
+	}
+
+}
+
+func TestCacheFilledLRUManyWays(t *testing.T) {
+	mem := CreateRAM(32, 8, 5)
+	c := CreateCache(8, 3, 4, 0, &mem) // 8 sets, 3 ways => 24 lines total * 4 wpl => 96 words to fill
+	rand.Seed(time.Now().UnixNano())
+
+	// Check initial LRU
+	for i := range int(c.Sets) {
+		if c.Contents[i][0].LRU != 2 || c.Contents[i][1].LRU != 1 || c.Contents[i][2].LRU != 0 {
+			t.Errorf("lru did not initialize correctly")
+		}
+	}
+
+	// Fill the cache once with random numbers
+	for i := range 96 {
+		for range 6 {
+			c.Write(uint(i), MEMORY_STAGE, rand.Uint32())
+		}
+	}
+
+	// Check LRU, added sequentially, LRU should be 2, 1, 0
+	for i := range int(c.Sets) {
+		if c.Contents[i][0].LRU != 2 || c.Contents[i][1].LRU != 1 || c.Contents[i][2].LRU != 0 {
+			t.Errorf("lru did not update properly with initial fill")
+		}
+	}
+
+	// Add to every first line (8 * 4 = 36 words to fill)
+	for i := 96; i < 128; i++ {
+		for range 6 {
+			c.Write(uint(i), MEMORY_STAGE, rand.Uint32())
+		}
+	}
+
+	// Check LRU, added to every set's first line, LRU should be 0, 2, 1
+	for i := range int(c.Sets) {
+		if c.Contents[i][0].LRU != 0 || c.Contents[i][1].LRU != 2 || c.Contents[i][2].LRU != 1 {
+			t.Errorf("lru did not update properly with second fill")
+		}
+	}
+
+	// Add data to one line in every set, evict lru and update correctly (should evict 2)
+	for i := range 32 {
+		c.Write(uint(i), MEMORY_STAGE, 0xBEEEEEEF)
+	}
+	
+	// Check LRU and data, added to every set's second line, LRU should be 1, 0, 2
+	for i := range int(c.Sets) {
+		if c.Contents[i][0].LRU != 1 || c.Contents[i][1].LRU != 0 || c.Contents[i][2].LRU != 2 {
+			t.Errorf("eviction error with lru")
+		}
+		for j := range c.WordsPerLine {
+			if c.Contents[i][1].Data[j] != 0xBEEEEEEF {
+				t.Errorf("data not updated int the right place")
+			}
+		}
+	}
+
 }
