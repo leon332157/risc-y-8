@@ -118,6 +118,7 @@ func (w *WriteBackStage) Squash() bool {
 	w.pipeline.cpu.unblockIntR(w.currInst.BaseInstruction.RMem)
 	w.pipeline.cpu.unblockIntR(w.currInst.RDestAux)
 	w.currInst = nil
+	w.pipeline.canFetch = true
 	return true
 }
 

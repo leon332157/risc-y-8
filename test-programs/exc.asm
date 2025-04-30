@@ -2,17 +2,17 @@ ldi r1, 100# max array element
 ldi bp, 0x50# array base address
 mov sp, bp# store base address of array at 50
 push r1
-sub r1, 20# push array elements to stack starting at 100 (r1) at increments of 20
+sub r1, 1# push array elements to stack starting at 100 (r1) at increments of 20
 ldi r10, 3
 cmp r1, 0
 bne [r10]
 xor r2, r2
-ldi r3, 3
+ldi r3, 98
 ldi r11, 36# OUTER LOOP START
 cmp r3, r2
 blt [r11]
 ldi r4, 0
-ldi r5, 3
+ldi r5, 98
 sub r5, r2
 ldi r12, 33# INNER LOOP START
 cmp r5, r4
