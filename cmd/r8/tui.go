@@ -5,11 +5,11 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
+	"math/bits"
 	"os"
 	"strconv"
 	"strings"
-	"math"
-	"math/bits"
 
 	"github.com/leon332157/risc-y-8/cmd/r8/simulator"
 	"github.com/rs/zerolog"
@@ -85,9 +85,9 @@ type model struct {
 	instr     textinput.Model
 	lastInstr string
 
-	system      *simulator.System
-	ramViewport viewport.Model
-	cacheViewport viewport.Model
+	system              *simulator.System
+	ramViewport         viewport.Model
+	cacheViewport       viewport.Model
 	cacheHeaderViewport viewport.Model
 }
 
@@ -104,17 +104,17 @@ func initialModel(s *simulator.System) model {
 
 	// +2 for 0x prefix
 	// +1 for left vertical line
-	ramLinesSize := uint(math.Log(float64(s.RAM.SizeWords())) / math.Log(16)) + 2 + 1 + 1
-	ramDataSize := s.RAM.WordsPerLine * 10 + s.RAM.WordsPerLine + 1
+	ramLinesSize := uint(math.Log(float64(s.RAM.SizeWords()))/math.Log(16)) + 2 + 1 + 1
+	ramDataSize := s.RAM.WordsPerLine*10 + s.RAM.WordsPerLine + 1
 	ramVPWidth := ramDataSize + ramLinesSize
 	ramVP := viewport.New(int(ramVPWidth), tableHeight)
 
 	offsetBits := bits.Len32(uint32(s.Cache.WordsPerLine)) - 1
 	indexBits := bits.Len32(uint32(s.Cache.Sets)) - 1
-	memSize := s.RAM.SizeWords()
-	totalBits := int(math.Log2(float64(memSize)))
+	// memSize := s.RAM.SizeWords()
+	totalBits := 32
 
-	sizeTag := max(uint(totalBits - indexBits - int(offsetBits)), 3) + 2
+	sizeTag := max(uint(totalBits-indexBits-int(offsetBits)), 3) + 2
 	sizeIndex := max(uint(indexBits), 3) + 1
 	sizeData := (s.Cache.WordsPerLine * 8) + (s.Cache.WordsPerLine - 1) + 2 + 1
 	sizeValid := uint(5 + 1)
@@ -123,13 +123,13 @@ func initialModel(s *simulator.System) model {
 	cacheVPWidth := sizeTag + sizeIndex + sizeData + sizeValid + sizeLRU + 5
 
 	cacheHeaderVP := viewport.New(int(cacheVPWidth), headerSize)
-	cacheVP := viewport.New(int(cacheVPWidth), tableHeight - headerSize)
+	cacheVP := viewport.New(int(cacheVPWidth), tableHeight-headerSize)
 	return model{
-		instr:     ti,
-		lastInstr: "",
-		system:    s,
-		ramViewport: ramVP,
-		cacheViewport: cacheVP,
+		instr:               ti,
+		lastInstr:           "",
+		system:              s,
+		ramViewport:         ramVP,
+		cacheViewport:       cacheVP,
 		cacheHeaderViewport: cacheHeaderVP,
 	}
 }
@@ -143,11 +143,11 @@ func getCacheRows(ca *memory.CacheType) [][]string {
 
 	offsetBits := bits.Len32(uint32(ca.WordsPerLine)) - 1
 	indexBits := bits.Len32(uint32(ca.Sets)) - 1
-	memSize := ca.LowerLevel.SizeWords()
-	totalBits := int(math.Log2(float64(memSize)))
-
+	//memSize := ca.LowerLevel.SizeWords()
+	//totalBits := int(math.Log2(float64(memSize)))
+	totalBits := 32
 	sizeTag := uint(totalBits - indexBits - int(offsetBits)) //+ 1
-	sizeIndex := uint(indexBits) //+ 1
+	sizeIndex := uint(indexBits)                             //+ 1
 
 	tagStr := fmt.Sprintf("%%0%db", sizeTag)
 	idxStr := fmt.Sprintf("%%0%db", sizeIndex)
@@ -159,8 +159,10 @@ func getCacheRows(ca *memory.CacheType) [][]string {
 		for j := range ca.Ways {
 			data := ca.Contents[i][j]
 
-			validStr :="%t"
-			if data.Valid { validStr = validStr + strings.Repeat(" ", 1) }
+			validStr := "%t"
+			if data.Valid {
+				validStr = validStr + strings.Repeat(" ", 1)
+			}
 
 			row := []string{
 				fmt.Sprintf(tagStr, data.Tag),
@@ -179,7 +181,7 @@ func getRAMRows(ram *memory.RAM) [][]string {
 	addr := 0
 	for i := range int(ram.NumLines) {
 		row := []string{}
-		row = append(row, fmt.Sprintf("0x%X", i * int(ram.WordsPerLine)))
+		row = append(row, fmt.Sprintf("0x%X", i*int(ram.WordsPerLine)))
 		for range ram.WordsPerLine {
 			row = append(row, fmt.Sprintf("0x%08X", ram.Contents[addr]))
 			addr++
@@ -203,18 +205,18 @@ func getRegVals(control *cpu.CPU) [][]string {
 		if i == 0 {
 			flags := make([]string, 4)
 			if control.ALU.GetCF() {
-				flags =append(flags,style.Foreground(lipgloss.Color("#CC6CE7")).Render("CF"))
+				flags = append(flags, style.Foreground(lipgloss.Color("#CC6CE7")).Render("CF"))
 			}
 			if control.ALU.GetOVF() {
-				flags  = append(flags,style.Foreground(lipgloss.Color("#CC6CE7")).Render("OF"))
+				flags = append(flags, style.Foreground(lipgloss.Color("#CC6CE7")).Render("OF"))
 			}
 			if control.ALU.GetSF() {
-				flags = append(flags,style.Foreground(lipgloss.Color("#CC6CE7")).Render("SF"))
+				flags = append(flags, style.Foreground(lipgloss.Color("#CC6CE7")).Render("SF"))
 			}
 			if control.ALU.GetZF() {
-				flags = append(flags,style.Foreground(lipgloss.Color("#CC6CE7")).Render("ZF"))
+				flags = append(flags, style.Foreground(lipgloss.Color("#CC6CE7")).Render("ZF"))
 			}
-			row = []string{style.Render("Rflag"),strings.Join(flags, "")}
+			row = []string{style.Render("Rflag"), strings.Join(flags, "")}
 		} else {
 			row = []string{style.Render(fmt.Sprintf("R%d", i)), fmt.Sprintf("%08X", control.ReadIntRNoBlock(uint8(i)))}
 		}
@@ -350,10 +352,9 @@ func (m model) getCacheSize() []uint {
 
 	offsetBits := bits.Len32(uint32(m.system.Cache.WordsPerLine)) - 1
 	indexBits := bits.Len32(uint32(m.system.Cache.Sets)) - 1
-	memSize := m.system.RAM.SizeWords()
-	totalBits := int(math.Log2(float64(memSize)))
+	totalBits := 32
 
-	sizeTag := max(uint(totalBits - indexBits - int(offsetBits)), 3)
+	sizeTag := max(uint(totalBits-indexBits-int(offsetBits)), 3)
 	sizeIndex := max(uint(indexBits), 3)
 	sizeData := (m.system.Cache.WordsPerLine * 8) + (m.system.Cache.WordsPerLine - 1) + 2
 
@@ -365,7 +366,6 @@ func (m model) getCacheSize() []uint {
 }
 
 func (m model) drawCache() string {
-
 	headerStr := m.cacheHeaderViewport.View()
 	content := m.cacheViewport.View()
 
@@ -379,26 +379,28 @@ func (m model) drawCache() string {
 }
 
 func (m model) drawCacheHeaderTable() string {
-
+	if (disableCache) {
+		return "Cache Disabled"
+	}
 	sizeInfo := m.getCacheSize()
 	tagSize := sizeInfo[0]
 	indexSize := sizeInfo[1]
 	dataSize := sizeInfo[2]
 
-	tagHeader := "Tag" + strings.Repeat(" ", int(tagSize) - 3)
-	indexHeader := "Idx" + strings.Repeat(" ", int(indexSize) - 3)
-	dataHeader := "Data" + strings.Repeat(" ", int(dataSize) - 4)
+	tagHeader := "Tag" + strings.Repeat(" ", int(tagSize)-3)
+	indexHeader := "Idx" + strings.Repeat(" ", int(indexSize)-3)
+	dataHeader := "Data" + strings.Repeat(" ", int(dataSize)-4)
 
 	header := table.New().
 		Headers(tagHeader, indexHeader, dataHeader, "Valid", "LRU").
 		Border(lipgloss.NormalBorder())
 
-	return header.Render()	
+	return header.Render()
 
 }
 
 func (m model) drawCacheBodyTable() string {
-	
+
 	rows := getCacheRows(m.system.Cache)
 
 	cacheTable := table.New().

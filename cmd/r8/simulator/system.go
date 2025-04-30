@@ -21,9 +21,9 @@ func NewSystem(initRamContent []uint32, disableCache, disablePipeline bool) Syst
 	sys.RAM = &ram
 	sys.CPU = new(CPUpkg.CPU)
 	copy(sys.RAM.Contents, initRamContent)
-	cache := memory.CreateCacheDefault(sys.RAM) // Create a cache with default settings, 8 sets, 2 ways, no delay                  // Create a new ALU instance
+	cache := memory.CreateCache(16, 2, 4, 5, sys.RAM)
 	if disableCache {
-		cache = memory.CreateCache(8, 2, 1, 0, sys.RAM) // make one word per line if cache disable
+		cache = memory.CreateCache(0, 0, 0, 0, sys.RAM)
 	}
 	sys.Cache = &cache
 	pipeline := CPUpkg.NewPipeline(sys.CPU, disablePipeline) // scalar is false

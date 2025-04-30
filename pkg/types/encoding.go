@@ -34,7 +34,7 @@ func (inst *BaseInstruction) Encode() uint32 {
 
 		encoded |= uint32(inst.RMem) << 4     // 5 bit RMem (Bits 8-4)
 		encoded |= uint32(inst.CtrlFlag) << 9 // 4 bit Flag (Bits 12-9)
-		encoded |= uint32(inst.MemMode) << 13 // 3 bit Mode (Bits 15-13)
+		encoded |= uint32(inst.CtrlMode) << 13 // 3 bit Mode (Bits 15-13)
 		encoded |= uint32(inst.Imm) << 16     // 16 bit Immediate (Bits 31-16)
 
 	}
@@ -70,7 +70,7 @@ func (inst *BaseInstruction) Decode(encoded uint32) {
 
 		inst.RMem = uint8((encoded >> 4) & 0x1F)    // 5 bit RMem (Bits 8-4)
 		inst.CtrlFlag = uint8((encoded >> 9) & 0xF) // 4 bit Flag (Bits 12-9)
-		inst.MemMode = uint8((encoded >> 13) & 0x7) // 3 bit Mode (Bits 15-13)
+		inst.CtrlMode = uint8((encoded >> 13) & 0x7) // 3 bit Mode (Bits 15-13)
 		inst.Imm = int16((encoded >> 16) & 0xFFFF)  // 16 bit Immediate (Bits 31-16)
 
 	default:

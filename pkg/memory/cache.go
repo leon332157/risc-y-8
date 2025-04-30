@@ -2,7 +2,7 @@ package memory
 
 import (
 	"fmt"
-	"math"
+	//"math"
 	"math/bits"
 )
 
@@ -97,9 +97,9 @@ func (c *CacheType) FindIndexAndTag(addr uint) IdxTag {
 	index := (addr >> offsetBits) & ((1 << indexBits) - 1)
 
 	// Get tag bits based on total bits needed for mem address
-	memSize := c.LowerLevel.SizeWords()
-	// totalBits := 32 <- was originally this
-	totalBits := int(math.Log2(float64(memSize))) // Total bits needed for memory address
+	//memSize := c.LowerLevel.SizeWords()
+	totalBits := 32 //<- was originally this
+	//totalBits := int(math.Log2(float64(memSize))) // Total bits needed for memory address
 	tagBits := totalBits - indexBits - int(offsetBits)
 
 	// Get tag using the address

@@ -357,7 +357,7 @@ func (e *ExecuteStage) Control() {
 				inst.BranchTaken = true
 			}
 		}
-		e.instStr += fmt.Sprintf("CtrlMode: %x\nCtrlFlag: %x\nDestMemAddr: %x\nRDestAux: %x\nAuxVal: %x\nBranchTaken: %v\n", inst.BaseInstruction.CtrlMode, inst.BaseInstruction.CtrlFlag, inst.DestMemAddr, inst.RDestAux, inst.ResultAux, inst.BranchTaken)
+		e.instStr += fmt.Sprintf("CtrlMode: %x\nCtrlFlag: %x\nDestMemAddr: %x\nRDestAux: %x\nAuxVal: %x\nBranchTaken: %v", inst.BaseInstruction.CtrlMode, inst.BaseInstruction.CtrlFlag, inst.DestMemAddr, inst.RDestAux, inst.ResultAux, inst.BranchTaken)
 		e.state = EXEC_done
 		return
 	}
@@ -374,10 +374,8 @@ func (e *ExecuteStage) Execute() {
 	e.instStr = fmt.Sprintf("State: %v\n", lookUpStateExec(e.state))
 	e.pipeline.sTracef(e, "Executing instruction: %+v\n", e.currInst)
 	e.pipeline.sTracef(e, "Executing instruction base: %+v\n", *e.currInst.BaseInstruction)
-	e.instStr += fmt.Sprintf("OpType: %#v\nCyl Left before: %v\n", types.LookUpOpType(e.currInst.BaseInstruction.OpType), e.cyclesLeft)
-	if e.state < EXEC_free {
-		panic("nope")
-	}
+	e.instStr += fmt.Sprintf("OpType: %s\n", types.LookUpOpType(e.currInst.BaseInstruction.OpType))
+	e.instStr += fmt.Sprintf("Cyl Left before: %v\n", e.cyclesLeft)
 	if e.state != EXEC_done {
 		e.pipeline.sTrace(e, "free, executing")
 		switch e.currInst.BaseInstruction.OpType {
@@ -392,7 +390,7 @@ func (e *ExecuteStage) Execute() {
 		default:
 			panic("unsupported instruction type in Execute stage") // Handle unsupported instruction types
 		}
-		e.instStr += fmt.Sprintf("\nCyl Left after: %v\n", e.cyclesLeft)
+		//e.instStr += fmt.Sprintf("\nCyl Left after: %v\n", e.cyclesLeft)
 	} else {
 		e.pipeline.sTrace(e, "Already executed instruction, not executing")
 	}

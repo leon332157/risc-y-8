@@ -44,7 +44,7 @@ func (w *WriteBackStage) Execute() {
 		w.instStr = "<bubble>"
 		return
 	}
-	w.instStr = fmt.Sprintf("OpType: %x\n", w.currInst.BaseInstruction.OpType)
+	w.instStr = fmt.Sprintf("OpType: %s\n", types.LookUpOpType(w.currInst.BaseInstruction.OpType))
 	w.instStr += fmt.Sprintf("Rd: %x\n", w.currInst.BaseInstruction.Rd)
 	w.instStr += fmt.Sprintf("Result: %x\n", w.currInst.Result)
 	w.instStr += fmt.Sprintf("RDestAux: %x\n", w.currInst.RDestAux)

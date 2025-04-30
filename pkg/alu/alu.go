@@ -20,6 +20,10 @@ func SignExtend(val uint32) int64 {
 	return int64(int32(val))
 }
 
+func SignBit(val uint32) uint32 {
+	return val & 0x80000000
+}
+
 func (alu *ALU) ResetFlags() {
 	alu.FlagRegister = 0
 }
@@ -74,7 +78,8 @@ func (alu *ALU) Add(augend, addend uint32) uint32 {
 		alu.FlagRegister |= SF
 	}
 
-	if ((augend^addend)&0x80000000 == 0) && ((augend^sum)&0x80000000 != 0) {
+	overflow := (SignBit(sum) ^ SignBit(addend)&(SignBit(sum)^SignBit(augend))) == 1
+	if overflow {
 		alu.FlagRegister |= OVF
 	}
 
@@ -100,7 +105,8 @@ func (alu *ALU) Sub(minuend, subtrahend uint32) uint32 {
 		alu.FlagRegister |= SF
 	}
 
-	if ((minuend^subtrahend)&0x80000000 == 0) && ((minuend^diff)&0x80000000 != 0) {
+	overflow := (SignBit(diff)^SignBit(minuend))&(SignBit(diff)^SignBit(subtrahend)) == 1
+	if overflow {
 		alu.FlagRegister |= OVF
 	}
 

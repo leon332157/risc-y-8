@@ -18,7 +18,7 @@
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}/main.go",
-            "args": ["sim","demobig.bin"],
+            "args": ["sim","loadstore.bin"],
         },
         {
             "name": "Launch Package",
