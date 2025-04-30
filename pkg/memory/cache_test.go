@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"testing"
 	"time"
+	"fmt"
 )
 
 func TestFindIndexAndTagAndOffset(t *testing.T) {
@@ -460,4 +461,65 @@ func TestCacheFilledLRUManyWays(t *testing.T) {
 		}
 	}
 
+}
+
+func TestZeroLineZeroDelayCacheWrite(t *testing.T) {
+	mem := CreateRAM(32, 8, 5)
+	c := CreateCache(0, 0, 0, 0, &mem)
+
+	for i := range 20 {
+		for range 6 {
+			c.Write(uint(i), MEMORY_STAGE, uint32(i))
+		}
+	}
+
+	for i := range 20 {
+		if mem.Contents[i] != uint32(i) {
+			t.Errorf("wanted %d, got ", mem.Contents[i])
+		}
+	}
+
+}
+
+func TestDisabledCacheRead(t *testing.T) {
+	mem := CreateRAM(32, 8, 5)
+	c := CreateCache(0, 0, 0, 0, &mem)
+
+	mem.Contents[0] = 0xBEEF
+	mem.Contents[1] = 0xBEEEF
+	mem.Contents[2] = 0xBEEEEF
+	mem.Contents[3] = 0xDEAAAD
+	mem.Contents[4] = 0xDAD
+	mem.Contents[5] = 0xFAD
+
+	
+	var (
+		beef1 uint32
+		beef2 uint32
+		beef3 uint32
+		dead uint32
+		dad uint32
+		fad uint32
+	)
+
+	for range 6 {
+		beef1 = c.Read(0, FETCH_STAGE).Value
+	}
+	for range 6 {
+		beef2 = c.Read(1, FETCH_STAGE).Value
+	}
+	for range 6 {
+		beef3 = c.Read(2, FETCH_STAGE).Value
+	}
+	for range 6 {
+		dead = c.Read(3, FETCH_STAGE).Value
+	}
+	for range 6 {
+		dad = c.Read(4, FETCH_STAGE).Value
+	}
+	for range 6 {
+		fad = c.Read(5, FETCH_STAGE).Value
+	}
+
+	fmt.Printf("%08x, %08x, %08x, %08x, %08x, %08x", beef1, beef2, beef3, dead, dad, fad)
 }

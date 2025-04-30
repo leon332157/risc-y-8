@@ -126,6 +126,24 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 		return ReadResult{WAIT, 0}
 	}
 
+	// If cache is disabled, read straight from memory
+	if c.Sets == 0 || c.Ways == 0 {
+		read := c.LowerLevel.Read(addr, LAST_LEVEL_CACHE)
+		switch read.State {
+		case WAIT:
+			//fmt.Println("Cache read, waiting for ram")
+			return ReadResult{WAIT_NEXT_LEVEL, 0}
+		case WAIT_NEXT_LEVEL:
+			//fmt.Println("Cache read, waiting for next level memory")
+			return ReadResult{WAIT_NEXT_LEVEL, 0}
+		case SUCCESS:
+			return read
+		default:
+			return ReadResult{read.State, 0}
+			// do nothing
+		}
+	}
+
 	// Given the address, find the index of the set and tag
 	idxTag := c.FindIndexAndTag(addr)
 	index, tag, offset := idxTag.index, idxTag.tag, idxTag.offset
@@ -166,6 +184,19 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	if !c.service(who) {
 		return WriteResult{WAIT, 0}
 	}
+	// If cache is disabled, write straight to memory
+	if c.Sets == 0 || c.Ways == 0 {
+		written := c.LowerLevel.Write(addr, LAST_LEVEL_CACHE, val)
+		switch written.State {
+		case WAIT, WAIT_NEXT_LEVEL:
+			return WriteResult{WAIT_NEXT_LEVEL, 0} // Waiting for next level memory to service the request
+		case SUCCESS:
+			return WriteResult{SUCCESS, written.Written} // Successfully wrote to memory (write-through)
+		default:
+			return WriteResult{FAILURE_INVALID_STATE, 0} // Failure to write to memory, return failure
+		}
+	}
+
 	// Given address find the set index and tag
 	idxTag := c.FindIndexAndTag(addr)
 	index, tag, offset := idxTag.index, idxTag.tag, idxTag.offset
