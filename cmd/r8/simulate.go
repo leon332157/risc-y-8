@@ -24,6 +24,8 @@ var (
 )
 
 func init() {
+	simulateCmd.Flags().BoolVar(&disableCache, "disable-cache", false, "Disable cache")
+	simulateCmd.Flags().BoolVar(&disablePipeline, "disable-pipeline", false, "Disable pipeline")
 	rootCmd.AddCommand(simulateCmd)
 }
 
@@ -40,7 +42,7 @@ func runSimulate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read input file: %v", err)
 	}
-	sys := simulator.NewSystem(program, false, false)
+	sys := simulator.NewSystem(program, disableCache, disablePipeline)
 	sys.RunToEnd(nil)
 	return nil
 }

@@ -488,7 +488,7 @@ func parseRR(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
 		break
 	case "ror":
 		break
-	case "cmp", "cpy", "nsa":
+	case "cmp", "cpy", "nsa","mov":
 		break
 	default:
 		err = fmt.Errorf("[parserRR] invalid instruction: %s", inst.Mnemonic)

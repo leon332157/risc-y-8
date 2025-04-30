@@ -10,10 +10,10 @@ type ALU struct {
 }
 
 const (
-	CF  uint32 = 1 << 0 // Carry Flag
-	OVF uint32 = 1 << 1 // Overflow Flag
-	ZF  uint32 = 1 << 2 // Zero Flag
-	SF  uint32 = 1 << 3 // Sign Flag
+	CF  uint32 = 0b1000 // Carry Flag
+	OVF uint32 = 0b0100 // Overflow Flag
+	ZF  uint32 = 0b0001 // Zero Flag
+	SF  uint32 = 0b0010 // Sign Flag
 )
 
 func SignExtend(val uint32) int64 {

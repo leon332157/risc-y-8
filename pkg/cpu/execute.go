@@ -214,6 +214,7 @@ func (e *ExecuteStage) ALURR() {
 		case types.REG_CMP:
 			e.pipeline.cpu.unblockIntR(inst.BaseInstruction.Rd)
 			e.pipeline.cpu.ALU.Sub(op1, op2)
+			inst.BaseInstruction.Rd = 0
 		case types.REG_CPY:
 			inst.Result = op2
 		case types.REG_NSA:

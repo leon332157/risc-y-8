@@ -31,9 +31,7 @@ var Message string = "none"
 var (
 	tuiCmd = &cobra.Command{
 		Use: "tui <flags> [binary file]",
-		//Aliases: []string{},
 		Short: "Simulate with TUI RISC-Y-8 binary",
-		//Long:    "Assemble RISC-Y-8 assembly code into machine code",
 		RunE:    runTui,
 		Args:    cobra.ExactArgs(1),
 		Example: "r8 tui input.bin",
@@ -379,7 +377,7 @@ func (m model) drawCache() string {
 }
 
 func (m model) drawCacheHeaderTable() string {
-	if (disableCache) {
+	if m.system.Cache.Sets == 0 {
 		return "Cache Disabled"
 	}
 	sizeInfo := m.getCacheSize()

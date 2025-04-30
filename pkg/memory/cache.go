@@ -46,7 +46,7 @@ func CreateCache(numSets, numWays, wordsPerLine, delay uint, lower Memory) Cache
 	r := MemoryRequestState{
 		NONE,  // No requester
 		delay, // Delay cycles for servicing requests
-		0,
+		int(delay),
 	}
 
 	return CacheType{
@@ -69,22 +69,37 @@ func (c *CacheType) IsBusy() bool {
 }
 
 func (c *CacheType) service(who Requester) bool {
+	if c.Sets == 0 || c.Ways == 0 {
+		return true
+	}
 	// Check if memory is busy
+	if c.MemoryRequestState.requester == NONE {
+		// First request
+		c.MemoryRequestState.requester = who
+		c.MemoryRequestState.CyclesLeft = int(c.MemoryRequestState.Delay) // Reset the delay counter
+	}
 	if c.MemoryRequestState.CyclesLeft > 0 {
 		if c.MemoryRequestState.requester == who {
 			// if the same requester, then we decrement cycle left
 			c.MemoryRequestState.CyclesLeft--
-			return true // still servicing
+			if c.MemoryRequestState.CyclesLeft == 0 {
+				c.MemoryRequestState.requester = NONE
+				return true
+			} else {
+				return false
+			}
 		} else {
 			// different requester, cannot service
 			return false
 		}
-	} else {
+	}
+	panic("oop cache")
+	 /* else {
 		// Memory is idle, can service new request
 		c.MemoryRequestState.CyclesLeft = int(c.MemoryRequestState.Delay) // Reset the delay counter
 		c.MemoryRequestState.requester = who                              // Set the requester
 		return true
-	}
+	} */
 }
 
 func (c *CacheType) FindIndexAndTag(addr uint) IdxTag {
@@ -121,14 +136,14 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	if who >= 0 {
 		panic("Cache Read: Non-pipeline requester cannot read from cache")
 	}
-
+		
 	if !c.service(who) {
 		return ReadResult{WAIT, 0}
 	}
-
+	
 	// If cache is disabled, read straight from memory
 	if c.Sets == 0 || c.Ways == 0 {
-		read := c.LowerLevel.Read(addr, LAST_LEVEL_CACHE)
+		read := c.LowerLevel.Read(addr, who)
 		switch read.State {
 		case WAIT:
 			//fmt.Println("Cache read, waiting for ram")
@@ -158,7 +173,7 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	}
 
 	// Else, cache miss: read LINE from memory, load into cache, return data (no need to write back to mem)
-	read := c.LowerLevel.ReadMulti(addr, c.WordsPerLine, offset, LAST_LEVEL_CACHE) // TODO: this is readMulti
+	read := c.LowerLevel.ReadMulti(addr, c.WordsPerLine, offset, who) // TODO: this is readMulti
 	switch read.State {
 	case WAIT:
 		//fmt.Println("Cache read, waiting for ram")
@@ -186,7 +201,7 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	}
 	// If cache is disabled, write straight to memory
 	if c.Sets == 0 || c.Ways == 0 {
-		written := c.LowerLevel.Write(addr, LAST_LEVEL_CACHE, val)
+		written := c.LowerLevel.Write(addr, who, val)
 		switch written.State {
 		case WAIT, WAIT_NEXT_LEVEL:
 			return WriteResult{WAIT_NEXT_LEVEL, 0} // Waiting for next level memory to service the request
@@ -231,7 +246,7 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 		c.UpdateLRU(index, lruIdx)
 	}
 
-	written := c.LowerLevel.Write(addr, LAST_LEVEL_CACHE, val)
+	written := c.LowerLevel.Write(addr, who, val)
 	switch written.State {
 	case WAIT, WAIT_NEXT_LEVEL:
 		return WriteResult{WAIT_NEXT_LEVEL, 0} // Waiting for next level memory to service the request
