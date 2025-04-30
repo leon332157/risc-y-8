@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/leon332157/risc-y-8/cmd/r8/simulator"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 )
 
@@ -27,13 +28,14 @@ func init() {
 }
 
 func runSimulate(cmd *cobra.Command, args []string) error {
+	zerolog.SetGlobalLevel(zerolog.Disabled)
 	infile := args[0]
 	f, err := os.ReadFile(infile)
 	if err != nil {
 		return fmt.Errorf("failed to open input file: %v", err)
 	}
 	program := make([]uint32, len(f)/4)
-	bytesReader:= bytes.NewReader(f)
+	bytesReader := bytes.NewReader(f)
 	err = binary.Read(bytesReader, binary.LittleEndian, &program)
 	if err != nil {
 		return fmt.Errorf("failed to read input file: %v", err)
