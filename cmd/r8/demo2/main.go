@@ -32,8 +32,8 @@ func main() {
 		panic(err)
 	}
 	instructions := assembler.EncInstructions(res)
-	system := simulator.NewSystem(instructions)
-	system.RunForever(nil)
+	system := simulator.NewSystem(instructions,false,false)
+	system.RunToEnd(nil)
 }
 
 // richard original code
