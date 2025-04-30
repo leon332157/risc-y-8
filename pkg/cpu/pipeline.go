@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
+	
 	"github.com/leon332157/risc-y-8/pkg/types"
 	"github.com/rs/zerolog"
 )
@@ -141,9 +141,9 @@ type InstructionIR struct {
 	Operand        uint32
 	Result         uint32 // Calculated as "result = Rd op Rs/imm"
 	RDestAux       uint8  // Auxiliary register destination, used in some instructions (like PUSH, POP, CALL)
+	ResultAux      uint32 // Auxiliary Result of the instruction, used in some instructions (like PUSH, POP, CALL)
 	DestMemAddr    uint32 // Memory address for load/store operations, and branch destination
 	BranchTaken    bool
-	WriteBack      bool
 	rawInstruction uint32 // The instruction to be executed
 }
 

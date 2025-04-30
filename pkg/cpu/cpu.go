@@ -60,6 +60,10 @@ func (cpu *CPU) blockIntR(r uint8) {
 		// Handle out of bounds access, if necessary
 		cpu.log.Panic().Msgf("attempted to block an out of bounds register: %v", r)
 	}
+	if r == 0 {
+		cpu.log.Info().Msg("attempted to block r0, ignoring")
+		return // r0 is always 0, ignore blocking
+	}
 	cpu.log.Trace().Msgf("Blocking register r%v for reading and writing", r)
 	cpu.IntRegisters[r].ReadEnable = false
 	cpu.IntRegisters[r].WriteEnable = false
@@ -69,6 +73,10 @@ func (cpu *CPU) unblockIntR(r uint8) {
 	// Unblock the register for reading and writing
 	if r >= uint8(len(cpu.IntRegisters)) {
 		cpu.log.Panic().Msgf("attempted to unblock an out of bounds register: %v", r)
+	}
+	if r == 0 {
+		cpu.log.Info().Msg("attempted to unblock r0, ignoring")
+		return // r0 is always 0, ignore unblocking
 	}
 	cpu.log.Trace().Msgf("Unblocking register r%v for reading and writing", r)
 	cpu.IntRegisters[r].ReadEnable = true
@@ -140,15 +148,16 @@ func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logg
 		reg.ReadEnable = true       // Allow reading by default
 		reg.WriteEnable = true      // Allow writing by default
 	}
-	log, err := os.OpenFile("log.txt",os.O_WRONLY|os.O_CREATE|os.O_TRUNC,0o644)
-	if err != nil {
-		panic(err)
-	}
-	l := zerolog.New(zerolog.ConsoleWriter{Out: log, NoColor: true}).With().Caller().Logger()
 	if logger == nil {
+		log, err := os.OpenFile("cpu.log", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+		if err != nil {
+			panic(err)
+		}
+		l := zerolog.New(zerolog.ConsoleWriter{Out: log, NoColor: true}).With().Caller().Logger()
 		logger = &l
 	}
 	cpu.log = logger
+	cpu.Halted = false
 	cpu.log.Trace().Msgf("cpu initialized: %+v", &cpu)
 }
 

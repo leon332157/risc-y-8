@@ -70,6 +70,7 @@ func (f *FetchStage) Execute() {
 	} else {
 		f.pipe.sTrace(f, "Fetched instruction is zero, no valid instruction found")
 		f.InstStr = "raw: 0x0\n"
+		f.pipe.cpu.Halt()
 		return
 	}
 }

@@ -146,24 +146,14 @@ func (mem *RAM) RequestState() MemoryRequestState {
 
 // Prints memory
 func (mem *RAM) PrintMem() {
-
 	addr := 0
-	for i := range mem.NumLines {
-		if i < 10 {
-			fmt.Print(i, "  [ ")
-		} else {
-			fmt.Print(i, " [ ")
-		}
-
+	for i := range uint(mem.NumLines) {
+		row := []string{}
+		header := fmt.Sprintf("0x%03X", i * mem.WordsPerLine)
 		for range mem.WordsPerLine {
-			fmt.Printf("%08x ", mem.Contents[addr])
+			row = append(row, fmt.Sprintf("0x%08X", mem.Contents[addr]))
 			addr++
-			fmt.Print("] ")
 		}
-
-		if addr%8 == 0 && addr != 0 {
-			fmt.Println("")
-		}
+		fmt.Printf("[%v] %v\n",header,row)
 	}
-	fmt.Println()
 }

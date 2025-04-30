@@ -148,7 +148,7 @@ func (m *MemoryStage) Squash() bool {
 }
 
 func (m *MemoryStage) CanAdvance() bool {
-	return !m.waiting
+	return (m.next.CanAdvance()) && !m.waiting 
 }
 
 func (m *MemoryStage) FormatInstruction() string {
