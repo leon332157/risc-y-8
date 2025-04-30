@@ -149,6 +149,9 @@ func (e *ExecuteStage) ALURR() {
 	if e.state == EXEC_free && e.cyclesLeft == 0 {
 		e.pipeline.sTrace(e, "adding at least 1 cycle delay")
 		e.cyclesLeft = 1
+		if e.currInst.BaseInstruction.ALU == types.REG_DIV || e.currInst.BaseInstruction.ALU == types.REG_REM {
+			e.cyclesLeft = DIV_DELAY
+		}
 		e.state = EXEC_busy_int
 		return
 	}
@@ -228,9 +231,12 @@ func (e *ExecuteStage) ALURR() {
 }
 
 func (e *ExecuteStage) calculateMemAddr(base uint32, displacement int32) uint32 {
-	res := (base + uint32(displacement)) % uint32(e.pipeline.cpu.RAM.SizeLines()) // Calculate the memory address for load/store instructions based on the operands
-	e.pipeline.sTracef(e, "calculated memory address: %v", res)                   // For debugging purposes, log the calculated memory address
-	return res
+	res := (int32(base) + displacement) % int32(e.pipeline.cpu.RAM.SizeWords()) // Calculate the memory address for load/store instructions based on the operands
+	e.pipeline.sTracef(e, "calculated memory address: %v", res)                 // For debugging purposes, log the calculated memory address
+	if res < 0 {
+		panic("negative memory address")
+	}
+	return uint32(res)
 }
 
 func (e *ExecuteStage) LoadStore() {
@@ -251,14 +257,14 @@ func (e *ExecuteStage) LoadStore() {
 		inst := e.currInst
 		switch inst.BaseInstruction.MemMode {
 		case types.LDW:
-			e.pipeline.sTracef(e, "ldw, calculating memory addr from %v + %v", inst.Result, int32(inst.Operand))
-			inst.DestMemAddr = e.calculateMemAddr(inst.Result, int32(inst.Operand))
+			e.pipeline.sTracef(e, "ldw, calculating memory addr from %v + %v", inst.DestMemAddr, int32(inst.Operand))
+			inst.DestMemAddr = e.calculateMemAddr(inst.DestMemAddr, int32(inst.Operand))
 		case types.POP, types.PUSH:
 			e.pipeline.sTrace(e, "pop/push")
 			inst.RDestAux = types.IntegerRegisters["sp"]
 		case types.STW:
-			e.pipeline.sTracef(e, "stw, calculating memory addr from %v + %v", inst.Result, int32(inst.Operand))
-			inst.DestMemAddr = e.calculateMemAddr(inst.Result, int32(inst.Operand))
+			e.pipeline.sTracef(e, "stw, calculating memory addr from %v + %v", inst.DestMemAddr, int32(inst.Operand))
+			inst.DestMemAddr = e.calculateMemAddr(inst.DestMemAddr, int32(inst.Operand))
 		default:
 			e.pipeline.log.Panic().Msg("unsupported memory operation for LoadStore type instruction")
 		}
@@ -305,7 +311,7 @@ func (e *ExecuteStage) Control() {
 		case types.GetModeFlag(types.CALL): // call
 			inst.BranchTaken = true
 			inst.RDestAux = types.IntegerRegisters["lr"]
-			inst.ResultAux = inst.DestMemAddr + 1
+			inst.ResultAux = e.pipeline.cpu.ProgramCounter
 		case types.GetModeFlag(types.NE):
 			if false == alu.GetZF() {
 				// if zero flag is zero, branch
@@ -366,17 +372,9 @@ func (e *ExecuteStage) Execute() {
 		return
 	}
 	e.instStr = fmt.Sprintf("State: %v\n", lookUpStateExec(e.state))
-	/* if e.state != EXEC_free {
-		e.cyclesLeft--
-		e.instStr += fmt.Sprintf("Cyl Left: %v", e.cyclesLeft)
-		e.pipeline.sTracef(e, "busy %v cycles left %v", e.state, e.cyclesLeft)
-		if e.cyclesLeft == 0 {
-			e.state = EXEC_free
-		}
-	} */
 	e.pipeline.sTracef(e, "Executing instruction: %+v\n", e.currInst)
 	e.pipeline.sTracef(e, "Executing instruction base: %+v\n", *e.currInst.BaseInstruction)
-	e.instStr += fmt.Sprintf("OpType: %#v\nCyl Left: %v\n", types.LookUpOpType(e.currInst.BaseInstruction.OpType), e.cyclesLeft)
+	e.instStr += fmt.Sprintf("OpType: %#v\nCyl Left before: %v\n", types.LookUpOpType(e.currInst.BaseInstruction.OpType), e.cyclesLeft)
 	if e.state < EXEC_free {
 		panic("nope")
 	}
@@ -394,7 +392,7 @@ func (e *ExecuteStage) Execute() {
 		default:
 			panic("unsupported instruction type in Execute stage") // Handle unsupported instruction types
 		}
-
+		e.instStr += fmt.Sprintf("\nCyl Left after: %v\n", e.cyclesLeft)
 	} else {
 		e.pipeline.sTrace(e, "Already executed instruction, not executing")
 	}

@@ -201,19 +201,20 @@ func getRegVals(control *cpu.CPU) [][]string {
 		}
 		var row = []string{}
 		if i == 0 {
-			row = []string{style.Render("Rflag")}
+			flags := make([]string, 4)
 			if control.ALU.GetCF() {
-				row = append(row, style.Foreground(lipgloss.Color("#CC6CE7")).Render("CF"))
+				flags =append(flags,style.Foreground(lipgloss.Color("#CC6CE7")).Render("CF"))
 			}
 			if control.ALU.GetOVF() {
-				row = append(row, style.Foreground(lipgloss.Color("#CC6CE7")).Render("OVF"))
+				flags  = append(flags,style.Foreground(lipgloss.Color("#CC6CE7")).Render("OF"))
 			}
 			if control.ALU.GetSF() {
-				row = append(row, style.Foreground(lipgloss.Color("#CC6CE7")).Render("SF"))
+				flags = append(flags,style.Foreground(lipgloss.Color("#CC6CE7")).Render("SF"))
 			}
 			if control.ALU.GetZF() {
-				row = append(row, style.Foreground(lipgloss.Color("#CC6CE7")).Render("ZF"))
+				flags = append(flags,style.Foreground(lipgloss.Color("#CC6CE7")).Render("ZF"))
 			}
+			row = []string{style.Render("Rflag"),strings.Join(flags, "")}
 		} else {
 			row = []string{style.Render(fmt.Sprintf("R%d", i)), fmt.Sprintf("%08X", control.ReadIntRNoBlock(uint8(i)))}
 		}
@@ -453,7 +454,6 @@ func (m model) drawPipeline() string {
 }
 
 func (m model) drawRegisters() string {
-	// TODO: create a cpu instance and make int registers
 	rows := getRegVals(m.system.CPU)
 
 	regTable := table.New().

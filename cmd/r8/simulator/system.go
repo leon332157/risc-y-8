@@ -63,7 +63,7 @@ func (s *System) RunToEnd(rHook *readStateHook) {
 	s.CPU.PrintReg()
 	s.CPU.RAM.PrintMem()
 	s.CPU.Cache.PrintCache()
-	fmt.Printf("PC: %d Cycles: %d\n", s.CPU.ProgramCounter,s.CPU.Clock)
+	fmt.Printf("PC: %d Cycles: %d\n", s.CPU.ProgramCounter, s.CPU.Clock)
 	if rHook != nil {
 		(*rHook)(s)
 	}

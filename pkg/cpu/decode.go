@@ -97,12 +97,11 @@ func (d *DecodeStage) Execute() {
 	baseInstruction := d.currInst.BaseInstruction // For convenience
 	//go func() {
 	d.instStr = fmt.Sprintf(
-		"statebefore:%v\nraw: 0x%08x\nOpType: %x\nRd: %x\nDestMemAddr: %x\nRDAux: %x\n",
+		"statebefore:%v\nraw: 0x%08x\nOpType: %x\nRd: %x\nRDAux: %x\n",
 		LookUpStateDec(d.state),
 		d.currInst.rawInstruction,
 		baseInstruction.OpType,
 		baseInstruction.Rd,
-		d.currInst.DestMemAddr,
 		d.currInst.RDestAux)
 	//}()
 	if d.state == DEC_decoded{
@@ -203,10 +202,11 @@ func (d *DecodeStage) Execute() {
 		d.instStr += fmt.Sprintf("ALU: %s\n", types.ImmALUInverse[baseInstruction.ALU])
 		d.instStr += fmt.Sprintf("Imm: %x\n", baseInstruction.Imm)
 	case types.LoadStore:
-		d.instStr += fmt.Sprintf("MemMode: %v\n", baseInstruction.MemMode)
+		d.instStr += fmt.Sprintf("MemMode: %v\nDestMem: %v\n", baseInstruction.MemMode, d.currInst.DestMemAddr)
 	case types.Control:
 		d.instStr += fmt.Sprintf("CtrlMode: %x\n", baseInstruction.CtrlMode)
 		d.instStr += fmt.Sprintf("CtrlFlag: %x\n", baseInstruction.CtrlFlag)
+		d.instStr += fmt.Sprintf("DestMem: %v",d.currInst.DestMemAddr)
 	}
 	d.instStr += fmt.Sprintf("Result: %x\n", d.currInst.Result)
 	d.instStr += fmt.Sprintf("state after dec: %v", LookUpStateDec(d.state))

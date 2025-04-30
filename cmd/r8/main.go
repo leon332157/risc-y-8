@@ -7,7 +7,7 @@ import (
 var (
 	rootCmd = &cobra.Command{
 		Use:   "r8 [command]",
-		Short: "risch-y-8",
+		Short: "risc-y-8",
 		Long:  "risc-y-8 is a cpu architecture with toolchain"}
 )
 

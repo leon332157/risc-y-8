@@ -90,6 +90,8 @@ func (w *WriteBackStage) Execute() {
 		w.pipeline.sTracef(w, "Failed to write back to register r%v: %v\n", w.currInst.RDestAux, status)
 		return
 	}
+	w.pipeline.cpu.unblockIntR(w.currInst.BaseInstruction.RMem)
+	w.pipeline.sTracef(w, "Unblocked register r%v for mem\n", w.currInst.BaseInstruction.RMem) // For debugging purposes
 	w.pipeline.sTracef(w, "Write back completed for instruction: %+v\n", w.currInst) // For debugging purposes
 	w.pipeline.sTracef(w, "Write back completed for base instruction: %+v\n", *w.currInst.BaseInstruction) // For debugging purposes
 	w.currInst = nil
