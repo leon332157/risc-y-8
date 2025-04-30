@@ -7,29 +7,35 @@ ldi r10, 3
 cmp r1, 0
 bne [r10]
 xor r2, r2
-ldi r3, 2
-ldi r11, 34# OUTER LOOP START
+ldi r3, 3
+ldi r11, 36# OUTER LOOP START
 cmp r3, r2
 blt [r11]
-ldi r4, 1
+ldi r4, 0
 ldi r5, 3
-ldi r12, 31# INNER LOOP START
+sub r5, r2
+ldi r12, 33# INNER LOOP START
 cmp r5, r4
 blt [r12]
 mov r6, bp
 add r6, r4
 ldw r8, [r6]
-add r6, 1
-ldw r9, [r6]
-ldi r13, 28
+mov r7, r6
+add r7, 1
+ldw r9, [r7]
+ldi r13, 30
 cmp r8, r9
 blt [r13]
-stw r7, [r8]# store current element value at next element's address
-stw r6, [r9]# store next element value at current element's address
+stw r8, [r7]
+stw r9, [r6]
 add r4, 1
-ldi r14, 15
+ldi r14, 16
 bunc [r14]
 add r2, 1# END INNER LOOP
 ldi r15, 10
 bunc [r15]
-hlt# END OUTER LOOP
+nop
+nop
+nop
+nop
+nop
