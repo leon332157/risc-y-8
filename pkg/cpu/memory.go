@@ -144,6 +144,17 @@ func (m *MemoryStage) Squash() bool {
 	}
 	m.currInst = nil
 	m.waiting = false
+
+	// Cancel request to memory/cache if necessary
+	cache := m.pipeline.cpu.Cache
+	ram := m.pipeline.cpu.RAM
+	// Check if cache/ram currently serving MEM_STAGE
+	if cache.Requester() == memory.MEMORY_STAGE {
+		m.pipeline.cpu.Cache.CancelRequest()
+	}
+	if ram.Requester() == memory.MEMORY_STAGE {
+		m.pipeline.cpu.RAM.CancelRequest()
+	}
 	return true
 }
 

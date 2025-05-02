@@ -68,6 +68,19 @@ func (c *CacheType) IsBusy() bool {
 	return c.MemoryRequestState.CyclesLeft > 0
 }
 
+func (c *CacheType) Requester() Requester {
+	return c.MemoryRequestState.requester
+}
+
+func (c *CacheType) CancelRequest() {
+	// Reset the request state
+	c.MemoryRequestState = MemoryRequestState{
+		NONE, 
+		c.MemoryRequestState.Delay,	
+		int(c.MemoryRequestState.Delay),
+	}
+}
+
 func (c *CacheType) service(who Requester) bool {
 	if c.Sets == 0 || c.Ways == 0 {
 		return true

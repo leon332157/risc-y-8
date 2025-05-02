@@ -43,6 +43,19 @@ func (mem *RAM) IsBusy() bool {
 	return mem.MemoryRequestState.CyclesLeft >= 0
 }
 
+func (mem *RAM) Requester() Requester {
+	return mem.MemoryRequestState.requester
+}
+
+func (mem *RAM) CancelRequest() {
+	// Reset the request state
+	mem.MemoryRequestState = MemoryRequestState{
+		NONE, 
+		mem.MemoryRequestState.Delay,	
+		int(mem.MemoryRequestState.Delay),
+	}
+}
+
 func (mem *RAM) service(who Requester) bool {
 	if mem.MemoryRequestState.requester == NONE {
 		// First request

@@ -100,6 +100,18 @@ func (f *FetchStage) Advance(_ *InstructionIR, canFetch bool) bool {
 func (f *FetchStage) Squash() bool {
 	f.pipe.sTracef(f, "Squashing instruction: %+v\n", f.currInst) // For debugging purposes
 	f.currInst = nil
+
+	// Cancel request to memory/cache if necessary
+	cache := f.pipe.cpu.Cache
+	ram := f.pipe.cpu.RAM
+	// Check if cache/ram currently serving FETCH
+	if cache.Requester() == memory.FETCH_STAGE {
+		f.pipe.cpu.Cache.CancelRequest()
+	}
+	if ram.Requester() == memory.FETCH_STAGE {
+		f.pipe.cpu.RAM.CancelRequest()
+	}
+
 	return true
 }
 
