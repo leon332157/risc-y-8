@@ -106,9 +106,11 @@ func (f *FetchStage) Squash() bool {
 	ram := f.pipe.cpu.RAM
 	// Check if cache/ram currently serving FETCH
 	if cache.Requester() == memory.FETCH_STAGE {
+		fmt.Println("Cancelling Cache Fetch Request") // for debugging
 		f.pipe.cpu.Cache.CancelRequest()
 	}
 	if ram.Requester() == memory.FETCH_STAGE {
+		fmt.Println("Cancelling RAM Fetch Request") // for debugging
 		f.pipe.cpu.RAM.CancelRequest()
 	}
 

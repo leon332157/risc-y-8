@@ -79,6 +79,8 @@ func (c *CacheType) CancelRequest() {
 		c.MemoryRequestState.Delay,	
 		int(c.MemoryRequestState.Delay),
 	}
+
+	fmt.Println("Cache cancelled request")
 }
 
 func (c *CacheType) service(who Requester) bool {

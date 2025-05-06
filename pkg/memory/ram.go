@@ -54,6 +54,8 @@ func (mem *RAM) CancelRequest() {
 		mem.MemoryRequestState.Delay,	
 		int(mem.MemoryRequestState.Delay),
 	}
+
+	fmt.Println("RAM cancelled request")
 }
 
 func (mem *RAM) service(who Requester) bool {
