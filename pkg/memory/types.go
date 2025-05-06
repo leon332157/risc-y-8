@@ -76,4 +76,5 @@ type MemoryRequestState struct {
 	requester  Requester // Who is requesting the memory service (FETCH, MEMORY, CACHE)
 	Delay      uint
 	CyclesLeft int
+	WaitNext   bool
 }

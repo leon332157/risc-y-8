@@ -29,6 +29,7 @@ func CreateRAM(numLines uint, wordsPerLine uint, delay uint) RAM {
 		NONE,
 		delay,
 		int(delay),
+		false,
 	}
 
 	return RAM{
@@ -53,6 +54,7 @@ func (mem *RAM) CancelRequest() {
 		NONE, 
 		mem.MemoryRequestState.Delay,	
 		int(mem.MemoryRequestState.Delay),
+		false,
 	}
 
 	fmt.Println("RAM cancelled request")
@@ -93,11 +95,7 @@ func (mem *RAM) service(who Requester) bool {
 
 // Reads a value from memory
 func (mem *RAM) Read(addr uint, who Requester) ReadResult {
-	/*if who <= 0 {
-		// if not cache
-		panic("Ram can not accept request from non-cache")
-	}*/
-
+	
 	if !mem.service(who) { // if memory is busy, return WAIT
 		return ReadResult{WAIT, 0} // Indicate that we are waiting
 	}
@@ -111,11 +109,7 @@ func (mem *RAM) Read(addr uint, who Requester) ReadResult {
 }
 
 func (mem *RAM) ReadMulti(addr, numWords, offset uint, who Requester) ReadLineResult {
-	/*if who <= 0 {
-		// if not cache
-		panic("Ram can not accept request from non-cache")
-	}*/
-
+	
 	if !mem.service(who) {
 		return ReadLineResult{WAIT, []uint32{}}
 	}
@@ -135,11 +129,7 @@ func (mem *RAM) ReadMulti(addr, numWords, offset uint, who Requester) ReadLineRe
 
 // Writes a value to memory
 func (mem *RAM) Write(addr uint, who Requester, val uint32) WriteResult {
-	/*if who <= 0 {
-		// if not cache
-		panic("RAM can not accept request from non-cache")
-	}*/
-
+	
 	if !mem.service(who) { // if memory is busy, return WAIT
 		return WriteResult{WAIT, 0} // Indicate that we are waiting
 	}

@@ -22,7 +22,7 @@ type CacheLine struct {
 	LRU   int
 }
 
-type IdxTag struct {
+type IdxTagOffs struct {
 	index  uint
 	tag    uint
 	offset uint
@@ -47,6 +47,7 @@ func CreateCache(numSets, numWays, wordsPerLine, delay uint, lower Memory) Cache
 		NONE,  // No requester
 		delay, // Delay cycles for servicing requests
 		int(delay),
+		false,
 	}
 
 	return CacheType{
@@ -78,9 +79,11 @@ func (c *CacheType) CancelRequest() {
 		NONE, 
 		c.MemoryRequestState.Delay,	
 		int(c.MemoryRequestState.Delay),
+		false,
 	}
 
 	fmt.Println("Cache cancelled request")
+	fmt.Printf("Cache MemoryRequestState is now %v \n", c.MemoryRequestState)
 }
 
 func (c *CacheType) service(who Requester) bool {
@@ -95,7 +98,10 @@ func (c *CacheType) service(who Requester) bool {
 	}
 	if c.MemoryRequestState.CyclesLeft > 0 {
 		if c.MemoryRequestState.requester == who {
-			// if the same requester, then we decrement cycle left
+			// if the same requester, then we decrement cycle left if cache is not waiting on memory
+			if c.MemoryRequestState.WaitNext {
+				return true
+			}
 			c.MemoryRequestState.CyclesLeft--
 			if c.MemoryRequestState.CyclesLeft == 0 {
 				c.MemoryRequestState.requester = NONE
@@ -117,7 +123,7 @@ func (c *CacheType) service(who Requester) bool {
 	} */
 }
 
-func (c *CacheType) FindIndexAndTag(addr uint) IdxTag {
+func (c *CacheType) FindIndexTagOffset(addr uint) IdxTagOffs {
 	// get lowest order 2 bit for data offset (reps 4 words)
 	offsetBits := bits.Len32(uint32(c.WordsPerLine)) - 1
 	offset := addr & ((1 << offsetBits) - 1)
@@ -140,7 +146,7 @@ func (c *CacheType) FindIndexAndTag(addr uint) IdxTag {
 	}
 	tag := (addr >> uint(totalBits-tagBits)) & bin
 
-	return IdxTag{
+	return IdxTagOffs{
 		index:  index,
 		tag:    tag,
 		offset: offset,
@@ -157,26 +163,14 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	}
 	
 	// If cache is disabled, read straight from memory
-	if c.Sets == 0 || c.Ways == 0 {
+	if c.Sets == 0 || c.Ways == 0 || c.WordsPerLine == 0 {
 		read := c.LowerLevel.Read(addr, who)
-		switch read.State {
-		case WAIT:
-			//fmt.Println("Cache read, waiting for ram")
-			return ReadResult{WAIT_NEXT_LEVEL, 0}
-		case WAIT_NEXT_LEVEL:
-			//fmt.Println("Cache read, waiting for next level memory")
-			return ReadResult{WAIT_NEXT_LEVEL, 0}
-		case SUCCESS:
-			return read
-		default:
-			return ReadResult{read.State, 0}
-			// do nothing
-		}
+		return read
 	}
 
 	// Given the address, find the index of the set and tag
-	idxTag := c.FindIndexAndTag(addr)
-	index, tag, offset := idxTag.index, idxTag.tag, idxTag.offset
+	ito := c.FindIndexTagOffset(addr)
+	index, tag, offset := ito.index, ito.tag, ito.offset
 
 	// If tag exists, check valid bit (false -> miss, true -> hit) cache hit: return the data, update lru
 	set := c.Contents[index]
@@ -188,15 +182,18 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	}
 
 	// Else, cache miss: read LINE from memory, load into cache, return data (no need to write back to mem)
-	read := c.LowerLevel.ReadMulti(addr, c.WordsPerLine, offset, who) // TODO: this is readMulti
+	read := c.LowerLevel.ReadMulti(addr, c.WordsPerLine, offset, who)
 	switch read.State {
 	case WAIT:
-		//fmt.Println("Cache read, waiting for ram")
+		//fmt.Println("Cache miss, waiting for ram")
+		c.MemoryRequestState.WaitNext = true
 		return ReadResult{WAIT_NEXT_LEVEL, 0}
 	case WAIT_NEXT_LEVEL:
-		//fmt.Println("Cache read, waiting for next level memory")
+		//fmt.Println("Cache miss, waiting for next level memory")
+		c.MemoryRequestState.WaitNext = true
 		return ReadResult{WAIT_NEXT_LEVEL, 0}
 	case SUCCESS:
+		c.CancelRequest() // reset the request state
 	default:
 		return ReadResult{read.State, 0}
 		// do nothing
@@ -209,7 +206,7 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	return ReadResult{SUCCESS, read.Value[offset]}
 }
 
-// Write through, no allocate policy
+// Write through, allocate policy
 func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	if !c.service(who) {
 		return WriteResult{WAIT, 0}
@@ -217,19 +214,12 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	// If cache is disabled, write straight to memory
 	if c.Sets == 0 || c.Ways == 0 {
 		written := c.LowerLevel.Write(addr, who, val)
-		switch written.State {
-		case WAIT, WAIT_NEXT_LEVEL:
-			return WriteResult{WAIT_NEXT_LEVEL, 0} // Waiting for next level memory to service the request
-		case SUCCESS:
-			return WriteResult{SUCCESS, written.Written} // Successfully wrote to memory (write-through)
-		default:
-			return WriteResult{FAILURE_INVALID_STATE, 0} // Failure to write to memory, return failure
-		}
+		return written
 	}
 
 	// Given address find the set index and tag
-	idxTag := c.FindIndexAndTag(addr)
-	index, tag, offset := idxTag.index, idxTag.tag, idxTag.offset
+	ito := c.FindIndexTagOffset(addr)
+	index, tag, offset := ito.index, ito.tag, ito.offset
 	valid := false
 	set := c.Contents[index]
 	for i := range c.Ways {
@@ -253,7 +243,7 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 	}
 
 	if !valid {
-		// Find next empty line or LRU (empty line will be lru!), write-through to memory
+		// Find next empty line or LRU (empty line will be lru!), allocate in the cache
 		lruIdx := c.GetLRU(index)
 		d := c.Contents[index][lruIdx]
 		d.Data[offset] = val
@@ -261,11 +251,14 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 		c.UpdateLRU(index, lruIdx)
 	}
 
+	// write through to memory
 	written := c.LowerLevel.Write(addr, who, val)
 	switch written.State {
 	case WAIT, WAIT_NEXT_LEVEL:
+		c.MemoryRequestState.WaitNext = true
 		return WriteResult{WAIT_NEXT_LEVEL, 0} // Waiting for next level memory to service the request
 	case SUCCESS:
+		c.CancelRequest()
 		return WriteResult{SUCCESS, written.Written} // Successfully wrote to memory (write-through)
 	default:
 		return WriteResult{FAILURE_INVALID_STATE, 0} // Failure to write to memory, return failure
