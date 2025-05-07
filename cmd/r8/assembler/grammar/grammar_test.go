@@ -80,7 +80,7 @@ func TestRI(t *testing.T) {
 	//}
 }
 
-func testRR(t *testing.T) {
+func TestRR(t *testing.T) {
 	var example = "add r1,r2"
 	prog, err := ParseString("testRR", example)
 	if err != nil {
