@@ -57,14 +57,18 @@ func (mem *RAM) CancelRequest() {
 		false,
 	}
 
-	fmt.Println("RAM cancelled request")
+	// fmt.Println("RAM cancelled request")
 }
 
 func (mem *RAM) service(who Requester) bool {
+	if mem.Delay == 0 {
+		return true
+	}
 	if mem.MemoryRequestState.requester == NONE {
 		// First request
 		mem.requester = who
 		mem.MemoryRequestState.CyclesLeft = int(mem.MemoryRequestState.Delay) // Reset the delay counter
+		return false
 	}
 	if mem.MemoryRequestState.CyclesLeft > 0 { // if memory is busy rn
 		if mem.MemoryRequestState.requester == who {

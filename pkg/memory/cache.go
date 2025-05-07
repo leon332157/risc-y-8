@@ -76,18 +76,21 @@ func (c *CacheType) Requester() Requester {
 func (c *CacheType) CancelRequest() {
 	// Reset the request state
 	c.MemoryRequestState = MemoryRequestState{
-		NONE, 
-		c.MemoryRequestState.Delay,	
+		NONE,
+		c.MemoryRequestState.Delay,
 		int(c.MemoryRequestState.Delay),
 		false,
 	}
 
-	fmt.Println("Cache cancelled request")
-	fmt.Printf("Cache MemoryRequestState is now %v \n", c.MemoryRequestState)
+	// c.sTracef("Cache cancelled request")
+	// fmt.Printf("Cache MemoryRequestState is now %v \n", c.MemoryRequestState)
 }
 
 func (c *CacheType) service(who Requester) bool {
 	if c.Sets == 0 || c.Ways == 0 {
+		return true
+	}
+	if c.Delay == 0 {
 		return true
 	}
 	// Check if memory is busy
@@ -95,27 +98,31 @@ func (c *CacheType) service(who Requester) bool {
 		// First request
 		c.MemoryRequestState.requester = who
 		c.MemoryRequestState.CyclesLeft = int(c.MemoryRequestState.Delay) // Reset the delay counter
+		return false
 	}
 	if c.MemoryRequestState.CyclesLeft > 0 {
 		if c.MemoryRequestState.requester == who {
 			// if the same requester, then we decrement cycle left if cache is not waiting on memory
 			if c.MemoryRequestState.WaitNext {
 				return true
-			}
-			c.MemoryRequestState.CyclesLeft--
-			if c.MemoryRequestState.CyclesLeft == 0 {
-				c.MemoryRequestState.requester = NONE
-				return true
 			} else {
-				return false
+				c.MemoryRequestState.CyclesLeft--
+				if c.MemoryRequestState.CyclesLeft <= 0 {
+					// c.MemoryRequestState.requester = NONE
+					return true
+				} else {
+					return false
+				}
 			}
 		} else {
 			// different requester, cannot service
 			return false
 		}
+	} else {
+		return true
 	}
 	panic("oop cache")
-	 /* else {
+	/* else {
 		// Memory is idle, can service new request
 		c.MemoryRequestState.CyclesLeft = int(c.MemoryRequestState.Delay) // Reset the delay counter
 		c.MemoryRequestState.requester = who                              // Set the requester
@@ -157,11 +164,11 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	if who >= 0 {
 		panic("Cache Read: Non-pipeline requester cannot read from cache")
 	}
-		
+
 	if !c.service(who) {
 		return ReadResult{WAIT, 0}
 	}
-	
+
 	// If cache is disabled, read straight from memory
 	if c.Sets == 0 || c.Ways == 0 || c.WordsPerLine == 0 {
 		read := c.LowerLevel.Read(addr, who)
