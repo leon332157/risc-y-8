@@ -351,7 +351,7 @@ func TestRegImm(t *testing.T) {
 				Rd:     1,
 				ALU:    0b1011,
 				Imm:    10,
-			},
+			}, // TODO: results in imm 21 not 10
 		},
 		{
 			instr: grammar.Instruction{
@@ -382,6 +382,11 @@ func TestRegImm(t *testing.T) {
 					makeImmediate("-65535"))},
 			expected:      BaseInstruction{},
 			errorExpected: true,
+		}, // TODO: expected error, got rd as r30, alu 1
+
+		// TODO: add instruction for ldi
+		{
+			instr: grammar.Instruction{}
 		},
 	}
 
@@ -412,6 +417,7 @@ func TestRegReg(t *testing.T) {
 			expected:      BaseInstruction{},
 			errorExpected: true,
 		},
+		// TODO: add instruction for divide
 	}
 
 	runTests(t, &tests)
