@@ -202,7 +202,8 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	case SUCCESS:
 		c.CancelRequest() // reset the request state
 	default:
-		return ReadResult{read.State, 0}
+		panic("AHHHH")
+		//return ReadResult{read.State, 0}
 		// do nothing
 	}
 
@@ -274,18 +275,20 @@ func (c *CacheType) Write(addr uint, who Requester, val uint32) WriteResult {
 
 func (c *CacheType) UpdateLRU(setIndex uint, line uint) {
 	set := c.Contents[setIndex]
+	accessedLRU := set[line].LRU
 
-	// Only update lru if updated line's lru is not already zero
-	if set[line].LRU != 0 {
+	// Only update if not already MRU
+	if accessedLRU != 0 {
 		for i := range c.Ways {
 			if i == line {
-				c.Contents[setIndex][i].LRU = 0
-			} else if set[i].LRU < int(c.Ways-1) {
-				c.Contents[setIndex][i].LRU += 1
+				set[i].LRU = 0 // Set accessed line to MRU
+			} else if set[i].LRU < accessedLRU {
+				set[i].LRU += 1 // Bump more-recently-used lines downward
 			}
 		}
 	}
 }
+
 
 func (c *CacheType) GetLRU(setIndex uint) uint {
 	set := c.Contents[setIndex]

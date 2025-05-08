@@ -150,8 +150,8 @@ func getCacheRows(ca *memory.CacheType) [][]string {
 	tagStr := fmt.Sprintf("%%0%db", sizeTag)
 	idxStr := fmt.Sprintf("%%0%db", sizeIndex)
 
-	waysSize := max(math.Log2(float64(ca.Ways)), 3)
-	waysStr := fmt.Sprintf("%%%db", int(waysSize))
+	//waysSize := max(math.Log2(float64(ca.Ways)), 3)
+	//waysStr := fmt.Sprintf("%%%db", int(waysSize))
 
 	for i := range ca.Contents {
 		for j := range ca.Ways {
@@ -167,7 +167,7 @@ func getCacheRows(ca *memory.CacheType) [][]string {
 				fmt.Sprintf(idxStr, i),
 				fmt.Sprintf("%08X", data.Data),
 				fmt.Sprintf(validStr, data.Valid),
-				fmt.Sprintf(waysStr, data.LRU)}
+				fmt.Sprintf(" %d", data.LRU)}
 			cRows = append(cRows, row)
 		}
 	}
@@ -241,6 +241,13 @@ func (m *model) ExecuteCommand() {
 		}*/
 	case "run", "r":
 		if len(args) > 1 {
+			if args[1] == "complete" {
+				Message = "Running to end . . ."
+				m.system.RunToEndTUI(nil)
+				m.system.CPU.Halted = true
+				Message = "Program finished"
+				return
+			}
 			cycles, err := strconv.Atoi(args[1])
 			if err != nil {
 				Message = fmt.Sprintf("Invalid number of cycles %v", err)
