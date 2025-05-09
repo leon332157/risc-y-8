@@ -184,6 +184,7 @@ func (c *CacheType) Read(addr uint, who Requester) ReadResult {
 	for i := range c.Ways {
 		if (set[i].Tag == tag) && (set[i].Valid) {
 			c.UpdateLRU(index, i)
+			c.CancelRequest() // Free up the cache for service
 			return ReadResult{SUCCESS, set[i].Data[offset]}
 		}
 	}

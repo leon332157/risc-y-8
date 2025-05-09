@@ -385,7 +385,7 @@ func (m model) drawCache() string {
 	style := lipgloss.NewStyle()
 	title := "Cache"
 
-	if m.system.Cache.IsBusy() {
+	if m.system.Cache.Requester() == memory.NONE {
 		title = "Cache - FREE"
 		style = style.Foreground(lipgloss.Color("#04B575"))
 	} else if m.system.Cache.MemoryRequestState.WaitNext {
