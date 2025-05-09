@@ -91,7 +91,7 @@ type model struct {
 
 func initialModel(s *simulator.System) model {
 	ti := textinput.New()
-	ti.Placeholder = "type an instruction . . ."
+	ti.Placeholder = "type a command . . ."
 	ti.Focus()
 	ti.CharLimit = 100
 	ti.Width = 50

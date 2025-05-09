@@ -21,7 +21,7 @@ func NewSystem(initRamContent []uint32, disableCache, disablePipeline bool) Syst
 	sys.RAM = &ram
 	sys.CPU = new(CPUpkg.CPU)
 	copy(sys.RAM.Contents, initRamContent)
-	cache := memory.CreateCache(16, 1, 4, 1, sys.RAM)
+	cache := memory.CreateCache(8, 2, 4, 1, sys.RAM)
 	if disableCache {
 		cache = memory.CreateCache(0, 0, 0, 0, sys.RAM)
 	}
