@@ -459,8 +459,7 @@ func (m model) checkNewlines(instr string, height int, i int) int {
 }
 
 func (m model) drawPipeline() string {
-	// TODO: create pipeline instance along with cpu
-	//labels := []string{" Fetch ", " Decode ", " Execute ", " Memory ", " Writeback "}
+	
 	labels := []string{" WB ", " MEM ", " EXE ", " DEC ", " FET "}
 	row := make([]string, 0)
 

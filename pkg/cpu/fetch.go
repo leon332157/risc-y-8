@@ -42,13 +42,15 @@ func (f *FetchStage) Execute() {
 	}
 	if f.pipe.scalarMode && f.pipe.canFetch == false {
 		f.pipe.sTrace(f, "Cannot fetch instruction right now, writeback has not completed yet")
+		f.InstStr = "Waiting for writeback . . ."
 		return
 	}
 	if f.currInst != nil {
 		f.pipe.sTracef(f, "Currently have an instruction %+v, skipping fetch", f.currInst)
+		//f.InstStr = "Skipped"
 		return
 	}
-	//f.pipe.sTrace(f, "Fetching instruction from memory")
+	f.InstStr = "Fetching \ninstruction . . ."
 	cache := f.pipe.cpu.Cache
 	read := cache.Read(uint(f.pipe.cpu.ProgramCounter), memory.FETCH_STAGE)
 	if read.State != memory.SUCCESS {
@@ -58,6 +60,7 @@ func (f *FetchStage) Execute() {
 
 	if read.Value != 0 {
 		f.pipe.sTracef(f, "Fetched instruction: 0x%08x\n", read.Value)
+		f.InstStr = fmt.Sprintf("Fetched instruction: 0x%08x\n", read.Value)
 		f.currInst = new(InstructionIR) // Store the fetched instruction
 		f.currInst.rawInstruction = read.Value
 		f.InstStr = fmt.Sprintf("raw: 0x%08x\n", f.currInst.rawInstruction)
