@@ -30,8 +30,8 @@ var Message string = "none"
 
 var (
 	tuiCmd = &cobra.Command{
-		Use: "tui <flags> [binary file]",
-		Short: "Simulate with TUI RISC-Y-8 binary",
+		Use:     "tui <flags> [binary file]",
+		Short:   "Simulate with TUI RISC-Y-8 binary",
 		RunE:    runTui,
 		Args:    cobra.ExactArgs(1),
 		Example: "r8 tui input.bin",
@@ -267,7 +267,7 @@ func (m *model) ExecuteCommand() {
 				}
 			}
 		} else {
-			Message = "Invalid command, please use 'run <cycles>'"
+			Message = "Invalid command, please use 'run <cycles>' or run complete"
 		}
 	}
 }
@@ -337,9 +337,18 @@ func (m model) View() string {
 func (m model) drawRAM() string {
 
 	content := m.ramViewport.View()
+	title := "RAM\n"
+	style := lipgloss.NewStyle()
 
-	return lipgloss.NewStyle().
-		Render("RAM\n" + content)
+	if m.system.RAM.Requester() == memory.NONE {
+		title = "RAM - FREE"
+		style = style.Foreground(lipgloss.Color("#04B575"))
+	} else {
+		title = "RAM - BUSY " + fmt.Sprintf("%d cycles left", m.system.RAM.CyclesLeft)
+		style = style.Foreground(lipgloss.Color("#FF0000"))
+	}
+
+	return style.Render(title) + "\n" + content
 }
 
 func (m model) drawRAMTable() string {
@@ -373,14 +382,26 @@ func (m model) getCacheSize() []uint {
 func (m model) drawCache() string {
 	headerStr := m.cacheHeaderViewport.View()
 	content := m.cacheViewport.View()
+	style := lipgloss.NewStyle()
+	title := "Cache"
+
+	if m.system.Cache.IsBusy() {
+		title = "Cache - FREE"
+		style = style.Foreground(lipgloss.Color("#04B575"))
+	} else if m.system.Cache.MemoryRequestState.WaitNext {
+		title = "Cache - WAITING ON RAM"
+		style = style.Foreground(lipgloss.Color("#FFA500"))
+	} else {
+		title = "Cache - BUSY " + fmt.Sprintf("%d cycles left", m.system.Cache.CyclesLeft)
+		style = style.Foreground(lipgloss.Color("#FF0000"))
+	}
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		"Cache",
+		style.Render(title),
 		headerStr,
 		content,
 	)
-
 }
 
 func (m model) drawCacheHeaderTable() string {

@@ -21,7 +21,7 @@ func NewSystem(initRamContent []uint32, disableCache, disablePipeline bool) Syst
 	sys.RAM = &ram
 	sys.CPU = new(CPUpkg.CPU)
 	copy(sys.RAM.Contents, initRamContent)
-	cache := memory.CreateCache(8, 4, 4, 1, sys.RAM)
+	cache := memory.CreateCache(16, 2, 4, 1, sys.RAM)
 	if disableCache {
 		cache = memory.CreateCache(0, 0, 0, 0, sys.RAM)
 	}
@@ -73,7 +73,7 @@ func (s *System) RunToEndTUI(rHook *readStateHook) {
 	for !s.CPU.Halted {
 		s.RunOneClock(rHook)
 	}
-	fmt.Printf("PC: %d Cycles: %d\n", s.CPU.ProgramCounter, s.CPU.Clock)
+	fmt.Println("Completed")
 	if rHook != nil {
 		(*rHook)(s)
 	}
