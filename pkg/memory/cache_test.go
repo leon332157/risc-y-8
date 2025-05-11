@@ -11,7 +11,7 @@ func TestFindIndexAndTagAndOffset(t *testing.T) {
 	newMem := CreateRAM(32, 8, 5)
 	c := CreateCacheDefault(&newMem) // 8 sets, 2 ways, 4 wpl 
 
-	idxTag := c.FindIndexAndTag(2)
+	idxTag := c.FindIndexTagOffset(2)
 	idx, tag, offset := idxTag.index, idxTag.tag, idxTag.offset
 
 	// addr = 0b0000010
@@ -153,18 +153,26 @@ func TestStagingReadDelay(t *testing.T) {
 	call2 := c.Read(1, FETCH_STAGE)
 	call3 := c.Read(1, MEMORY_STAGE)
 	call4 := c.Read(1, FETCH_STAGE)
+	call5 := c.Read(1, FETCH_STAGE)
+	call6 := c.Read(1, FETCH_STAGE)
 
-	if call1.State != WAIT_NEXT_LEVEL {
+	if call1.State != WAIT {
 		t.Errorf("should be wait on mem, got %d", call1.State)
 	}
-	if call2.State != WAIT_NEXT_LEVEL {
+	if call2.State != WAIT {
 		t.Errorf("should be wait on mem, got %d", call2.State)
 	}
-	if call3.State != WAIT {
+	if call3.State != WAIT { // call from different stage
 		t.Errorf("should be wait, got %d", call3.State)
 	}
-	if call4.State != SUCCESS {
-		t.Errorf("should be success, got %d", call4.State)
+	if call4.State != WAIT_NEXT_LEVEL {
+		t.Errorf("should be wait_next_level, got %d", call4.State)
+	}
+	if call5.State != WAIT_NEXT_LEVEL {
+		t.Errorf("should be wait next level, got %d", call5.State)
+	}
+	if call6.State != SUCCESS {
+		t.Errorf("should be success, got %d", call6.State)
 	}
 
 }
@@ -226,19 +234,19 @@ func TestCacheReadWithDelay(t *testing.T) {
 	mem := CreateRAM(512, 8, 15)
 	cache := CreateCache(2, 2, 2, 7, &mem)
 
-	for range mem.MemoryRequestState.Delay + 1 {
+	for range mem.MemoryRequestState.Delay + cache.MemoryRequestState.Delay + 2 {
 		cache.Write(0, MEMORY_STAGE, 0x00112233)
 	}
 
-	for range mem.MemoryRequestState.Delay + 1 {
+	for range mem.MemoryRequestState.Delay + cache.MemoryRequestState.Delay + 2 {
 		cache.Write(1, MEMORY_STAGE, 0x44556677)
 	}
 
-	for range mem.MemoryRequestState.Delay + 1 {
+	for range mem.MemoryRequestState.Delay + cache.MemoryRequestState.Delay + 2 {
 		cache.Write(2, MEMORY_STAGE, 0x8899AABB)
 	}
 
-	for range mem.MemoryRequestState.Delay + 1 {
+	for range mem.MemoryRequestState.Delay + cache.MemoryRequestState.Delay + 2 {
 		cache.Write(3, MEMORY_STAGE, 0xCCDDEEFF)
 	}
 
@@ -278,19 +286,19 @@ func TestCacheReadValuesWithDelay(t *testing.T) {
     mem := CreateRAM(512, 8, 15)
     cache := CreateCache(2, 2, 2, 7, &mem)
 
-    for range mem.MemoryRequestState.Delay + 1 {
+    for range mem.MemoryRequestState.Delay + cache.MemoryRequestState.Delay + 2 {
         cache.Write(0, MEMORY_STAGE, 0x00112233)
     }
 
-    for range mem.MemoryRequestState.Delay + 1 {
+    for range mem.MemoryRequestState.Delay + cache.MemoryRequestState.Delay + 2 {
         cache.Write(1, MEMORY_STAGE, 0x44556677)
     }
 
-    for range mem.MemoryRequestState.Delay + 1 {
+    for range mem.MemoryRequestState.Delay + cache.MemoryRequestState.Delay + 2 {
         cache.Write(2, MEMORY_STAGE, 0x8899AABB)
     }
 
-    for range mem.MemoryRequestState.Delay + 1 {
+    for range mem.MemoryRequestState.Delay + cache.MemoryRequestState.Delay + 2 {
         cache.Write(3, MEMORY_STAGE, 0xCCDDEEFF)
     }
 

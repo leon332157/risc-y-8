@@ -44,7 +44,7 @@ func TestBasic(t *testing.T) {
 		VLD v8,[r1+0xFFFF]
 	`
 
-	prog, err := ParseString("example.asm", example)
+	prog, err := ParseString("example.asm", example) // TODO: results in invalid text input from example
 	if err != nil {
 		t.Errorf("error %v\n", err)
 	}
@@ -80,7 +80,7 @@ func TestRI(t *testing.T) {
 	//}
 }
 
-func testRR(t *testing.T) {
+func TestRR(t *testing.T) {
 	var example = "add r1,r2"
 	prog, err := ParseString("testRR", example)
 	if err != nil {

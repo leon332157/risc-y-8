@@ -30,8 +30,8 @@ var Message string = "none"
 
 var (
 	tuiCmd = &cobra.Command{
-		Use: "tui <flags> [binary file]",
-		Short: "Simulate with TUI RISC-Y-8 binary",
+		Use:     "tui <flags> [binary file]",
+		Short:   "Simulate with TUI RISC-Y-8 binary",
 		RunE:    runTui,
 		Args:    cobra.ExactArgs(1),
 		Example: "r8 tui input.bin",
@@ -91,7 +91,7 @@ type model struct {
 
 func initialModel(s *simulator.System) model {
 	ti := textinput.New()
-	ti.Placeholder = "type an instruction . . ."
+	ti.Placeholder = "type a command . . ."
 	ti.Focus()
 	ti.CharLimit = 100
 	ti.Width = 50
@@ -150,8 +150,8 @@ func getCacheRows(ca *memory.CacheType) [][]string {
 	tagStr := fmt.Sprintf("%%0%db", sizeTag)
 	idxStr := fmt.Sprintf("%%0%db", sizeIndex)
 
-	waysSize := max(math.Log2(float64(ca.Ways)), 3)
-	waysStr := fmt.Sprintf("%%%db", int(waysSize))
+	//waysSize := max(math.Log2(float64(ca.Ways)), 3)
+	//waysStr := fmt.Sprintf("%%%db", int(waysSize))
 
 	for i := range ca.Contents {
 		for j := range ca.Ways {
@@ -167,7 +167,7 @@ func getCacheRows(ca *memory.CacheType) [][]string {
 				fmt.Sprintf(idxStr, i),
 				fmt.Sprintf("%08X", data.Data),
 				fmt.Sprintf(validStr, data.Valid),
-				fmt.Sprintf(waysStr, data.LRU)}
+				fmt.Sprintf(" %d", data.LRU)}
 			cRows = append(cRows, row)
 		}
 	}
@@ -241,6 +241,13 @@ func (m *model) ExecuteCommand() {
 		}*/
 	case "run", "r":
 		if len(args) > 1 {
+			if args[1] == "complete" {
+				Message = "Running to end . . ."
+				m.system.RunToEndTUI(nil)
+				m.system.CPU.Halted = true
+				Message = "Program finished"
+				return
+			}
 			cycles, err := strconv.Atoi(args[1])
 			if err != nil {
 				Message = fmt.Sprintf("Invalid number of cycles %v", err)
@@ -260,7 +267,7 @@ func (m *model) ExecuteCommand() {
 				}
 			}
 		} else {
-			Message = "Invalid command, please use 'run <cycles>'"
+			Message = "Invalid command, please use 'run <cycles>' or run complete"
 		}
 	}
 }
@@ -330,9 +337,18 @@ func (m model) View() string {
 func (m model) drawRAM() string {
 
 	content := m.ramViewport.View()
+	title := "RAM\n"
+	style := lipgloss.NewStyle()
 
-	return lipgloss.NewStyle().
-		Render("RAM\n" + content)
+	if m.system.RAM.Requester() == memory.NONE {
+		title = "RAM - FREE"
+		style = style.Foreground(lipgloss.Color("#04B575"))
+	} else {
+		title = "RAM - BUSY " + fmt.Sprintf("%d cycles left", m.system.RAM.CyclesLeft)
+		style = style.Foreground(lipgloss.Color("#FF0000"))
+	}
+
+	return style.Render(title) + "\n" + content
 }
 
 func (m model) drawRAMTable() string {
@@ -366,14 +382,26 @@ func (m model) getCacheSize() []uint {
 func (m model) drawCache() string {
 	headerStr := m.cacheHeaderViewport.View()
 	content := m.cacheViewport.View()
+	style := lipgloss.NewStyle()
+	title := "Cache"
+
+	if m.system.Cache.Requester() == memory.NONE {
+		title = "Cache - FREE"
+		style = style.Foreground(lipgloss.Color("#04B575"))
+	} else if m.system.Cache.MemoryRequestState.WaitNext {
+		title = "Cache - WAITING ON RAM"
+		style = style.Foreground(lipgloss.Color("#FFA500"))
+	} else {
+		title = "Cache - BUSY " + fmt.Sprintf("%d cycles left", m.system.Cache.CyclesLeft)
+		style = style.Foreground(lipgloss.Color("#FF0000"))
+	}
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		"Cache",
+		style.Render(title),
 		headerStr,
 		content,
 	)
-
 }
 
 func (m model) drawCacheHeaderTable() string {
@@ -431,8 +459,7 @@ func (m model) checkNewlines(instr string, height int, i int) int {
 }
 
 func (m model) drawPipeline() string {
-	// TODO: create pipeline instance along with cpu
-	//labels := []string{" Fetch ", " Decode ", " Execute ", " Memory ", " Writeback "}
+	
 	labels := []string{" WB ", " MEM ", " EXE ", " DEC ", " FET "}
 	row := make([]string, 0)
 
