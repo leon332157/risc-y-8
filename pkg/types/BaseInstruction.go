@@ -1,5 +1,10 @@
 package types
 
+type Instruction interface {
+	Encode() uint32
+	Decode(i uint32)
+}
+
 // Control
 type ControlOp struct {
 	Mode uint8 // 3 bits

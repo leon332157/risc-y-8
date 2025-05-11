@@ -39,7 +39,7 @@ func runAssemble(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("parse file %v %+v",err,prog);
 	}
-	res,err := assembler.ParseLines(prog.Lines); // changes state in assembler package
+	res,err := assembler.ParseLines(prog.Lines);
 	if err != nil {
 		return fmt.Errorf("parse lines: %v %+v", err, res)
 	}

@@ -97,7 +97,6 @@ func (inst *VecInstruction) Encode() uint32 {
 		encoded |= uint32(inst.Vs1) << 6
 		encoded |= uint32(inst.Vs2) << 9
 		encoded |= uint32(inst.VPU) << 13
-		encoded |= uint32(inst.Scalar) << 14
 		encoded |= uint32(inst.Imm) << 16
 	}
 	return encoded
@@ -110,13 +109,12 @@ func (inst *VecInstruction) Decode(i uint32) {
 		inst.Vd = uint8(i >> 3 & 0b111)	
 		inst.MemMode = uint8(i >> 6 & 0b111)
 		inst.RMem = uint8(i >> 11 & 0b11111)
-		inst.Imm = uint16(i >> 16 & 0xFFFF)
+		inst.Imm = int16(i >> 16 & 0xFFFF)
 	case 1:
 		inst.Vd = uint8(i >> 3 & 0b111)
 		inst.Vs1 = uint8(i >> 6 & 0b111)
 		inst.Vs2 = uint8(i >> 9 & 0b111)
 		inst.VPU = uint8(i >> 13 & 0b111)
-		inst.Scalar = uint8(i >> 14 & 0b1)
-		inst.Imm = uint16(i >> 16 & 0xFFFF)
+		inst.Imm = int16(i >> 16 & 0xFFFF)
 	}
 }

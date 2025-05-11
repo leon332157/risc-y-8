@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/leon332157/risc-y-8/cmd/r8/assembler/grammar"
 	. "github.com/leon332157/risc-y-8/pkg/types"
@@ -73,7 +74,7 @@ func parseMemory(mem grammar.OperandMemory) (uint8, int16, error) {
 	return rmem, disp, err
 }
 
-func parseInstNoOp(inst *grammar.Instruction) (BaseInstruction, error) {
+func parseInstNoOp(inst *grammar.Instruction) (Instruction, error) {
 	var ret BaseInstruction
 	var err error
 
@@ -92,7 +93,7 @@ func parseInstNoOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			OpType:   Control,
 			RMem:     0x00,
 			CtrlFlag: Conditions["unc"].Flag,
-			CtrlMode:  Conditions["unc"].Mode,
+			CtrlMode: Conditions["unc"].Mode,
 			Imm:      -1,
 		}
 	case "ret":
@@ -101,14 +102,14 @@ func parseInstNoOp(inst *grammar.Instruction) (BaseInstruction, error) {
 			OpType:   Control,
 			RMem:     IntegerRegisters["lr"],
 			CtrlFlag: Conditions["unc"].Flag,
-			CtrlMode:  Conditions["unc"].Mode,
+			CtrlMode: Conditions["unc"].Mode,
 		}
 
 	}
-	return ret, err
+	return &ret, err
 }
 
-func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
+func parseInstOneOp(inst *grammar.Instruction) (Instruction, error) {
 	var ret BaseInstruction
 	var err error
 
@@ -117,12 +118,12 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 		rdval, ok := inst.Operands[0].(grammar.OperandRegister)
 		if !ok {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
-			return ret, err
+			return nil, err
 		}
 		rd, ok := IntegerRegisters[rdval.Value] // register operand
 		if !ok {
 			err = fmt.Errorf("[parseInstOneOp] invalid register: %#v", rdval.Value)
-			return ret, err
+			return nil, err
 		}
 		ret = BaseInstruction{
 			OpType: RegImm,
@@ -133,12 +134,12 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 		rdval, ok := inst.Operands[0].(grammar.OperandRegister)
 		if !ok {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
-			return ret, err
+			return nil, err
 		}
 		rd, ok := IntegerRegisters[rdval.Value] // register operand
 		if !ok {
 			err = fmt.Errorf("[parseInstOneOp] invalid register: %#v", rdval.Value)
-			return ret, err
+			return nil, err
 		}
 		ret = BaseInstruction{
 			OpType:  LoadStore,
@@ -149,12 +150,12 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 		rdval, ok := inst.Operands[0].(grammar.OperandRegister)
 		if !ok {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
-			return ret, err
+			return nil, err
 		}
 		rd, ok := IntegerRegisters[rdval.Value] // register operand
 		if !ok {
 			err = fmt.Errorf("[parseInstOneOp] invalid register: %#v", rdval.Value)
-			return ret, err
+			return nil, err
 		}
 		ret = BaseInstruction{
 			OpType:  LoadStore,
@@ -165,42 +166,42 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 		mem, ok := inst.Operands[0].(grammar.OperandMemory)
 		if !ok {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
-			return ret, err
+			return nil, err
 		}
 		rmem, disp, err := parseMemory(mem)
 		if err != nil {
 			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %v %s", mem.Value, err)
-			return ret, err
+			return nil, err
 		}
 		ret = BaseInstruction{
 			OpType:   Control,
 			RMem:     rmem,
 			CtrlFlag: Conditions["call"].Flag,
-			CtrlMode:  Conditions["call"].Mode,
+			CtrlMode: Conditions["call"].Mode,
 			Imm:      disp,
 		}
 	case "bunc", "beq", "bz", "bne", "bnz", "blt", "bge", "blu", "bae", "ba", "bof", "bnf":
 		mem, ok := inst.Operands[0].(grammar.OperandMemory)
 		if !ok {
 			err = fmt.Errorf("[parseInstOneOp] invalid operand type: %v", reflect.TypeOf(inst.Operands[0]))
-			return ret, err
+			return nil, err
 		}
 		rmem, disp, err := parseMemory(mem)
 		if err != nil {
 			err = fmt.Errorf("[parseInstOneOp] invalid memory operand: %+v %s", mem.Value, err)
-			return ret, err
+			return nil, err
 		}
 		if cond, ok := Conditions[inst.Mnemonic[1:]]; ok {
 			ret = BaseInstruction{
 				OpType:   Control,
 				RMem:     rmem,
 				CtrlFlag: cond.Flag,
-				CtrlMode:  cond.Mode,
+				CtrlMode: cond.Mode,
 				Imm:      disp,
 			}
 		} else {
 			err = fmt.Errorf("[parseInstOneOp] invalid condition code %v on instruction %v", inst.Mnemonic[1:], inst.Mnemonic)
-			return ret, err
+			return nil, err
 		}
 	/*
 		case "beq", "bz":
@@ -368,25 +369,27 @@ func parseInstOneOp(inst *grammar.Instruction) (BaseInstruction, error) {
 	*/
 	default:
 		err = fmt.Errorf("[parseInstOneOp] invalid instruction: %s at %v", inst.Mnemonic, inst.Pos)
-		return ret, err
+		return nil, err
 	}
-	return ret, nil
+	return &ret, nil
 }
 
 // Parse instructions with two opernads
-func parseInstTwoOp(inst *grammar.Instruction) (BaseInstruction, error) {
-	var ret BaseInstruction
+func parseInstTwoOp(inst *grammar.Instruction) (Instruction, error) {
+	if strings.HasPrefix(inst.Mnemonic, "v") {
+		return parseInstTwoOpVec(inst)
+	}
 	var err error
 
 	rdval, ok := inst.Operands[0].(grammar.OperandRegister)
 	if !ok {
 		err = fmt.Errorf("[parseInstTwoOp] invalid operand 1 type: %T", inst.Operands[0])
-		return ret, err
+		return nil, err
 	}
 	rd, ok := IntegerRegisters[rdval.Value] // register operand
 	if !ok {
 		err = fmt.Errorf("[parseInstTwoOp] invalid destination register: %#v", rdval.Value)
-		return ret, err
+		return nil, err
 	}
 	switch inst.Operands[1].(type) {
 	case grammar.OperandImmediate:
@@ -398,22 +401,57 @@ func parseInstTwoOp(inst *grammar.Instruction) (BaseInstruction, error) {
 	default:
 		err = fmt.Errorf("[parseInstTwoOp] invalid operand 2 type: %T", inst.Operands[1])
 	}
-	return ret, err
+	return nil, err
+}
+
+// Used to parse two operand vector instructions
+func parseInstTwoOpVec(inst *grammar.Instruction) (Instruction, error) {
+	vdval, ok := inst.Operands[0].(grammar.OperandRegister)
+	if !ok {
+		err := fmt.Errorf("[parseInstTwoOpVec] invalid destination operand type: %T", inst.Operands[0])
+		return nil, err
+	}
+	vd, ok := VectorRegisters[vdval.Value]
+	if !ok {
+		err := fmt.Errorf("[parseInstTwoOpVec] invalid destination register: %#v", inst.Operands[0].(grammar.OperandRegister).Value)
+		return nil, err
+	}
+	memval, ok := inst.Operands[1].(grammar.OperandMemory)
+	if !ok {
+		err := fmt.Errorf("[parseInstTwoOpVec] invalid memory operand type: %T", inst.Operands[1])
+		return nil, err
+	}
+	rmem, disp, err := parseMemory(memval)
+	if err != nil {
+		err := fmt.Errorf("[parseInstTwoOpVec] invalid memory operand: %+v err: %s", memval.Value, err)
+		return nil, err
+	}
+	ret := VecInstruction{
+		OpType:  VEC_LOAD_STORE,
+		Vd:      vd,
+		Vs1:     0,
+		Vs2:     0,
+		MemMode: VecLoadStore[inst.Mnemonic],
+		RMem:    rmem,
+		Imm:     disp,
+	}
+
+	return &ret, nil
 }
 
 // Parse register and immediate instructions
-func parseRI(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
+func parseRI(inst *grammar.Instruction, rd uint8) (Instruction, error) {
 	var ret BaseInstruction
 	var err error
 
 	alu, ok := ImmALU[inst.Mnemonic]
 	if !ok {
 		err = fmt.Errorf("[parserRI] invalid ALU operation %v", inst.Mnemonic)
-		return ret, err
+		return nil, err
 	}
 	imm, err := parseImm(inst.Operands[1].(grammar.OperandImmediate).Value)
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
 
 	switch inst.Mnemonic {
@@ -422,29 +460,29 @@ func parseRI(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
 	case "shr", "sar", "shl":
 		if imm < 0 {
 			err = fmt.Errorf("[parserRI] invalid negative immediate value for shift: %v", imm)
-			return ret, err
+			return nil, err
 		}
 		if imm > 31 {
 			err = fmt.Errorf("[parseRI] immediate value for shift is greater than 31: %v", imm)
-			return ret, err
+			return nil, err
 		}
 	case "rol":
 		if imm < 0 {
 			err = fmt.Errorf("[parserRI] invalid negative immediate value for rotate right: %v", imm)
-			return ret, err
+			return nil, err
 		}
 		if imm > 31 {
 			err = fmt.Errorf("[parserRI] immediate value for rotate left is greater than 31: %v", imm)
-			return ret, err
+			return nil, err
 		}
 	case "ror":
 		if imm < 0 {
 			err = fmt.Errorf("[parserRI] invalid negative immediate value for rotate right: %v", imm)
-			return ret, err
+			return nil, err
 		}
 		if imm > 31 {
 			err = fmt.Errorf("[parserRI] immediate value for rotate right is greater than 31: %v", imm)
-			return ret, err
+			return nil, err
 		}
 		imm = (32 - imm) // rotate right is 32 - imm
 	case "ldi", "ldx", "cmp":
@@ -456,29 +494,29 @@ func parseRI(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
 		ALU:    alu,
 		Imm:    imm,
 	}
-	return ret, err
+	return &ret, err
 }
 
 // Parse register to register instructions
-func parseRR(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
+func parseRR(inst *grammar.Instruction, rd uint8) (Instruction, error) {
 	var ret BaseInstruction
 	var err error
 
 	alu, ok := RegALU[inst.Mnemonic]
 	if !ok {
 		err = fmt.Errorf("[parserRR] invalid ALU operation %v", inst.Mnemonic)
-		return ret, err
+		return &ret, err
 	}
 
 	rsval, ok := inst.Operands[1].(grammar.OperandRegister)
 	if !ok {
 		err = fmt.Errorf("[parserRR] invalid operand type: %T", inst.Operands[1])
-		return ret, err
+		return &ret, err
 	}
 	rs, ok := IntegerRegisters[rsval.Value] // register operand
 	if !ok {
 		err = fmt.Errorf("[parserRR] invalid source register: %#v", rsval.Value)
-		return ret, err
+		return &ret, err
 	}
 
 	switch inst.Mnemonic {
@@ -488,7 +526,7 @@ func parseRR(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
 		break
 	case "ror":
 		break
-	case "cmp", "cpy", "nsa","mov":
+	case "cmp", "cpy", "nsa", "mov":
 		break
 	default:
 		err = fmt.Errorf("[parserRR] invalid instruction: %s", inst.Mnemonic)
@@ -499,23 +537,23 @@ func parseRR(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
 		ALU:    alu,
 		Rs:     rs,
 	}
-	return ret, err
+	return &ret, err
 }
 
 // Parse memory to register instructions
-func parseRMem(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
+func parseRMem(inst *grammar.Instruction, rd uint8) (Instruction, error) {
 	var ret BaseInstruction
 	var err error
 
 	memval, ok := inst.Operands[1].(grammar.OperandMemory)
 	if !ok {
 		err = fmt.Errorf("[parseRMem] invalid operand type: %T", inst.Operands[1])
-		return ret, err
+		return nil, err
 	}
 	rmem, disp, err := parseMemory(memval)
 	if err != nil {
 		err = fmt.Errorf("[parseRMem] invalid memory operand: %+v err: %s", memval.Value, err)
-		return ret, err
+		return nil, err
 	}
 
 	switch inst.Mnemonic {
@@ -537,31 +575,121 @@ func parseRMem(inst *grammar.Instruction, rd uint8) (BaseInstruction, error) {
 		}
 	default:
 		err = fmt.Errorf("[parseRMem] invalid instruction: %s", inst.Mnemonic)
-		return ret, err
+		return nil, err
 	}
-	return ret, err
+	return &ret, err
 }
 
-func parseInst(inst *grammar.Instruction) (BaseInstruction, error) {
+// This function is mostly used for vector instructions
+func parseInstThreeOp(inst *grammar.Instruction) (Instruction, error) {
+	vdval, ok := inst.Operands[0].(grammar.OperandRegister)
+	if !ok {
+		err := fmt.Errorf("[parseInstThreeOp] invalid destination operand type: %T", inst.Operands[0])
+		return nil, err
+	}
+	vd, ok := VectorRegisters[vdval.Value]
+	if !ok {
+		err := fmt.Errorf("[parseInstThreeOp] invalid destination register: %#v", inst.Operands[0].(grammar.OperandRegister).Value)
+		return nil, err
+	}
+	vs1val, ok := inst.Operands[1].(grammar.OperandRegister)
+	if !ok {
+		err := fmt.Errorf("[parseInstThreeOp] invalid source 1 operand type: %T", inst.Operands[1])
+		return nil, err
+	}
+	vs1, ok := VectorRegisters[vs1val.Value]
+	if !ok {
+		err := fmt.Errorf("[parseInstThreeOp] invalid source 1 register: %#v", inst.Operands[1].(grammar.OperandRegister).Value)
+		return nil, err
+	}
+	if inst.Mnemonic == "vbeq" {
+		mem, ok := inst.Operands[2].(grammar.OperandMemory)
+		if !ok {
+			err := fmt.Errorf("[parseInstThreeOp] invalid operand type: %T for vbeq", inst.Operands[2])
+			return nil, err
+		}
+		rmem, disp, err := parseMemory(mem)
+		if err != nil {
+			err := fmt.Errorf("[parseInstThreeOp] invalid memory operand: %+v err: %s", mem.Value, err)
+			return nil, err
+		}
+		ret := VecInstruction{
+			OpType: VEC_ARITH,
+			Vd:     vd,
+			Vs1:    vs1,
+			Vs2:    0,
+			VPU:    VPU["vbeq"],
+			RMem:   rmem,
+			Imm:    disp,
+		}
+		return &ret, nil
+	}
+	vs2val, ok := inst.Operands[2].(grammar.OperandRegister)
+	if !ok {
+		err := fmt.Errorf("[parseInstThreeOp] invalid source 2 operand type: %T", inst.Operands[2])
+		return nil, err
+	}
+	vs2, ok := VectorRegisters[vs2val.Value]
+	if !ok {
+		err := fmt.Errorf("[parseInstThreeOp] invalid source 2 register: %#v", inst.Operands[2].(grammar.OperandRegister).Value)
+		return nil, err
+	}
+	var ret VecInstruction
+	switch inst.Mnemonic {
+	/*case "vzeroall":
+	ret = VecInstruction{
+		OpType: types.VEC_ARITH,
+		Vd:     vd,
+		Vs1:    vd,
+		Vs2:    vd,
+		VPU:    VPU["vpxor"],
+	}
+	*/
+	case "vmov", "vcpy":
+		ret = VecInstruction{
+			OpType: VEC_ARITH,
+			Vd:     vd,
+			Vs1:    vs1,
+			Vs2:    vs1,
+			VPU:    VPU["vpand"],
+		}
+	default:
+		vpuOperation, ok := VPU[inst.Mnemonic]
+		if !ok {
+			err := fmt.Errorf("[parseInstThreeOp] invalid VPU operation: %s", inst.Mnemonic)
+			return nil, err
+		}
+		ret = VecInstruction{
+			OpType: VEC_ARITH, // Arithmetic Value
+			Vd:     vd,
+			Vs1:    vs1,
+			Vs2:    vs2,
+			VPU:    vpuOperation,
+		}
+	}
+
+	return &ret, nil
+}
+
+func parseInst(inst *grammar.Instruction) (Instruction, error) {
 	// Parse the instruction based on the grammar rules, and return a slice of BaseInstruction if pseudo instructions are found.
 	//var instSlice = make([]BaseInstruction, 0, 2)
 	switch len(inst.Operands) {
 	case 0:
-		// no operands
 		return parseInstNoOp(inst)
 	case 1:
-		// one operand
 		return parseInstOneOp(inst)
 	case 2:
-		// two operands
 		return parseInstTwoOp(inst)
+	case 3:
+		return parseInstThreeOp(inst)
 	default:
 		err := fmt.Errorf("[parseInst] invalid number of operands: %d", len(inst.Operands))
-		return BaseInstruction{}, err
+		return nil, err
 	}
 }
 
-var Instructions []BaseInstruction
+// var Instructions []Instruction
 var Labels map[string]uint32
 
 // func parseLabel(label *grammar.Label) (uint32, error) {
@@ -569,10 +697,11 @@ var Labels map[string]uint32
 // 	var err error
 // 	Labels[label.Text] = label.Offset
 // 	return label.Offset, err
-	
+
 // }
 
-func ParseLines(lines []grammar.Line) (*[]BaseInstruction,error) {
+func ParseLines(lines []grammar.Line) ([]Instruction, error) {
+	instructions := make([]Instruction, 0, len(lines))
 	for _, line := range lines {
 		if line.Directive != nil {
 			// TODO: handle directives
@@ -586,17 +715,17 @@ func ParseLines(lines []grammar.Line) (*[]BaseInstruction,error) {
 		if line.Instruction != nil {
 			inst, err := parseInst(line.Instruction)
 			if err != nil {
-				return nil,fmt.Errorf("[parseLines] invalid instruction at position %v: %v", line.Pos, err)
+				return nil, fmt.Errorf("[parseLines] invalid instruction at position %v: %v", line.Pos, err)
 			}
-			Instructions = append(Instructions, inst)
+			instructions = append(instructions, inst)
 		}
 	}
-	return &Instructions,nil
+	return instructions, nil
 }
 
-func EncInstructions(insts *[]BaseInstruction) []uint32 {
-	enc := make([]uint32, len(*insts))
-	for i, inst := range *insts {
+func EncInstructions(insts []Instruction) []uint32 {
+	enc := make([]uint32, len(insts))
+	for i, inst := range insts {
 		enc[i] = inst.Encode()
 	}
 	return enc

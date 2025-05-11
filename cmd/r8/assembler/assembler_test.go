@@ -23,7 +23,7 @@ func runTests(t *testing.T, tests *[]testCase) {
 				t.Fatalf("Failed test on instruction %v: %v, expected error", num, err)
 			}
 		}
-		if inst != testCase.expected {
+		if *(inst.(*BaseInstruction)) != testCase.expected {
 			t.Errorf("Num: %v Expected %+v, got %+v", num, testCase.expected, inst)
 		}
 	}
@@ -120,7 +120,7 @@ func TestCallRet(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     31,
-				CtrlMode:  0b111,
+				CtrlMode: 0b111,
 				CtrlFlag: 0b1111,
 				Imm:      0x100,
 			},
@@ -132,7 +132,7 @@ func TestCallRet(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     31,
-				CtrlMode:  0b111,
+				CtrlMode: 0b111,
 				CtrlFlag: 0b1111,
 				Imm:      -1,
 			},
@@ -151,7 +151,7 @@ func TestCallRet(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     10,
-				CtrlMode:  0b111,
+				CtrlMode: 0b111,
 				CtrlFlag: 0b1111,
 				Imm:      -0x100,
 			},
@@ -174,7 +174,7 @@ func TestCallRet(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     31,
-				CtrlMode:  0b111,
+				CtrlMode: 0b111,
 				CtrlFlag: 0b0000,
 			},
 		},
@@ -198,7 +198,7 @@ func TestBranch(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     1,
-			CtrlMode:  0b0,
+				CtrlMode: 0b0,
 				CtrlFlag: 0b0,
 				Imm:      0x111,
 			}},
@@ -210,7 +210,7 @@ func TestBranch(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     9,
-				CtrlMode:  0b0,
+				CtrlMode: 0b0,
 				CtrlFlag: 0b1,
 				Imm:      -10,
 			}},
@@ -222,7 +222,7 @@ func TestBranch(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     29,
-				CtrlMode:  0b001,
+				CtrlMode: 0b001,
 				CtrlFlag: 0b0110,
 				Imm:      -0x111,
 			}},
@@ -234,7 +234,7 @@ func TestBranch(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     31,
-				CtrlMode:  0b011,
+				CtrlMode: 0b011,
 				CtrlFlag: 0b0110,
 				Imm:      -0x111,
 			}},
@@ -246,7 +246,7 @@ func TestBranch(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     31,
-				CtrlMode:  0b100,
+				CtrlMode: 0b100,
 				CtrlFlag: 0b1000,
 				Imm:      -0x111,
 			}},
@@ -258,7 +258,7 @@ func TestBranch(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     31,
-				CtrlMode:  0b000,
+				CtrlMode: 0b000,
 				CtrlFlag: 0b1000,
 				Imm:      -0x111,
 			}},
@@ -270,7 +270,7 @@ func TestBranch(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     31,
-				CtrlMode:  0b010,
+				CtrlMode: 0b010,
 				CtrlFlag: 0b1000,
 			}},
 		{
@@ -282,7 +282,7 @@ func TestBranch(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     0,
-				CtrlMode:  0b100,
+				CtrlMode: 0b100,
 				CtrlFlag: 0b0100,
 			}},
 		{
@@ -294,7 +294,7 @@ func TestBranch(t *testing.T) {
 			expected: BaseInstruction{
 				OpType:   Control,
 				RMem:     0,
-				CtrlMode:  0b000,
+				CtrlMode: 0b000,
 				CtrlFlag: 0b0100,
 				Imm:      -1,
 			}},

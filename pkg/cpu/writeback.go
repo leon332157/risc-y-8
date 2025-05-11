@@ -44,6 +44,30 @@ func (w *WriteBackStage) Execute() {
 		w.instStr = "<bubble>"
 		return
 	}
+	switch w.currInst.DataType {
+	case types.Integer:
+		w.baseExecute()
+	case types.Float:
+	case types.Vector:
+		w.vecExecute()
+	}
+
+	w.currInst = nil
+	if w.pipeline.scalarMode {
+		w.pipeline.canFetch = true // In scalar mode, we can fetch the next instruction after write back
+	}
+}
+
+func (w *WriteBackStage) vecExecute() {
+	w.pipeline.cpu.UnblockVecR(w.currInst.VecInstruction.Vd)
+	_, status := w.pipeline.cpu.WriteVecR(w.currInst.VecInstruction.Vd, w.currInst.VecIR.Result)
+	if status != SUCCESS {
+		w.pipeline.sTracef(w, "Failed to write back to vector register r%v: %v\n", w.currInst.BaseInstruction.Rd, status)
+		return
+	}
+}
+
+func (w *WriteBackStage) baseExecute() {
 	w.instStr = fmt.Sprintf("OpType: %s\n", types.LookUpOpType(w.currInst.BaseInstruction.OpType))
 	w.instStr += fmt.Sprintf("Rd: %x\n", w.currInst.BaseInstruction.Rd)
 	w.instStr += fmt.Sprintf("Result: %x\n", w.currInst.Result)
@@ -91,14 +115,9 @@ func (w *WriteBackStage) Execute() {
 		return
 	}
 	w.pipeline.cpu.unblockIntR(w.currInst.BaseInstruction.RMem)
-	w.pipeline.sTracef(w, "Unblocked register r%v for mem\n", w.currInst.BaseInstruction.RMem) // For debugging purposes
-	w.pipeline.sTracef(w, "Write back completed for instruction: %+v\n", w.currInst) // For debugging purposes
+	w.pipeline.sTracef(w, "Unblocked register r%v for mem\n", w.currInst.BaseInstruction.RMem)             // For debugging purposes
+	w.pipeline.sTracef(w, "Write back completed for instruction: %+v\n", w.currInst)                       // For debugging purposes
 	w.pipeline.sTracef(w, "Write back completed for base instruction: %+v\n", *w.currInst.BaseInstruction) // For debugging purposes
-	w.currInst = nil
-
-	if w.pipeline.scalarMode {
-		w.pipeline.canFetch = true // In scalar mode, we can fetch the next instruction after write back
-	}
 }
 
 func (w *WriteBackStage) Advance(i *InstructionIR, prevstalled bool) bool {
@@ -113,10 +132,16 @@ func (w *WriteBackStage) Advance(i *InstructionIR, prevstalled bool) bool {
 }
 
 func (w *WriteBackStage) Squash() bool {
-	w.pipeline.sTracef(w, "Squashing instruction: %+v\n", w.currInst) // For debugging purposes
-	w.pipeline.cpu.unblockIntR(w.currInst.BaseInstruction.Rd)
-	w.pipeline.cpu.unblockIntR(w.currInst.BaseInstruction.RMem)
+	w.pipeline.sTracef(w, "Squashing instruction: %+v\n", w.currInst)
 	w.pipeline.cpu.unblockIntR(w.currInst.RDestAux)
+	if w.currInst.BaseInstruction != nil {
+		w.pipeline.cpu.unblockIntR(w.currInst.BaseInstruction.Rd)
+		w.pipeline.cpu.unblockIntR(w.currInst.BaseInstruction.RMem)
+	}
+	if w.currInst.VecInstruction != nil {
+		w.pipeline.cpu.UnblockVecR(w.currInst.VecInstruction.Vd)
+		w.pipeline.cpu.UnblockVecR(w.currInst.VecInstruction.RMem)
+	}
 	w.currInst = nil
 	w.pipeline.canFetch = true
 	return true
