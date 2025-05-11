@@ -8,12 +8,12 @@ import (
 )
 
 type MemoryStage struct {
-	currInst *InstructionIR  // Pointer to the InstructionIR being processed in this stage
-	waiting            bool
+	currInst *InstructionIR // Pointer to the InstructionIR being processed in this stage
+	waiting  bool
 
-	pipeline           *Pipeline       // Reference to the pipeline instance
-	next               *WriteBackStage // Next stage in the pipeline
-	prev               *ExecuteStage   // Previous stage in the pipeline
+	pipeline *Pipeline       // Reference to the pipeline instance
+	next     *WriteBackStage // Next stage in the pipeline
+	prev     *ExecuteStage   // Previous stage in the pipeline
 
 	instStr string
 }
@@ -50,23 +50,18 @@ func (m *MemoryStage) Name() string {
 	return "Memory"
 }
 
-func (m *MemoryStage) Execute() {
+func (m *MemoryStage) baseInst() {
 	inst := m.currInst
-	if inst == nil {
-		m.pipeline.sTrace(m, "No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
-		m.instStr = "<bubble>"
-		return
-	}
 	m.instStr = fmt.Sprintf("OpType: %x\nMem Mode: %x\nRd: %x\nRMem: %x\nDestMemAddr: %x", inst.BaseInstruction.OpType, inst.BaseInstruction.MemMode, inst.BaseInstruction.Rd, inst.BaseInstruction.RMem, inst.DestMemAddr)
-	if inst.BaseInstruction.OpType != types.LoadStore {
+	if m.currInst.BaseInstruction.OpType != types.LoadStore {
 		m.pipeline.sTracef(m, "Current instruction is not a load/store type, skipping memory stage execution %+v\n", inst) // For debugging purposes, skip if not a load/store instruction
 		return
 	} else {
 		m.pipeline.sTracef(m, "[MemoryStage Execute] Processing instruction: %+v\n", inst) // For debugging purposes
 	}
 	cache := m.pipeline.cpu.Cache
-	destAddr := uint(inst.DestMemAddr)
-	switch inst.BaseInstruction.MemMode {
+	destAddr := uint(m.currInst.DestMemAddr)
+	switch m.currInst.BaseInstruction.MemMode {
 	case types.LDW, types.POP:
 		attempt := cache.Read(destAddr, memory.MEMORY_STAGE) // Attempt to read from cache
 		if attempt.State != memory.SUCCESS {
@@ -105,11 +100,72 @@ func (m *MemoryStage) Execute() {
 			}
 			m.pipeline.sTracef(m, "Successfully stored to cache at address 0x%X\n", m.currInst.DestMemAddr)
 			m.pipeline.cpu.unblockIntR(m.currInst.BaseInstruction.Rd) // Unblock the register after successful write
-			m.waiting = false // Clear waiting state since the write was successful
+			m.waiting = false                                         // Clear waiting state since the write was successful
 		}
 
 	default:
 		m.pipeline.log.Panic().Msgf("[Memory Stage] Unsupported memory operation: %d", m.currInst.BaseInstruction.MemMode) // Handle unsupported memory operations
+	}
+}
+
+func (m *MemoryStage) vecInst() {
+	destAddr := uint(m.currInst.DestMemAddr)
+	var idx uint
+	switch m.currInst.VecInstruction.MemMode {
+	case types.VEC_LOAD_PACKED:
+		for idx = 0; idx < 4; idx++ {
+			attempt := m.pipeline.cpu.Cache.Read(destAddr+idx, memory.MEMORY_STAGE)
+			if attempt.State != memory.SUCCESS {
+				m.pipeline.sTracef(m, "Failed to load from cache at address 0x%X, state: %s\n", m.currInst.DestMemAddr, memory.LookUpMemoryResult(attempt.State))
+			}
+			if attempt.State == memory.WAIT || attempt.State == memory.WAIT_NEXT_LEVEL {
+				// Handle waiting or next level cache logic here if needed
+				m.pipeline.sTracef(m, "Waiting for cache read at address 0x%X\n", m.currInst.DestMemAddr)
+				m.waiting = true
+				return // Do not proceed further until the cache read is successful
+			} else {
+				// Successfully read from cache, set the result in the current instruction
+				m.currInst.VecIR.Result[idx] = attempt.Value // Set the result to the value read from cache
+				m.waiting = false
+				m.pipeline.sTracef(m, "Successfully loaded from cache at address 0x%X, value: %d\n", m.currInst.DestMemAddr, m.currInst.Result)
+			}
+		}
+	case types.VEC_STORE_PACKED:
+		for idx = 0; idx < 4; idx++ {
+			writeResult := m.pipeline.cpu.Cache.Write(destAddr+idx, memory.MEMORY_STAGE, m.currInst.VecIR.Result[idx])
+			if writeResult.State != memory.SUCCESS {
+				// Handle failure to write to cache
+				m.pipeline.sTracef(m, "Failed to store to cache at address 0x%X, state: %s\n", m.currInst.DestMemAddr, memory.LookUpMemoryResult(writeResult.State))
+			}
+			if writeResult.State == memory.WAIT || writeResult.State == memory.WAIT_NEXT_LEVEL {
+				// Handle waiting or next level cache logic here if needed
+				m.pipeline.sTracef(m, "Waiting for cache write at address 0x%X\n", m.currInst.DestMemAddr)
+				m.waiting = true
+			} else {
+				// Successfully wrote to cache
+				m.pipeline.sTracef(m, "Successfully stored to cache at address 0x%X\n", m.currInst.DestMemAddr)
+				m.pipeline.cpu.UnblockVecR(m.currInst.VecInstruction.Vd) // Unblock the register after successful write
+				m.waiting = false                                        // Clear waiting state since the write was successful
+			}
+		}
+	default:
+		m.pipeline.log.Panic().Msgf("[Memory Stage] Unsupported memory operation: %d", m.currInst.BaseInstruction.MemMode) // Handle unsupported memory operations
+	}
+}
+
+func (m *MemoryStage) Execute() {
+	inst := m.currInst
+	if inst == nil {
+		m.pipeline.sTrace(m, "No current instruction to process, returning early") // For debugging purposes, return early if no instruction is set
+		m.instStr = "<bubble>"
+		return
+	}
+	switch inst.DataType {
+	case types.Integer:
+		m.baseInst()
+	case types.Float:
+	case types.Vector:
+		m.vecInst()
 	}
 }
 
@@ -138,9 +194,9 @@ func (m *MemoryStage) Advance(i *InstructionIR, prevstalled bool) bool {
 func (m *MemoryStage) Squash() bool {
 	m.pipeline.sTracef(m, "Squashing instruction: %+v\n", m.currInst) // For debugging purposes
 	if m.currInst != nil {
-		m.pipeline.cpu.unblockIntR(m.currInst.BaseInstruction.Rd) // Unblock the register if it was blocked
+		m.pipeline.cpu.unblockIntR(m.currInst.BaseInstruction.Rd)   // Unblock the register if it was blocked
 		m.pipeline.cpu.unblockIntR(m.currInst.BaseInstruction.RMem) // Unblock the memory register if it was blocked
-		m.pipeline.cpu.unblockIntR(m.currInst.RDestAux) // Unblock the auxiliary register if it was blocked
+		m.pipeline.cpu.unblockIntR(m.currInst.RDestAux)             // Unblock the auxiliary register if it was blocked
 	}
 	m.currInst = nil
 	m.waiting = false
@@ -161,7 +217,7 @@ func (m *MemoryStage) Squash() bool {
 }
 
 func (m *MemoryStage) CanAdvance() bool {
-	return (m.next.CanAdvance()) && !m.waiting 
+	return (m.next.CanAdvance()) && !m.waiting
 }
 
 func (m *MemoryStage) FormatInstruction() string {

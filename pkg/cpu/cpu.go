@@ -44,14 +44,14 @@ type CPU struct {
 	Halted         bool
 	ALU            *alu.ALU
 	//FPU            *FPU
-	//VPU            *VPU
 	Cache        *memory.CacheType
 	RAM          *memory.RAM // Reference to RAM, if needed for direct access (optional)
 	Pipeline     *Pipeline
 	IntRegisters [INT_REG_COUNT]IntRegister
 
 	//FloatRegisters  []FloatRegister
-	//VectorRegisters []VectorRegister
+	VectorRegisters []VectorRegister
+
 	log *zerolog.Logger
 }
 
@@ -133,6 +133,45 @@ func (c *CPU) WriteIntR(r uint8, value uint32) (v uint32, status int32) {
 	}
 	c.IntRegisters[r].value = value
 	return c.IntRegisters[r].value, SUCCESS
+}
+
+func (c *CPU) ReadVecR(r uint8) (v [4]uint32, status int32) {
+	if r >= uint8(len(c.VectorRegisters)) {
+		c.log.Panic().Msgf("attempted to read an out of bounds vector register: %v", r)
+	}
+	if !c.VectorRegisters[r].ReadEnable {
+		return [4]uint32{}, READ_BLOCKED // Register is not readable
+	}
+	return c.VectorRegisters[r].value, SUCCESS
+}
+
+func (c *CPU) WriteVecR(r uint8, value [4]uint32) (v [4]uint32, status int32) {
+	if r >= uint8(len(c.VectorRegisters)) {
+		c.log.Panic().Msgf("attempted to write an out of bounds vector register: %v", r)
+	}
+	if !c.VectorRegisters[r].WriteEnable {
+		return [4]uint32{}, WRITE_BLOCKED // Register is not writable
+	}
+	c.VectorRegisters[r].value = value
+	return c.VectorRegisters[r].value, SUCCESS
+}
+
+func (c *CPU) BlockVecR(r uint8) {
+	if r >= uint8(len(c.VectorRegisters)) {
+		c.log.Panic().Msgf("attempted to block an out of bounds vector register: %v", r)
+	}
+	c.log.Trace().Msgf("Blocking vector register v%v for reading and writing", r)
+	c.VectorRegisters[r].ReadEnable = false
+	c.VectorRegisters[r].WriteEnable = false
+}
+
+func (c *CPU) UnblockVecR(r uint8) {
+	if r >= uint8(len(c.VectorRegisters)) {
+		c.log.Panic().Msgf("attempted to unblock an out of bounds vector register: %v", r)
+	}
+	c.log.Trace().Msgf("Unblocking vector register v%v for reading and writing", r)
+	c.VectorRegisters[r].ReadEnable = true
+	c.VectorRegisters[r].WriteEnable = true
 }
 
 func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logger *zerolog.Logger) {

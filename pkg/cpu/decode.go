@@ -11,6 +11,8 @@ type decodeState int
 const (
 	DEC_free decodeState = iota
 	DEC_base_decoded
+	DEC_float_decoded
+	DEC_vec_decoded
 	DEC_decoded
 	DEC_reg_read
 )
@@ -85,132 +87,194 @@ func (d *DecodeStage) Execute() {
 		d.instStr = "<bubble>"
 		return
 	}
-	if d.state < DEC_base_decoded {
-		d.currInst.BaseInstruction = new(types.BaseInstruction)      // Create a new BaseInstruction to decode the instruction
-		d.currInst.BaseInstruction.Decode(d.currInst.rawInstruction) // Decode the raw instruction into a BaseInstruction
-		d.state = DEC_base_decoded
-	} else {
-		d.pipe.sTrace(d, "Already decoded base instruction, skipping decode")
+	d.currInst.DataType = types.DataType(d.currInst.rawInstruction & 0b11)
+	switch d.currInst.DataType {
+	case types.Integer:
+		if d.state < DEC_base_decoded {
+			switch d.currInst.rawInstruction & 0b1 {
+			case 1:
+
+				d.currInst.BaseInstruction = new(types.BaseInstruction)      // Create a new BaseInstruction to decode the instruction
+				d.currInst.BaseInstruction.Decode(d.currInst.rawInstruction) // Decode the raw instruction into a BaseInstruction
+				d.state = DEC_base_decoded
+			}
+		} else {
+			d.pipe.sTrace(d, "Already decoded base instruction, skipping decode")
+		}
+		d.pipe.sTracef(d, "Decoded instruction: %+v", d.currInst)
+		d.pipe.sTracef(d, "Decoded instruction base: %+v", *d.currInst.BaseInstruction)
+		baseInstruction := d.currInst.BaseInstruction // For convenience
+		//go func() {
+		d.instStr = fmt.Sprintf(
+			"statebefore:%v\nraw: 0x%08x\nOpType: %x\nRd: %x\nRDAux: %x\n",
+			LookUpStateDec(d.state),
+			d.currInst.rawInstruction,
+			baseInstruction.OpType,
+			baseInstruction.Rd,
+			d.currInst.RDestAux)
+		//}()
+		if d.state == DEC_decoded {
+			d.pipe.sTracef(d, "Already decoded instruction, skipping decode")
+			return
+		}
+		switch baseInstruction.OpType {
+		case types.RegImm:
+
+			v, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
+			if st != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read register r%v %v", baseInstruction.Rd, st)
+				d.state = DEC_reg_read
+				return
+			}
+			d.pipe.cpu.blockIntR(baseInstruction.Rd)
+			d.currInst.Result = v
+			d.currInst.Operand = signExtend(baseInstruction.Imm) // sign extend immediate value
+			d.state = DEC_decoded
+
+		case types.RegReg:
+
+			rdv, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
+			if st != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read dest register r%v %v", baseInstruction.Rs, st)
+				d.state = DEC_reg_read
+				return
+			}
+			rsv, st := d.pipe.cpu.ReadIntR(baseInstruction.Rs)
+			if st != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read source register r%v %v", baseInstruction.Rs, st)
+				d.state = DEC_reg_read
+				return
+			}
+			d.pipe.cpu.blockIntR(baseInstruction.Rd)
+			d.currInst.Result = rdv
+			d.currInst.Operand = rsv
+			d.state = DEC_decoded
+
+		case types.Control:
+
+			if baseInstruction.RMem == 0 && baseInstruction.Imm == -1 {
+				d.pipe.log.Error().Msg("[DecodeStage Execute] Bruh, why are branching to -1? Are you trying to halt?")
+				d.pipe.cpu.Halt()
+				return
+			}
+			rmemv, st := d.pipe.cpu.ReadIntR(baseInstruction.RMem)
+			if st != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read control instruction memory source r%v %v", baseInstruction.RMem, st)
+				d.state = DEC_reg_read
+				return
+			}
+			d.currInst.DestMemAddr = rmemv
+			if baseInstruction.RMem == 0 {
+				d.currInst.DestMemAddr = d.pipe.cpu.ProgramCounter // use PC as destination address if RMem is 0
+			}
+			d.currInst.Operand = signExtend(baseInstruction.Imm) // sign extend immediate value
+			d.state = DEC_decoded
+
+		case types.LoadStore:
+
+			var SP = types.IntegerRegisters["sp"]
+			if (baseInstruction.MemMode == types.PUSH) || (baseInstruction.MemMode == types.POP) {
+				// If push or pop
+				d.currInst.BaseInstruction.RMem = SP
+				d.pipe.sTracef(d, "PUSH/POP instruction detected, setting RMem to SP (r%v)", SP)
+			}
+			// set memory source to be stack pointer so squash can work properlyq
+			rmemv, st := d.pipe.cpu.ReadIntR(baseInstruction.RMem) // rmemv should be zero for push pop
+			if st != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read load/store instruction memory source r%v %v", baseInstruction.RMem, st)
+				d.state = DEC_reg_read
+				return
+			}
+			d.pipe.sTracef(d, "Read memory source r%v value %v", baseInstruction.RMem, rmemv) // For debugging purposes
+			d.currInst.DestMemAddr = rmemv
+
+			d.currInst.Operand = signExtend(d.currInst.BaseInstruction.Imm)
+
+			v, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
+			if st != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read load/store instruction destination register r%v %v", baseInstruction.Rd, st)
+				d.state = DEC_reg_read
+				return
+			}
+			d.currInst.Result = v
+			d.pipe.cpu.blockIntR(baseInstruction.RMem)
+			d.pipe.cpu.blockIntR(baseInstruction.Rd)
+			d.state = DEC_decoded
+		}
+		d.pipe.sTracef(d, "Decoded filled instruction: %+v %+v\n", d.currInst, *d.currInst.BaseInstruction)
+		switch baseInstruction.OpType {
+		case types.RegReg:
+			d.instStr += fmt.Sprintf("Rs: %x\n", baseInstruction.Rs)
+			d.instStr += fmt.Sprintf("ALU: %s\n", types.RegALUInverse[baseInstruction.ALU])
+		case types.RegImm:
+			d.instStr += fmt.Sprintf("ALU: %s\n", types.ImmALUInverse[baseInstruction.ALU])
+			d.instStr += fmt.Sprintf("Imm: %x\n", baseInstruction.Imm)
+		case types.LoadStore:
+			d.instStr += fmt.Sprintf("MemMode: %v\nDestMem: %v\n", baseInstruction.MemMode, d.currInst.DestMemAddr)
+		case types.Control:
+			d.instStr += fmt.Sprintf("CtrlMode: %x\n", baseInstruction.CtrlMode)
+			d.instStr += fmt.Sprintf("CtrlFlag: %x\n", baseInstruction.CtrlFlag)
+			d.instStr += fmt.Sprintf("DestMem: %v", d.currInst.DestMemAddr)
+		}
+		d.instStr += fmt.Sprintf("Result: %x\n", d.currInst.Result)
+		d.instStr += fmt.Sprintf("state after dec: %v", LookUpStateDec(d.state))
+	case types.Float:
+		d.pipe.pLog.Fatal().Msg("[DecodeStage Execute] Float instruction detected")
+	case types.Vector:
+		d.pipe.pLog.Fatal().Msg("[DecodeStage Execute] Vector instruction detected")
+		d.currInst.VecInstruction = new(types.VecInstruction)
+		d.currInst.VecInstruction.Decode(d.currInst.rawInstruction)
+		switch d.currInst.VecInstruction.OpType {
+		case types.VEC_ARITH:
+			vd, st := d.pipe.cpu.ReadVecR(d.currInst.VecInstruction.Vd)
+			if st != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read vector instruction destination register r%v %v", d.currInst.VecInstruction.Vd, st)
+				d.state = DEC_reg_read
+				return
+			}
+			vs1, st := d.pipe.cpu.ReadVecR(d.currInst.VecInstruction.Vs1)
+			if st != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read vector instruction source register r%v %v", d.currInst.VecInstruction.Vs1, st)
+				d.state = DEC_reg_read
+				return
+			}
+			// vs2 is only used when the insturction is not a vector branch instruction
+			if d.currInst.VecInstruction.VPU != types.VBEQ {
+				vs2, st := d.pipe.cpu.ReadVecR(d.currInst.VecInstruction.Vs2)
+				if st != SUCCESS {
+					d.pipe.sTracef(d, "Failed to read vector instruction source register r%v %v", d.currInst.VecInstruction.Vs2, st)
+					d.state = DEC_reg_read
+					return
+				}
+				d.currInst.VecIR.Source2 = vs2
+			}
+			d.currInst.VecIR = new(VectorIR)
+			d.currInst.VecIR.Result = vd
+			d.currInst.VecIR.Source1 = vs1
+			d.pipe.cpu.BlockVecR(d.currInst.VecInstruction.Vd)
+			d.pipe.cpu.BlockVecR(d.currInst.VecInstruction.Vs1)
+			d.pipe.cpu.BlockVecR(d.currInst.VecInstruction.Vs2)
+		case types.VEC_LOAD_STORE:
+			rmemv, st := d.pipe.cpu.ReadIntR(d.currInst.VecInstruction.RMem)
+			if st != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read vector instruction memory source r%v %v", d.currInst.VecInstruction.RMem, st)
+				d.state = DEC_reg_read
+				return
+			}
+			d.pipe.sTracef(d, "Read memory source r%v value %v", d.currInst.VecInstruction.RMem, rmemv) // For debugging purposes
+			d.currInst.DestMemAddr = rmemv
+			d.currInst.Operand = signExtend(d.currInst.VecInstruction.Imm)
+			v, st := d.pipe.cpu.ReadIntR(d.currInst.VecInstruction.Vd)
+			if st != SUCCESS {
+				d.pipe.sTracef(d, "Failed to read vector instruction destination register r%v %v", d.currInst.VecInstruction.Vd, st)
+				d.state = DEC_reg_read
+				return
+			}
+			d.currInst.Result = v
+			d.state = DEC_vec_decoded
+			d.pipe.cpu.BlockVecR(d.currInst.VecInstruction.Vd)
+		}
 	}
-	d.pipe.sTracef(d, "Decoded instruction: %+v", d.currInst)
-	d.pipe.sTracef(d, "Decoded instruction base: %+v", *d.currInst.BaseInstruction)
-	baseInstruction := d.currInst.BaseInstruction // For convenience
-	//go func() {
-	d.instStr = fmt.Sprintf(
-		"statebefore:%v\nraw: 0x%08x\nOpType: %x\nRd: %x\nRDAux: %x\n",
-		LookUpStateDec(d.state),
-		d.currInst.rawInstruction,
-		baseInstruction.OpType,
-		baseInstruction.Rd,
-		d.currInst.RDestAux)
-	//}()
-	if d.state == DEC_decoded{
-		d.pipe.sTracef(d, "Already decoded instruction, skipping decode")
-		return
-	}
-	switch baseInstruction.OpType {
-	case types.RegImm:
-
-		v, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
-		if st != SUCCESS {
-			d.pipe.sTracef(d, "Failed to read register r%v %v", baseInstruction.Rd, st)
-			d.state = DEC_reg_read
-			return
-		} 
-		d.pipe.cpu.blockIntR(baseInstruction.Rd)
-		d.currInst.Result = v
-		d.currInst.Operand = signExtend(baseInstruction.Imm) // sign extend immediate value
-		d.state = DEC_decoded
-
-	case types.RegReg:
-
-		rdv, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
-		if st != SUCCESS {
-			d.pipe.sTracef(d, "Failed to read dest register r%v %v", baseInstruction.Rs, st)
-			d.state = DEC_reg_read
-			return
-		}
-		rsv, st := d.pipe.cpu.ReadIntR(baseInstruction.Rs)
-		if st != SUCCESS {
-			d.pipe.sTracef(d, "Failed to read source register r%v %v", baseInstruction.Rs, st)
-			d.state = DEC_reg_read
-			return
-		}
-		d.pipe.cpu.blockIntR(baseInstruction.Rd)
-		d.currInst.Result = rdv
-		d.currInst.Operand = rsv
-		d.state = DEC_decoded
-
-	case types.Control:
-
-		if baseInstruction.RMem == 0 && baseInstruction.Imm == -1 {
-			d.pipe.log.Error().Msg("[DecodeStage Execute] Bruh, why are branching to -1? Are you trying to halt?")
-			d.pipe.cpu.Halt()
-			return
-		}
-		rmemv, st := d.pipe.cpu.ReadIntR(baseInstruction.RMem)
-		if st != SUCCESS {
-			d.pipe.sTracef(d, "Failed to read control instruction memory source r%v %v", baseInstruction.RMem, st)
-			d.state = DEC_reg_read
-			return
-		}
-		d.currInst.DestMemAddr = rmemv
-		if baseInstruction.RMem == 0 {
-			d.currInst.DestMemAddr = d.pipe.cpu.ProgramCounter // use PC as destination address if RMem is 0
-		}
-		d.currInst.Operand = signExtend(baseInstruction.Imm) // sign extend immediate value
-		d.state = DEC_decoded
-
-	case types.LoadStore:
-
-		var SP = types.IntegerRegisters["sp"]
-		if (baseInstruction.MemMode == types.PUSH) || (baseInstruction.MemMode == types.POP) {
-			// If push or pop
-			d.currInst.BaseInstruction.RMem = SP
-			d.pipe.sTracef(d, "PUSH/POP instruction detected, setting RMem to SP (r%v)", SP)
-		}
-		// set memory source to be stack pointer so squash can work properlyq
-		rmemv, st := d.pipe.cpu.ReadIntR(baseInstruction.RMem) // rmemv should be zero for push pop
-		if st != SUCCESS {
-			d.pipe.sTracef(d, "Failed to read load/store instruction memory source r%v %v", baseInstruction.RMem, st)
-			d.state = DEC_reg_read
-			return
-		}
-		d.pipe.sTracef(d, "Read memory source r%v value %v", baseInstruction.RMem, rmemv) // For debugging purposes
-		d.currInst.DestMemAddr = rmemv
-
-		d.currInst.Operand = signExtend(d.currInst.BaseInstruction.Imm)
-
-		v, st := d.pipe.cpu.ReadIntR(baseInstruction.Rd)
-		if st != SUCCESS {
-			d.pipe.sTracef(d, "Failed to read load/store instruction destination register r%v %v", baseInstruction.Rd, st)
-			d.state = DEC_reg_read
-			return
-		}
-		d.currInst.Result = v
-		d.pipe.cpu.blockIntR(baseInstruction.RMem)
-		d.pipe.cpu.blockIntR(baseInstruction.Rd)
-		d.state = DEC_decoded
-	}
-	d.pipe.sTracef(d, "Decoded filled instruction: %+v %+v\n", d.currInst, *d.currInst.BaseInstruction)
-	//go func() {
-	switch baseInstruction.OpType {
-	case types.RegReg:
-		d.instStr += fmt.Sprintf("Rs: %x\n", baseInstruction.Rs)
-		d.instStr += fmt.Sprintf("ALU: %s\n", types.RegALUInverse[baseInstruction.ALU])
-	case types.RegImm:
-		d.instStr += fmt.Sprintf("ALU: %s\n", types.ImmALUInverse[baseInstruction.ALU])
-		d.instStr += fmt.Sprintf("Imm: %x\n", baseInstruction.Imm)
-	case types.LoadStore:
-		d.instStr += fmt.Sprintf("MemMode: %v\nDestMem: %v\n", baseInstruction.MemMode, d.currInst.DestMemAddr)
-	case types.Control:
-		d.instStr += fmt.Sprintf("CtrlMode: %x\n", baseInstruction.CtrlMode)
-		d.instStr += fmt.Sprintf("CtrlFlag: %x\n", baseInstruction.CtrlFlag)
-		d.instStr += fmt.Sprintf("DestMem: %v",d.currInst.DestMemAddr)
-	}
-	d.instStr += fmt.Sprintf("Result: %x\n", d.currInst.Result)
-	d.instStr += fmt.Sprintf("state after dec: %v", LookUpStateDec(d.state))
-	//}()
 }
 
 // Returns if this stage passed the instruction to the next stage

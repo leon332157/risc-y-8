@@ -5,6 +5,7 @@ import (
 	"math/bits"
 
 	"github.com/leon332157/risc-y-8/pkg/types"
+	"github.com/leon332157/risc-y-8/pkg/vpu"
 )
 
 type ExecuteStage struct {
@@ -375,26 +376,78 @@ func (e *ExecuteStage) Execute() {
 	}
 	e.instStr = fmt.Sprintf("State: %v\n", lookUpStateExec(e.state))
 	e.pipeline.sTracef(e, "Executing instruction: %+v\n", e.currInst)
-	e.pipeline.sTracef(e, "Executing instruction base: %+v\n", *e.currInst.BaseInstruction)
-	e.instStr += fmt.Sprintf("OpType: %s\n", types.LookUpOpType(e.currInst.BaseInstruction.OpType))
+	if e.currInst.BaseInstruction != nil {
+		e.pipeline.sTracef(e, "Executing instruction base: %+v\n", *e.currInst.BaseInstruction)
+		e.instStr += fmt.Sprintf("OpType: %s\n", types.LookUpOpType(e.currInst.BaseInstruction.OpType))
+	} else {
+		e.pipeline.sTracef(e, "Executing instruction vector: %+v\n", *e.currInst.VecInstruction)
+		e.instStr += fmt.Sprintf("OpType: %s\n", types.LookUpVecOpType(e.currInst.VecInstruction.OpType))
+	}
 	e.instStr += fmt.Sprintf("Cyl Left before: %v\n", e.cyclesLeft)
 	if e.state != EXEC_done {
 		e.pipeline.sTrace(e, "free, executing")
-		switch e.currInst.BaseInstruction.OpType {
-		case types.RegImm:
-			e.ALURI()
-		case types.RegReg:
-			e.ALURR()
-		case types.LoadStore:
-			e.LoadStore()
-		case types.Control:
-			e.Control()
+		switch e.currInst.DataType {
+		case types.Integer:
+			e.excBase()
+		case types.Vector:
+			e.excVector()
 		default:
-			panic("unsupported instruction type in Execute stage") // Handle unsupported instruction types
+			panic("unsupported instruction type in Execute stage")
 		}
 		//e.instStr += fmt.Sprintf("\nCyl Left after: %v\n", e.cyclesLeft)
 	} else {
 		e.pipeline.sTrace(e, "Already executed instruction, not executing")
+	}
+}
+
+func (e *ExecuteStage) excBase() {
+	switch e.currInst.BaseInstruction.OpType {
+	case types.RegImm:
+		e.ALURI()
+	case types.RegReg:
+		e.ALURR()
+	case types.LoadStore:
+		e.LoadStore()
+	case types.Control:
+		e.Control()
+	default:
+		panic("unsupported instruction type in Execute stage")
+	}
+}
+
+func (e *ExecuteStage) excVector() {
+	switch e.currInst.VecInstruction.OpType {
+	case types.VEC_LOAD_STORE:
+		e.currInst.DestMemAddr = e.calculateMemAddr(e.currInst.DestMemAddr, int32(e.currInst.Operand))
+	default:
+		panic("???")
+	case types.VEC_ARITH:
+		switch e.currInst.VecInstruction.VPU {
+		case types.VPADD:
+			e.currInst.VecIR.Result = vpu.VPAdd(e.currInst.VecIR.Source1, e.currInst.VecIR.Source2)
+		case types.VPSUB:
+			e.currInst.VecIR.Result = vpu.VPSub(e.currInst.VecIR.Source1, e.currInst.VecIR.Source2)
+		case types.VPMUL:
+			e.currInst.VecIR.Result = vpu.VPMul(e.currInst.VecIR.Source1, e.currInst.VecIR.Source2)
+		case types.VPSHL:
+			e.currInst.VecIR.Result = vpu.VPShl(e.currInst.VecIR.Source1, e.currInst.VecIR.Source2)
+		case types.VPXOR:
+			e.currInst.VecIR.Result = vpu.VPXor(e.currInst.VecIR.Source1, e.currInst.VecIR.Source2)
+		case types.VPAND:
+			e.currInst.VecIR.Result = vpu.VPAnd(e.currInst.VecIR.Source1, e.currInst.VecIR.Source2)
+		case types.VPORR:
+			e.currInst.VecIR.Result = vpu.VPOr(e.currInst.VecIR.Source1, e.currInst.VecIR.Source2)
+		case types.VBEQ:
+			temp := vpu.VPAnd(e.currInst.VecIR.Result, e.currInst.VecIR.Source1)
+			for elem := range temp {
+				if elem != 0 {
+					e.currInst.BranchTaken = true
+					break
+				}
+			}
+		default:
+			e.pipeline.pLog.Panic().Msgf("unsupported vector operation %+v", e.currInst.VecInstruction.VPU)
+		}
 	}
 }
 
@@ -433,7 +486,6 @@ func (e *ExecuteStage) Squash() bool {
 }
 
 func (e *ExecuteStage) CanAdvance() bool {
-
 	return e.next.CanAdvance() && e.state <= EXEC_done
 }
 

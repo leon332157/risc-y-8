@@ -1,10 +1,8 @@
 package cpu
 
 import (
-	"fmt"
 	"os"
-	"strings"
-	
+
 	"github.com/leon332157/risc-y-8/pkg/types"
 	"github.com/rs/zerolog"
 )
@@ -134,47 +132,24 @@ type Stage interface {
 
 type AssembledInst interface {
 }
+
+type VectorIR struct {
+	Result  [4]uint32
+	Source1 [4]uint32
+	Source2 [4]uint32
+}
 type InstructionIR struct {
 	BaseInstruction *types.BaseInstruction // base instruction structure, if applicable
-	//FloatInstruction types.FloatInstruction
-	//VecInstruction types.VecInstruction
+	//FloatInstruction *types.FloatInstruction
+	VecInstruction *types.VecInstruction
 	Operand        uint32
 	Result         uint32 // Calculated as "result = Rd op Rs/imm"
 	RDestAux       uint8  // Auxiliary register destination, used in some instructions (like PUSH, POP, CALL)
 	ResultAux      uint32 // Auxiliary Result of the instruction, used in some instructions (like PUSH, POP, CALL)
 	DestMemAddr    uint32 // Memory address for load/store operations, and branch destination
 	BranchTaken    bool
+
+	VecIR          *VectorIR
 	rawInstruction uint32 // The instruction to be executed
-}
-
-func (i *InstructionIR) FormatLines() string {
-	if i == nil {
-		return "<bubble>"
-	}
-	s := fmt.Sprintf("raw: %x\n", i.rawInstruction)
-	if i.BaseInstruction == nil {
-		s += "BaseInstruction: <nil>\n"
-		return s
-	}
-	s += fmt.Sprintf("OpType: %x\n", i.BaseInstruction.OpType)
-	switch i.BaseInstruction.OpType {
-	case types.RegReg, types.RegImm:
-		s += fmt.Sprintf("Rd: %x\n", i.BaseInstruction.Rd)
-		s += fmt.Sprintf("ALU: %x\n", i.BaseInstruction.ALU)
-		s += fmt.Sprintf("Rs: %x\n", i.BaseInstruction.Rs)
-	case types.Control:
-		s += fmt.Sprintf("RMem: %x\n", i.BaseInstruction.RMem)
-		s += fmt.Sprintf("DestMemAddr: %x\n", i.DestMemAddr)
-		s += fmt.Sprintf("RDestAux: %x\n", i.RDestAux)
-		s += fmt.Sprintf("BranchTaken: %v\n", i.BranchTaken)
-		s += fmt.Sprintf("BranchModeFlag: %x\n", i.BaseInstruction.CtrlMode<<4|i.BaseInstruction.CtrlFlag)
-	case types.LoadStore:
-		s += fmt.Sprintf("Rd: %x\n", i.BaseInstruction.Rd)
-		s += fmt.Sprintf("RMem: %x\n", i.BaseInstruction.RMem)
-		s += fmt.Sprintf("DestMemAddr: %x\n", i.DestMemAddr)
-		s += fmt.Sprintf("MemMode: %x\n", i.BaseInstruction.MemMode)
-	default:
-	}
-
-	return strings.Join([]string{s}, "\n")
+	DataType       types.DataType
 }
