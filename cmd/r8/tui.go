@@ -319,6 +319,7 @@ func (m model) View() string {
 	cache := m.drawCache()
 	pipeline := m.drawPipeline()
 	registerView := m.drawRegisters()
+	vectorReg := m.drawVecRegister()
 	clock := m.drawClock()
 	pc := m.drawPC()
 	msg := m.drawMsg()
@@ -327,7 +328,7 @@ func (m model) View() string {
 	whitespace := lipgloss.Place(3, 3, lipgloss.Right, lipgloss.Bottom, "")
 	SimAndCPU := lipgloss.JoinHorizontal(lipgloss.Center, clock, pc, whitespace, lastInstr, msg)
 	pipelineAndCPU := lipgloss.JoinHorizontal(lipgloss.Top, pipeline, whitespace, SimAndCPU)
-	regsCol := lipgloss.JoinHorizontal(lipgloss.Left, registerView, whitespace, ram, whitespace, cache)
+	regsCol := lipgloss.JoinHorizontal(lipgloss.Left, registerView, whitespace, ram, whitespace, cache, vectorReg)
 	together := lipgloss.JoinVertical(lipgloss.Top, pipelineAndCPU, regsCol)
 	ui := lipgloss.JoinVertical(lipgloss.Left, together, cmdLine)
 
@@ -459,7 +460,7 @@ func (m model) checkNewlines(instr string, height int, i int) int {
 }
 
 func (m model) drawPipeline() string {
-	
+
 	labels := []string{" WB ", " MEM ", " EXE ", " DEC ", " FET "}
 	row := make([]string, 0)
 
@@ -490,6 +491,30 @@ func (m model) drawRegisters() string {
 	return lipgloss.NewStyle().
 		BorderForeground(lipgloss.Color("207")).
 		Render("IntRegisters\n" + regTable.Render() + "\n")
+}
+
+func (m model) drawVecRegister() string {
+	regVals := [][]string{}
+	var i uint8
+	for i = range 8 {
+		var style = lipgloss.NewStyle()
+		if !m.system.CPU.VectorRegisters[i].ReadEnable {
+			style = style.Foreground(lipgloss.Color("#FF0000"))
+		} else {
+			style = style.Foreground(lipgloss.Color("#04B575"))
+		}
+		row := []string{style.Render(fmt.Sprintf("V%d", i+1))}
+		for _, elem := range m.system.CPU.ReadVecRNoBlock(i) {
+			row = append(row, fmt.Sprintf("%08X", elem))
+		}
+		regVals = append(regVals, row)
+	}
+	regTable := table.New().
+		Border(lipgloss.NormalBorder()).
+		Rows(regVals...)
+	return lipgloss.NewStyle().
+		BorderForeground(lipgloss.Color("207")).
+		Render("VecRegisters\n" + regTable.Render() + "\n")
 }
 
 func (m model) drawLastInstruction() string {

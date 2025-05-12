@@ -30,7 +30,7 @@ func init() {
 }
 
 func runSimulate(cmd *cobra.Command, args []string) error {
-	zerolog.SetGlobalLevel(zerolog.Disabled)
+	zerolog.SetGlobalLevel(zerolog.TraceLevel)
 	infile := args[0]
 	f, err := os.ReadFile(infile)
 	if err != nil {

@@ -88,6 +88,7 @@ func (d *DecodeStage) Execute() {
 		return
 	}
 	d.currInst.DataType = types.DataType(d.currInst.rawInstruction & 0b11)
+	d.pipe.sTracef(d, "raw: %x datatype %#v", d.currInst.rawInstruction, d.currInst.DataType)
 	switch d.currInst.DataType {
 	case types.Integer:
 		if d.state < DEC_base_decoded {
@@ -221,14 +222,16 @@ func (d *DecodeStage) Execute() {
 	case types.Float:
 		d.pipe.pLog.Fatal().Msg("[DecodeStage Execute] Float instruction detected")
 	case types.Vector:
-		d.pipe.pLog.Fatal().Msg("[DecodeStage Execute] Vector instruction detected")
+		d.pipe.pLog.Trace().Msg("[DecodeStage Execute] Vector instruction detected")
 		d.currInst.VecInstruction = new(types.VecInstruction)
 		d.currInst.VecInstruction.Decode(d.currInst.rawInstruction)
+		d.currInst.VecIR = &VectorIR{}
+		d.state = DEC_vec_decoded
 		switch d.currInst.VecInstruction.OpType {
 		case types.VEC_ARITH:
 			vd, st := d.pipe.cpu.ReadVecR(d.currInst.VecInstruction.Vd)
 			if st != SUCCESS {
-				d.pipe.sTracef(d, "Failed to read vector instruction destination register r%v %v", d.currInst.VecInstruction.Vd, st)
+				d.pipe.sTracef(d, "Failed to read vector instruction destination register v%v %v", d.currInst.VecInstruction.Vd, st)
 				d.state = DEC_reg_read
 				return
 			}
@@ -254,6 +257,7 @@ func (d *DecodeStage) Execute() {
 			d.pipe.cpu.BlockVecR(d.currInst.VecInstruction.Vd)
 			d.pipe.cpu.BlockVecR(d.currInst.VecInstruction.Vs1)
 			d.pipe.cpu.BlockVecR(d.currInst.VecInstruction.Vs2)
+			d.state = DEC_decoded
 		case types.VEC_LOAD_STORE:
 			rmemv, st := d.pipe.cpu.ReadIntR(d.currInst.VecInstruction.RMem)
 			if st != SUCCESS {
@@ -263,17 +267,17 @@ func (d *DecodeStage) Execute() {
 			}
 			d.pipe.sTracef(d, "Read memory source r%v value %v", d.currInst.VecInstruction.RMem, rmemv) // For debugging purposes
 			d.currInst.DestMemAddr = rmemv
-			d.currInst.Operand = signExtend(d.currInst.VecInstruction.Imm)
-			v, st := d.pipe.cpu.ReadIntR(d.currInst.VecInstruction.Vd)
+			v, st := d.pipe.cpu.ReadVecR(d.currInst.VecInstruction.Vd)
 			if st != SUCCESS {
 				d.pipe.sTracef(d, "Failed to read vector instruction destination register r%v %v", d.currInst.VecInstruction.Vd, st)
 				d.state = DEC_reg_read
 				return
 			}
-			d.currInst.Result = v
-			d.state = DEC_vec_decoded
+			d.currInst.VecIR.Result = v
 			d.pipe.cpu.BlockVecR(d.currInst.VecInstruction.Vd)
+			d.state = DEC_decoded
 		}
+
 	}
 }
 

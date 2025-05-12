@@ -50,7 +50,7 @@ type CPU struct {
 	IntRegisters [INT_REG_COUNT]IntRegister
 
 	//FloatRegisters  []FloatRegister
-	VectorRegisters []VectorRegister
+	VectorRegisters [VECTOR_REG_COUNT]VectorRegister
 
 	log *zerolog.Logger
 }
@@ -120,6 +120,21 @@ func (c *CPU) WriteIntRNoBlock(r uint8, v uint32) uint32 {
 	return c.IntRegisters[r].value
 }
 
+func (c *CPU) ReadVecRNoBlock(r uint8) [4]uint32 {
+	if r >= uint8(len(c.VectorRegisters)) {
+		c.log.Panic().Msgf("attempted to read out of bounds vec reg: %v", r)
+	}
+	return c.VectorRegisters[r].value
+}
+
+func (c *CPU) WriteVecRNoBlock(r uint8, v [4]uint32) [4]uint32 {
+	if r >= uint8(len(c.VectorRegisters)) {
+		c.log.Panic().Msgf("attempted to read out of bounds vec reg: %v", r)
+	}
+	c.VectorRegisters[r].value = v
+	return c.VectorRegisters[r].value
+}
+
 func (c *CPU) WriteIntR(r uint8, value uint32) (v uint32, status int32) {
 	if r == 0 {
 		c.log.Info().Msg("attempted to write to r0, ignoring write")
@@ -181,12 +196,6 @@ func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logg
 	cpu.Pipeline = p       // Set the pipeline reference
 	cpu.Cache = cache
 	cpu.RAM = ram
-	for i := 0; i < INT_REG_COUNT; i++ {
-		reg := &cpu.IntRegisters[i] // Get the pointer to the integer register
-		reg.value = 0               // Initialize all integer registers to 0
-		reg.ReadEnable = true       // Allow reading by default
-		reg.WriteEnable = true      // Allow writing by default
-	}
 	if logger == nil {
 		log, err := os.OpenFile("cpu.log", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 		if err != nil {
@@ -196,7 +205,14 @@ func (cpu *CPU) Init(cache *memory.CacheType, ram *memory.RAM, p *Pipeline, logg
 		logger = &l
 	}
 	cpu.log = logger
-	cpu.Halted = false
+	var i uint8
+	for i = range INT_REG_COUNT {
+		cpu.unblockIntR(i)
+	}
+	for i = range VECTOR_REG_COUNT {
+		cpu.UnblockVecR(i)
+		cpu.WriteVecRNoBlock(i, [4]uint32{0, 0, 0, 0})
+	}
 	cpu.log.Trace().Msgf("cpu initialized: %+v", &cpu)
 }
 

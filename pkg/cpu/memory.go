@@ -51,8 +51,9 @@ func (m *MemoryStage) Name() string {
 }
 
 func (m *MemoryStage) baseInst() {
+	m.pipeline.sTrace(m, "exec base instruction")
 	inst := m.currInst
-	m.instStr = fmt.Sprintf("OpType: %x\nMem Mode: %x\nRd: %x\nRMem: %x\nDestMemAddr: %x", inst.BaseInstruction.OpType, inst.BaseInstruction.MemMode, inst.BaseInstruction.Rd, inst.BaseInstruction.RMem, inst.DestMemAddr)
+	m.instStr = fmt.Sprintf("OpType: %x\nMem Mode: %x\nRd: %x\nRMem: %x\nDestMemAddr: %x\nVal: %v", inst.BaseInstruction.OpType, inst.BaseInstruction.MemMode, inst.BaseInstruction.Rd, inst.BaseInstruction.RMem, inst.DestMemAddr,inst.Result)
 	if m.currInst.BaseInstruction.OpType != types.LoadStore {
 		m.pipeline.sTracef(m, "Current instruction is not a load/store type, skipping memory stage execution %+v\n", inst) // For debugging purposes, skip if not a load/store instruction
 		return
@@ -99,7 +100,6 @@ func (m *MemoryStage) baseInst() {
 				m.currInst.DestMemAddr++
 			}
 			m.pipeline.sTracef(m, "Successfully stored to cache at address 0x%X\n", m.currInst.DestMemAddr)
-			m.pipeline.cpu.unblockIntR(m.currInst.BaseInstruction.Rd) // Unblock the register after successful write
 			m.waiting = false                                         // Clear waiting state since the write was successful
 		}
 
@@ -109,6 +109,7 @@ func (m *MemoryStage) baseInst() {
 }
 
 func (m *MemoryStage) vecInst() {
+	m.pipeline.sTrace(m, "exec vector instruction")
 	destAddr := uint(m.currInst.DestMemAddr)
 	var idx uint
 	switch m.currInst.VecInstruction.MemMode {
@@ -144,7 +145,6 @@ func (m *MemoryStage) vecInst() {
 			} else {
 				// Successfully wrote to cache
 				m.pipeline.sTracef(m, "Successfully stored to cache at address 0x%X\n", m.currInst.DestMemAddr)
-				m.pipeline.cpu.UnblockVecR(m.currInst.VecInstruction.Vd) // Unblock the register after successful write
 				m.waiting = false                                        // Clear waiting state since the write was successful
 			}
 		}

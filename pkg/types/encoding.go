@@ -103,7 +103,7 @@ func (inst *VecInstruction) Encode() uint32 {
 }
 
 func (inst *VecInstruction) Decode(i uint32) {
-	inst.OpType = uint8(i) >> 1 & 0b1
+	inst.OpType = uint8(i) >> 2 & 0b1
 	switch inst.OpType {
 	case 0: // Load/Store
 		inst.Vd = uint8(i >> 3 & 0b111)	

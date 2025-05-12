@@ -235,7 +235,7 @@ func (e *ExecuteStage) ALURR() {
 func (e *ExecuteStage) calculateMemAddr(base uint32, displacement int32) uint32 {
 	res := (int32(base) + displacement) % int32(e.pipeline.cpu.RAM.SizeWords()) // Calculate the memory address for load/store instructions based on the operands
 	e.pipeline.sTracef(e, "calculating addr with base %v, displacement %v, ram size %v", int32(base), displacement, int32(e.pipeline.cpu.RAM.SizeWords()))
-	e.pipeline.sTracef(e, "calculated memory address: %v", res)                 // For debugging purposes, log the calculated memory address
+	e.pipeline.sTracef(e, "calculated memory address: %v", res) // For debugging purposes, log the calculated memory address
 	if res < 0 {
 		panic("negative memory address")
 	}
@@ -416,11 +416,11 @@ func (e *ExecuteStage) excBase() {
 }
 
 func (e *ExecuteStage) excVector() {
+	e.state = EXEC_busy_vector
 	switch e.currInst.VecInstruction.OpType {
 	case types.VEC_LOAD_STORE:
 		e.currInst.DestMemAddr = e.calculateMemAddr(e.currInst.DestMemAddr, int32(e.currInst.Operand))
-	default:
-		panic("???")
+		e.state = EXEC_done
 	case types.VEC_ARITH:
 		switch e.currInst.VecInstruction.VPU {
 		case types.VPADD:
@@ -448,6 +448,8 @@ func (e *ExecuteStage) excVector() {
 		default:
 			e.pipeline.pLog.Panic().Msgf("unsupported vector operation %+v", e.currInst.VecInstruction.VPU)
 		}
+	default:
+		panic("???")
 	}
 }
 

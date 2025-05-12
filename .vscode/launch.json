@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}/main.go",
-            "args": ["tui","demobig.bin"],
+            "args": ["tui","vev.bin"],
         },
         {
             "name": "Launch sim",
@@ -18,7 +18,7 @@
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}/main.go",
-            "args": ["sim","exc.bin"],
+            "args": ["sim","vev.bin"],
         },
         {
             "name": "Launch Package",
