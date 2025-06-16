@@ -51,7 +51,7 @@ type Line struct {
 	Comment     string       `EOL? ( @Comment`
 	Directive   *Directive   `| @@`
 	Label       *Label       `| @@`
-	Instruction *Instruction `| @@) (EOL|EOF)`
+	Instruction *Instruction `| @@) (EOL|EOF|Comment?)` // allow end of line comments
 }
 
 type Directive struct {
